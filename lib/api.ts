@@ -1,0 +1,1507 @@
+import { cleanDisplayText } from './format';
+import {
+  DigestSummary,
+  EntityDetail,
+  ExploreGraph,
+  EntitySuggestion,
+  FinancialAccount,
+  EntityLink,
+  EventSummary,
+  GraphRelation,
+  InsightSummary,
+  ReviewItem,
+  SemanticCandidate,
+  SearchResultItem,
+  SummaryMetric,
+  TransactionDetail,
+  TransactionSummary,
+} from './domain';
+import { recordDiagnostic } from './diagnostics';
+
+type ClientConfig = {
+  baseUrl: string;
+  apiKey?: string;
+  clientId?: string;
+};
+
+type RequestOptions = {
+  method?: 'GET' | 'POST' | 'PATCH';
+  body?: unknown;
+  headers?: Record<string, string>;
+};
+
+function trimSlash(value: string) {
+  return value.replace(/\/+$/, '');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asString(value: unknown, fallback = '') {
+  return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeNarrativeText(value: unknown, fallback = '') {
+  const text = cleanDisplayText(asString(value, fallback));
+  if (!text) {
+    return fallback;
+  }
+
+  const normalized = text.toLowerCase();
+  const technicalPatterns = [
+    'not found',
+    'no matching',
+    'no results',
+    'invalid',
+    'unable to',
+    'fallback',
+    'current knowledge base',
+    'could not load',
+    'no data',
+  ];
+
+  if (technicalPatterns.some((pattern) => normalized.includes(pattern))) {
+    return fallback;
+  }
+
+  return text;
+}
+
+function uniqueStrings(values: Array<string | undefined>, limit = 3) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value && value.trim().length > 0)))).slice(0, limit);
+}
+
+function buildCacheKey(baseUrl: string, namespace: string) {
+  return `${trimSlash(baseUrl)}:${namespace}`.replace(/[^a-zA-Z0-9._:-]+/g, '_');
+}
+
+type PreviewState = 'normal' | 'empty' | 'error' | 'edge' | 'loading';
+
+function getBrowserLocation() {
+  if (typeof window === 'undefined' || !window.location) {
+    return null;
+  }
+
+  const origin = typeof window.location.origin === 'string' ? window.location.origin : '';
+  const search = typeof window.location.search === 'string' ? window.location.search : '';
+
+  if (!origin) {
+    return null;
+  }
+
+  return { origin, search };
+}
+
+function isLocalWebPreview() {
+  const location = getBrowserLocation();
+  return Boolean(location && /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(location.origin));
+}
+
+function getLocalPreviewState(): PreviewState {
+  const location = getBrowserLocation();
+  if (!location || !isLocalWebPreview()) {
+    return 'normal';
+  }
+
+  const value = new URLSearchParams(location.search).get('ux');
+  return value === 'empty' || value === 'error' || value === 'edge' || value === 'loading' ? value : 'normal';
+}
+
+function throwPreviewError(label: string): never {
+  throw new Error(`${label} could not refresh right now. Check the connection and try again.`);
+}
+
+function waitForPreviewLoading(): Promise<never> {
+  return new Promise(() => {});
+}
+
+async function safeFetchJson(baseUrl: string, path: string, options: RequestOptions = {}) {
+  if (
+    typeof window !== 'undefined' &&
+    /^https:\/\/brain-ia-six\.vercel\.app\/?$/i.test(trimSlash(baseUrl)) &&
+    isLocalWebPreview()
+  ) {
+    throw new Error('Live service is skipped in local web preview.');
+  }
+
+  const startedAt = Date.now();
+  const response = await fetch(`${trimSlash(baseUrl)}${path}`, {
+    method: options.method ?? 'GET',
+    headers: {
+      'content-type': 'application/json',
+      ...(options.headers ?? {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  const text = await response.text();
+  let json: unknown = null;
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { message: text };
+    }
+  }
+
+  if (!response.ok) {
+    const message = isRecord(json) && asString(json.message) ? asString(json.message) : `HTTP ${response.status}`;
+    void recordDiagnostic({
+      type: 'error',
+      label: `fetch ${path}`,
+      detail: `${response.status} in ${Date.now() - startedAt}ms`,
+    });
+    throw new Error(message);
+  }
+
+  void recordDiagnostic({
+    type: 'request',
+    label: `fetch ${path}`,
+    detail: `ok in ${Date.now() - startedAt}ms`,
+  });
+
+  return json;
+}
+
+async function resolveBundle<T>(
+  cacheKey: string,
+  loader: () => Promise<T>,
+  _fallback: T,
+  _preferCache = false,
+  label = cacheKey
+): Promise<{ value: T; source: 'live' | 'cache'; cachedAt?: string }> {
+  try {
+    const value = await loader();
+    return { value, source: 'live' };
+  } catch (error) {
+    void recordDiagnostic({
+      type: 'error',
+      label,
+      detail: error instanceof Error ? error.message : 'bundle load failed',
+    });
+    throw error;
+  }
+}
+
+const demoMetrics: SummaryMetric[] = [
+  { label: 'Today', value: '4 items', delta: 'ready to review', tone: 'neutral' },
+  { label: 'Money', value: '$82.40', delta: 'this month', tone: 'warning' },
+  { label: 'Review', value: '2', delta: 'decisions', tone: 'warning' },
+  { label: 'Insights', value: '3', delta: 'new patterns', tone: 'positive' },
+];
+
+const demoInsights: InsightSummary[] = [
+  {
+    id: 'insight_finance',
+    title: 'Food delivery is the biggest flexible spend',
+    summary: 'Food delivery is outpacing other discretionary categories this period.',
+    takeaways: ['Review recurring delivery merchants', 'Compare with groceries before next digest'],
+    timestamp: 'Today',
+    relatedCount: 4,
+  },
+  {
+    id: 'insight_spotify',
+    title: 'Spotify appears as a recurring charge',
+    summary: 'Spotify has repeated enough to treat it as a recurring subscription.',
+    takeaways: ['Keep it under Subscriptions', 'Search merchant history for earlier charges'],
+    timestamp: 'This week',
+    relatedCount: 2,
+  },
+];
+
+const demoDigests: DigestSummary[] = [
+  {
+    id: 'digest_week',
+    title: 'Weekly personal digest',
+    summary: 'Spending, notes, and review decisions are ready for a quick weekly pass.',
+    windowLabel: 'This week',
+    eventCount: 12,
+    relatedInsightCount: 2,
+    metrics: [
+      { label: 'Activity', value: '12 items' },
+      { label: 'Money', value: '$82.40' },
+      { label: 'Review', value: '2 decisions' },
+    ],
+  },
+];
+
+const demoTransactions: TransactionSummary[] = [
+  { id: 'tx_spotify', merchantLabel: 'Spotify', amount: '$10.99', currency: 'USD', kind: 'expense', category: 'Subscriptions', account: 'Card 1234', evidenceCount: 2, observedAt: 'Today' },
+  { id: 'tx_groceries', merchantLabel: 'Fresh Market', amount: '$48.30', currency: 'USD', kind: 'expense', category: 'Groceries', account: 'Card 1234', evidenceCount: 1, observedAt: 'Yesterday' },
+  { id: 'tx_coffee', merchantLabel: 'Cafe Central', amount: '$6.20', currency: 'USD', kind: 'expense', category: 'Food', account: 'Wallet', evidenceCount: 1, observedAt: 'Jul 14' },
+  { id: 'tx_income', merchantLabel: 'Client payment', amount: '$540.00', currency: 'USD', kind: 'income', category: 'Income', account: 'Bank', evidenceCount: 1, observedAt: 'This week' },
+];
+
+const edgeTransactions: TransactionSummary[] = [
+  {
+    id: 'tx_long_category',
+    merchantLabel: 'International Grocery Cooperative Downtown Branch',
+    amount: '$1,248.77',
+    currency: 'USD',
+    kind: 'expense',
+    category: 'Groceries and household essentials with a very long label',
+    account: 'Primary checking account ending 9876',
+    evidenceCount: 4,
+    observedAt: 'Today',
+  },
+  {
+    id: 'tx_zero_adjustment',
+    merchantLabel: 'Zero value statement adjustment',
+    amount: '$0.00',
+    currency: 'USD',
+    kind: 'expense',
+    category: 'Adjustments',
+    account: 'Card 0000',
+    evidenceCount: 1,
+    observedAt: 'Yesterday',
+  },
+  {
+    id: 'tx_refund',
+    merchantLabel: 'Refund from delivery marketplace',
+    amount: '-$18.40',
+    currency: 'USD',
+    kind: 'expense',
+    category: 'Food delivery refunds and credits',
+    account: 'Wallet',
+    evidenceCount: 2,
+    observedAt: 'Jul 14',
+  },
+  {
+    id: 'tx_income_edge',
+    merchantLabel: 'Quarterly client settlement with long payer name',
+    amount: '$9,840.00',
+    currency: 'USD',
+    kind: 'income',
+    category: 'Income',
+    account: 'Business bank account ending 4321',
+    evidenceCount: 3,
+    observedAt: 'This month',
+  },
+];
+
+const edgeMetrics: SummaryMetric[] = [
+  { label: 'Today', value: '18 items', delta: 'long-content pass', tone: 'neutral' },
+  { label: 'Money', value: '$1,248.77', delta: 'large values', tone: 'warning' },
+  { label: 'Review', value: '7', delta: 'mixed decisions', tone: 'warning' },
+  { label: 'Insights', value: '5', delta: 'dense copy', tone: 'positive' },
+];
+
+const emptyDashboard = {
+  metrics: [],
+  insights: [],
+  digests: [],
+  transactions: [],
+};
+
+const demoReviews: ReviewItem[] = [
+  {
+    id: 'review_spotify',
+    alias: 'SPOTIFY*P1234',
+    categoryPath: ['Subscriptions'],
+    reason: 'merchant name',
+    normalizedValue: 'Spotify',
+    status: 'pending',
+  },
+  {
+    id: 'review_delivery',
+    alias: 'DELIVERY APP',
+    categoryPath: ['Food', 'Delivery'],
+    reason: 'category suggestion',
+    normalizedValue: 'Food delivery',
+    status: 'pending',
+  },
+];
+
+function demoEntity(id: string): EntityDetail {
+  return {
+    id,
+    title: id.includes('spotify') ? 'Spotify' : 'Knowledge item',
+    type: id.includes('spotify') ? 'merchant' : 'topic',
+    canonical: true,
+    summary: 'A known item connected to recent activity, money movement, and review decisions.',
+    aliases: id.includes('spotify') ? ['Spotify', 'SPOTIFY*P1234'] : ['Knowledge item'],
+    relatedEvents: ['activity_recent_1', 'activity_recent_2'],
+    relatedEntities: [
+      { id: 'subscriptions', label: 'Subscriptions', type: 'category', canonical: true },
+      { id: 'music', label: 'Music', type: 'topic' },
+    ],
+    relations: [
+      { id: 'rel_1', label: 'Recurring charge', description: 'This merchant appears more than once in money activity.', direction: 'bidirectional' },
+      { id: 'rel_2', label: 'Category match', description: 'This item is usually grouped under Subscriptions.', direction: 'outgoing' },
+    ],
+  };
+}
+
+function demoTransactionDetail(id: string): TransactionDetail {
+  const transaction = [...demoTransactions, ...edgeTransactions].find((item) => item.id === id) ?? demoTransactions[0];
+  return {
+    ...transaction,
+    observedWindow: 'Recent activity',
+    evidence: [
+      {
+        id: `${transaction.id}_evidence_1`,
+        source: 'Wallet',
+        kind: transaction.kind,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        merchantLabel: transaction.merchantLabel,
+        observedAt: transaction.observedAt,
+        matchReason: 'Matched merchant name and amount.',
+      },
+      {
+        id: `${transaction.id}_evidence_2`,
+        source: 'Notification',
+        kind: 'confirmation',
+        merchantLabel: transaction.merchantLabel,
+        observedAt: transaction.observedAt,
+        matchReason: 'Confirmed by related notification.',
+      },
+    ],
+  };
+}
+
+function normalizeMetrics(input: unknown): SummaryMetric[] {
+  if (Array.isArray(input)) {
+    return input.map((item, index) => ({
+      label: asString((item as Record<string, unknown>).label, `Metric ${index + 1}`),
+      value: asString((item as Record<string, unknown>).value, '0'),
+      delta: asString((item as Record<string, unknown>).delta) || undefined,
+      tone: (item as Record<string, unknown>).tone as SummaryMetric['tone'] | undefined,
+    }));
+  }
+
+  if (isRecord(input)) {
+    return Object.entries(input).map(([label, value]) => ({
+      label,
+      value: String(value),
+    }));
+  }
+
+  return [];
+}
+
+function isPlaceholderInsightText(value?: string) {
+  const normalized = cleanDisplayText(value ?? '').toLowerCase();
+  return !normalized || /^insight\s+\d+$/.test(normalized) || normalized === 'insight';
+}
+
+function normalizeInsight(item: unknown, index = 0): InsightSummary {
+  const record = isRecord(item) ? item : {};
+  const rawTitle = normalizeNarrativeText(record.title, '');
+  const rawSummary = normalizeNarrativeText(record.summary, '');
+  const title = isPlaceholderInsightText(rawTitle) && !isPlaceholderInsightText(rawSummary) ? rawSummary : rawTitle;
+  const summary = isPlaceholderInsightText(rawSummary) ? title : rawSummary;
+  const takeaways = uniqueStrings(
+    asArray<string>(record.takeaways)
+      .map((takeaway) => normalizeNarrativeText(takeaway))
+      .filter((takeaway) => takeaway !== title && takeaway !== summary)
+  );
+
+  return {
+    id: asString(record.id, `insight_${index + 1}`),
+    title,
+    summary,
+    takeaways,
+    model: asString(record.model) || undefined,
+    timestamp: asString(record.createdAt ?? record.timestamp) || undefined,
+    relatedCount: asNumber(record.relatedCount ?? record.supportingCount, 0) || undefined,
+  };
+}
+
+function isUsefulInsight(insight: InsightSummary) {
+  return !isPlaceholderInsightText(insight.title) || !isPlaceholderInsightText(insight.summary) || insight.takeaways.length > 0;
+}
+
+function normalizeDigest(item: unknown, index = 0): DigestSummary {
+  const record = (isRecord(item) ? item : {}) as Record<string, any>;
+  const metrics = Array.isArray(record.metrics)
+    ? normalizeMetrics(record.metrics)
+    : asRecordMetrics(record.metrics);
+
+  return {
+    id: asString(record.id, `digest_${index + 1}`),
+    title: normalizeNarrativeText(record.title, `Digest ${index + 1}`),
+    summary: normalizeNarrativeText(record.summary, 'Digest summary'),
+    windowLabel: normalizeNarrativeText(record.windowLabel ?? record.scope, 'Recent activity'),
+    eventCount: asNumber(record.eventCount ?? record.totalEvents, 0) || undefined,
+    relatedInsightCount: asNumber(record.relatedInsightCount ?? record.relatedInsightsCount, 0) || undefined,
+    metrics,
+  };
+}
+
+function asRecordMetrics(value: unknown): SummaryMetric[] | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return Object.entries(value).map(([label, rawValue]) => ({
+    label,
+    value: String(rawValue),
+  }));
+}
+
+function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
+  const record = (isRecord(item) ? item : {}) as Record<string, any>;
+  const rawCurrency = asString(record.currency, 'UNKNOWN').toUpperCase();
+
+  return {
+    id: asString(record.id, `transaction_${index + 1}`),
+    merchantLabel: normalizeNarrativeText(record.merchantLabel ?? record.normalizedMerchant ?? record.merchant, `Transaction ${index + 1}`),
+    displayMerchantLabel: asString(record.displayMerchantLabel) ? normalizeNarrativeText(record.displayMerchantLabel, '') : undefined,
+    amount: asString(record.amount, '$0.00'),
+    currency: rawCurrency,
+    kind: asString(record.kind, 'expense'),
+    observedAt: asString(record.observedAt ?? record.timestamp) || undefined,
+    category: asString(record.category) || undefined,
+    account: asString(record.account) || undefined,
+    accountId: asString(record.accountId) || undefined,
+    merchantEntityId: asString(record.merchantEntityId ?? record.merchant_entity_id) || undefined,
+    status: asString(record.status) || undefined,
+    primarySource: asString(record.primarySource ?? record.primary_source ?? record.source) || undefined,
+    eventIds: asArray<unknown>(record.evidence).map((evidence) => asString(isRecord(evidence) ? evidence.rawEventId ?? evidence.raw_event_id : '')).filter(Boolean),
+    evidenceCount: asNumber(record.evidenceCount ?? record.evidence?.length, 0) || undefined,
+  };
+}
+
+function normalizeSearchResults(input: unknown): SearchResultItem[] {
+  const record = (isRecord(input) ? input : {}) as Record<string, any>;
+  const entities = asArray<unknown>(record.entities).map((item, index) => {
+    const entity = isRecord(item) ? item : {};
+    return {
+      id: asString(entity.id, `entity_${index + 1}`),
+      title: asString(entity.value ?? entity.label, `Entity ${index + 1}`),
+      subtitle: asString(entity.type, 'Entity'),
+      description: asString(entity.description, 'Canonical entity result'),
+      type: 'entity' as const,
+      route: `/entity/${asString(entity.id, `entity_${index + 1}`)}`,
+      relevance: asNumber((entity.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
+      hint: asString((entity.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+    };
+  });
+
+  const events = asArray<unknown>(record.events).map((item, index) => {
+    const event = isRecord(item) ? item : {};
+    return {
+      id: asString(event.id, `event_${index + 1}`),
+      title: asString(event.title, `Event ${index + 1}`),
+      subtitle: asString(event.kind, 'Event'),
+      description: asString(event.body, 'Stored event'),
+      type: 'event' as const,
+      route: `/digest/digest_week`,
+      relevance: asNumber((event.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
+      hint: asString((event.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+    };
+  });
+
+  const relations = asArray<unknown>(record.relations).map((item, index) => {
+    const relation = isRecord(item) ? item : {};
+    return {
+      id: asString(relation.id, `relation_${index + 1}`),
+      title: asString(relation.label, `Relation ${index + 1}`),
+      subtitle: asString(relation.relationType, 'Relation'),
+      description: asString(relation.description, 'Knowledge graph relation'),
+      type: 'relation' as const,
+      route: `/entity/${asString(relation.sourceEntityId ?? relation.targetEntityId, 'entity_spotify')}`,
+      relevance: asNumber((relation.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
+      hint: asString((relation.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+    };
+  });
+
+  const combined = [...entities, ...events, ...relations];
+  return combined;
+}
+
+function normalizeReviews(input: unknown): ReviewItem[] {
+  const items = asArray<unknown>(input).map((item, index) => {
+    const review = (isRecord(item) ? item : {}) as Record<string, any>;
+    const originalValue = asString(review.originalValue ?? review.original_value) || undefined;
+    const normalizedValue = asString(review.normalizedValue ?? review.normalized_value) || undefined;
+
+    return {
+      id: asString(review.id, `alias_${index + 1}`),
+      alias: asString(review.alias ?? review.suggestedAlias ?? review.suggested_alias ?? originalValue ?? normalizedValue, `Alias ${index + 1}`),
+      categoryPath: asArray<string>(review.categoryPath ?? review.suggestedCategoryPath ?? review.suggested_category_path),
+      reason: asString(review.reason, 'Needs review'),
+      source: asString(review.source) || undefined,
+      eventId: asString(review.eventId ?? review.event_id) || undefined,
+      originalValue,
+      normalizedValue,
+      status: (asString(review.status, 'pending') as ReviewItem['status']) || 'pending',
+    };
+  });
+
+  return items;
+}
+
+function normalizeEntity(input: unknown): EntityDetail {
+  const record = (isRecord(input) ? input : {}) as Record<string, any>;
+
+  if (isRecord(record.rootEntity)) {
+    return normalizeEntity(record.rootEntity);
+  }
+
+  if (!isRecord(input)) {
+    return {
+      id: 'entity_unknown',
+      title: 'Unknown entity',
+      type: 'entity',
+      canonical: false,
+      summary: 'No item details are available yet.',
+      aliases: [],
+      relatedEvents: [],
+      relatedEntities: [],
+      relations: [],
+    };
+  }
+
+  return {
+    id: asString(record.id, 'entity_unknown'),
+    title: normalizeNarrativeText(record.value ?? record.label ?? record.title, 'Unknown entity'),
+    type: asString(record.type, 'entity'),
+    canonical: record.canonical === true || record.isCanonical === true,
+    summary: normalizeNarrativeText(record.description ?? record.summary, 'Description unavailable'),
+    aliases: asArray<string>(record.aliases),
+    relatedEvents: asArray<string>(record.relatedEvents),
+    relatedEntities: asArray<unknown>(record.relatedEntities).length > 0
+      ? asArray<unknown>(record.relatedEntities).map((item, index) => {
+          const entity = (isRecord(item) ? item : {}) as Record<string, any>;
+          return {
+            id: asString(entity.id, `related_entity_${index + 1}`),
+            label: asString(entity.label ?? entity.value, `Related entity ${index + 1}`),
+            type: asString(entity.type, 'entity'),
+            canonical: entity.canonical === true || entity.isCanonical === true,
+            confidence: asNumber(entity.confidence, 0) || undefined,
+          };
+        })
+      : [],
+    relations: asArray<unknown>(input.relations).length > 0
+      ? asArray<unknown>(input.relations).map((item, index) => {
+          const relation = isRecord(item) ? item : {};
+          return {
+            id: asString(relation.id, `relation_${index + 1}`),
+            relationType: asString(relation.relationType) || undefined,
+            label: asString(relation.label, `Relation ${index + 1}`),
+            description: asString(relation.description, 'Graph relation'),
+            direction: (asString(relation.direction, 'incoming') as GraphRelation['direction']) || 'incoming',
+            depth: asNumber(relation.depth, 1) || undefined,
+            importanceScore: asNumber(relation.importanceScore, 0) || undefined,
+          };
+        })
+      : [],
+  };
+}
+
+function normalizeTransactionDetail(input: unknown): TransactionDetail {
+  if (!isRecord(input)) {
+    return {
+      id: 'transaction_unknown',
+      merchantLabel: 'Unknown transaction',
+      amount: '$0.00',
+      currency: 'USD',
+      kind: 'expense',
+      observedWindow: undefined,
+      evidence: [],
+    };
+  }
+
+  const record = (isRecord(input) ? input : {}) as Record<string, any>;
+  const transaction = normalizeTransaction(input);
+
+  return {
+    ...transaction,
+    observedWindow: asString(record.observedWindow) || undefined,
+    evidence: asArray<unknown>(record.evidence).length > 0
+      ? asArray<unknown>(record.evidence).map((item, index) => {
+          const evidence = (isRecord(item) ? item : {}) as Record<string, any>;
+          return {
+            id: asString(evidence.id, `evidence_${index + 1}`),
+            rawEventId: asString(evidence.rawEventId ?? evidence.raw_event_id) || undefined,
+            source: asString(evidence.source, 'source'),
+            kind: asString(evidence.kind, transaction.kind),
+            amount: asString(evidence.amount) || undefined,
+            currency: asString(evidence.currency, transaction.currency),
+            merchantLabel: asString(evidence.merchantLabel) || undefined,
+            observedAt: asString(evidence.observedAt) || undefined,
+            matchReason: asString(evidence.matchReason) || undefined,
+          };
+        })
+      : [],
+  };
+}
+
+function normalizeEntityLinks(input: unknown): EntityLink[] {
+  return asArray<unknown>(input)
+    .map((item, index) => {
+      const entity = (isRecord(item) ? item : {}) as Record<string, any>;
+      return {
+        id: asString(entity.id, `node_${index + 1}`),
+        label: asString(entity.label ?? entity.value, `Node ${index + 1}`),
+        type: asString(entity.type, 'entity'),
+        description: asString(entity.description),
+        canonical: entity.canonical === true || entity.isCanonical === true,
+        confidence: asNumber(entity.confidence, 0) || undefined,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeEvent(input: unknown, index: number): EventSummary {
+  const event = (isRecord(input) ? input : {}) as Record<string, any>;
+  return {
+    id: asString(event.id, `event_${index + 1}`),
+    source: asString(event.source, 'unknown'),
+    kind: asString(event.kind, asString(event.inferredKind, 'event')),
+    title: asString(event.title, 'Untitled event'),
+    body: asString(event.body) || undefined,
+    receivedAt: asString(event.rawEventCreatedAt, asString(event.timestamp)) || undefined,
+    inferredKind: asString(event.inferredKind) || undefined,
+    confidence: asNumber(event.confidence, 0) || undefined,
+  };
+}
+
+async function requestWithFallback<T>(baseUrl: string, path: string, fallback: T, options: RequestOptions = {}) {
+  void fallback;
+  const json = await safeFetchJson(baseUrl, path, options);
+  return json as T;
+}
+
+export type BrainIAClient = {
+  baseUrl: string;
+  health: () => Promise<{ ok: boolean }>;
+  metrics: () => Promise<SummaryMetric[]>;
+  listEvents: (limit?: number) => Promise<EventSummary[]>;
+  listEntities: (limit?: number) => Promise<EntitySuggestion[]>;
+  getExploreGraph: (limit?: number) => Promise<ExploreGraph>;
+  listInsights: (limit?: number) => Promise<InsightSummary[]>;
+  listDigests: (limit?: number) => Promise<DigestSummary[]>;
+  listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
+  getTransaction: (id: string) => Promise<TransactionDetail>;
+  listFinancialAccounts: () => Promise<FinancialAccount[]>;
+  createFinancialAccount: (input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string }) => Promise<FinancialAccount>;
+  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; currency?: 'UYU' | 'USD' }) => Promise<TransactionDetail>;
+  listEntityAliases: (entityId?: string) => Promise<string[]>;
+  createEntityAlias: (input: { entityId: string; alias: string }) => Promise<{ id: string; alias: string }>;
+  search: (query: string, filters?: { source?: string; kind?: string; from?: string; to?: string }) => Promise<SearchResultItem[]>;
+  listReviews: (status?: 'pending' | 'resolved' | 'ignored') => Promise<ReviewItem[]>;
+  getEntity: (id: string) => Promise<EntityDetail>;
+  getEntityGraph: (id: string, depth?: number) => Promise<{ rootEntity: EntityDetail; nodes: EntityLink[]; relations: GraphRelation[] }>;
+  inspectInsight: (idOrQuery: { id?: string; q?: string }) => Promise<InsightSummary>;
+  capture: (kind: 'note' | 'email' | 'notification' | 'wallet' | 'event', payload: Record<string, unknown>) => Promise<{ ok: boolean }>;
+  mergeEntity: (payload: { aliasEntityId: string; canonicalEntityId: string; reason: string; confidence: number }) => Promise<{ ok: boolean }>;
+  findEntityMatches: (query: string) => Promise<EntitySuggestion[]>;
+  resolveAlias: (aliasId: string, payload: { alias: string; categoryPath: string[]; notes?: string; targetEntityId?: string }) => Promise<{ ok: boolean }>;
+  ignoreAlias: (aliasId: string) => Promise<{ ok: boolean }>;
+  reprocessEvent: (eventId: string) => Promise<{ ok: boolean }>;
+  listSemanticCandidates: () => Promise<SemanticCandidate[]>;
+  resolveSemanticCandidate: (id: string, input: { action: 'approve' | 'reject'; targetEntityId?: string; createRule?: boolean }) => Promise<{ ok: boolean }>;
+};
+
+export function createBrainIAClient(config: ClientConfig): BrainIAClient {
+  const baseUrl = config.baseUrl || '';
+  const headers = {
+    ...(config.apiKey ? { 'x-brainia-api-key': config.apiKey } : {}),
+    ...(config.clientId ? { 'x-brainia-client-id': config.clientId } : {}),
+  };
+
+  const client: BrainIAClient = {
+    baseUrl,
+    async health() {
+      return requestWithFallback(baseUrl, '/health', { ok: false }, { headers });
+    },
+    async metrics() {
+      const json = await requestWithFallback(baseUrl, '/api/v1/metrics', [], { headers });
+      return normalizeMetrics(json);
+    },
+    async listEvents(limit = 50) {
+      const json = await requestWithFallback(baseUrl, '/api/v1/events', [], { headers });
+      const events = asArray<unknown>(isRecord(json) ? json.events ?? json.items ?? json : json)
+        .map(normalizeEvent)
+        .filter((event) => event.id);
+      return events
+        .sort((left, right) => Date.parse(right.receivedAt ?? '') - Date.parse(left.receivedAt ?? ''))
+        .slice(0, limit);
+    },
+    async listEntities(limit = 24) {
+      const json = await requestWithFallback(baseUrl, '/api/v1/entities', [], { headers });
+      return asArray<unknown>(json)
+        .map((item) => {
+          const entity = (isRecord(item) ? item : {}) as Record<string, any>;
+          return {
+            id: asString(entity.canonicalEntityId, asString(entity.id)),
+            name: asString(entity.value, asString(entity.normalizedValue, 'Untitled entity')),
+            type: asString(entity.type, 'entity'),
+            aliasCount: asNumber(entity.aliasCount, 0) || undefined,
+            canonical: entity.isCanonical !== false,
+          };
+        })
+        .filter((entity) => entity.id && entity.name)
+        .filter((entity, index, all) => all.findIndex((candidate) => candidate.id === entity.id) === index)
+        .slice(0, limit);
+    },
+    async getExploreGraph(limit = 80) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/graph?limit=${limit}`, { communities: [], nodes: [], relations: [], stats: {} }, { headers });
+      const record = (isRecord(json) ? json : {}) as Record<string, any>;
+      const nodes = asArray<unknown>(record.nodes).map((item) => {
+        const node = (isRecord(item) ? item : {}) as Record<string, any>;
+        return {
+          id: asString(node.id),
+          name: asString(node.value, 'Untitled entity'),
+          type: asString(node.type, 'entity'),
+          description: asString(node.description),
+          importanceScore: asNumber(node.importanceScore, 0),
+          communityId: asString(node.communityId, asString(node.id)),
+          hierarchyDepth: asNumber(node.hierarchyDepth, node.type === 'domain' ? 0 : 1),
+        };
+      }).filter((node) => node.id);
+      const relations = asArray<unknown>(record.relations).map((item, index) => {
+        const relation = (isRecord(item) ? item : {}) as Record<string, any>;
+        return {
+          id: asString(relation.id, `explore_relation_${index + 1}`),
+          sourceEntityId: asString(relation.sourceEntityId),
+          targetEntityId: asString(relation.targetEntityId),
+          relationType: asString(relation.relationType, 'related_to'),
+          label: asString(relation.label, 'related to'),
+          description: asString(relation.description, 'Knowledge graph relation'),
+          confidence: asNumber(relation.confidence, 0),
+          importanceScore: asNumber(relation.importanceScore, 0),
+        };
+      }).filter((relation) => relation.sourceEntityId && relation.targetEntityId);
+      const serverCommunities = asArray<unknown>(record.communities).map((item) => {
+        const community = (isRecord(item) ? item : {}) as Record<string, any>;
+        return { id: asString(community.id), label: asString(community.label, 'Connected group'), nodeCount: asNumber(community.nodeCount, 0), leaderEntityId: asString(community.leaderEntityId) };
+      }).filter((community) => community.id);
+      const nodeById = new Map(nodes.map((node) => [node.id, node]));
+      const hierarchyParents = new Map<string, string[]>();
+      for (const relation of relations) {
+        if (relation.relationType !== 'part_of' && relation.relationType !== 'belongs_to_domain') continue;
+        hierarchyParents.set(relation.sourceEntityId, [...(hierarchyParents.get(relation.sourceEntityId) ?? []), relation.targetEntityId]);
+      }
+      const resolveDomain = (entityId: string, seen = new Set<string>()): string | null => {
+        if (seen.has(entityId)) return null;
+        seen.add(entityId);
+        const entity = nodeById.get(entityId);
+        if (entity?.type === 'domain') return entity.id;
+        for (const parentId of hierarchyParents.get(entityId) ?? []) {
+          const domainId = resolveDomain(parentId, seen);
+          if (domainId) return domainId;
+        }
+        return null;
+      };
+      // The API may have been deployed before the semantic community logic.
+      // Prefer explicit domain links over the server's generic graph cluster so
+      // a hierarchy such as Home → Home automation → Xiaomi Home remains one
+      // coherent visual island on every supported backend version.
+      const normalizedNodes = nodes.map((node) => ({ ...node, communityId: resolveDomain(node.id) ?? node.communityId }));
+      const groups = new Map<string, typeof normalizedNodes>();
+      for (const node of normalizedNodes) groups.set(node.communityId, [...(groups.get(node.communityId) ?? []), node]);
+      const serverCommunityById = new Map(serverCommunities.map((community) => [community.id, community]));
+      const communities = [...groups.entries()].map(([id, members]) => {
+        const domain = nodeById.get(id);
+        const serverCommunity = serverCommunityById.get(id);
+        const leader = members.find((member) => member.id === id)
+          ?? members.reduce((current, member) => member.importanceScore > current.importanceScore ? member : current);
+        return {
+          id,
+          label: domain?.type === 'domain' ? domain.name : serverCommunity?.label ?? `${leader.type} · ${leader.name}`,
+          nodeCount: members.length,
+          leaderEntityId: domain?.type === 'domain' ? domain.id : serverCommunity?.leaderEntityId || leader.id,
+        };
+      });
+      return { communities, nodes: normalizedNodes, relations, stats: { nodesCount: asNumber(record.stats?.nodesCount, normalizedNodes.length), relationsCount: asNumber(record.stats?.relationsCount, relations.length), truncated: Boolean(record.stats?.truncated) } };
+    },
+    async listInsights(limit = 5) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/insights/history?limit=${limit}`, { runs: [] }, { headers });
+      if (isRecord(json) && Array.isArray(json.runs)) {
+        return json.runs.map(normalizeInsight).filter(isUsefulInsight).slice(0, limit);
+      }
+
+      if (Array.isArray(json)) {
+        return json.map(normalizeInsight).filter(isUsefulInsight).slice(0, limit);
+      }
+
+      return [];
+    },
+    async listDigests(limit = 4) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/digests/history?limit=${limit}`, { runs: [] }, { headers });
+      if (isRecord(json) && Array.isArray(json.runs)) {
+        return json.runs.map(normalizeDigest).slice(0, limit);
+      }
+
+      if (Array.isArray(json)) {
+        return json.map(normalizeDigest).slice(0, limit);
+      }
+
+      return [];
+    },
+    async listTransactions(limit = 8, range = {}) {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (range.from) params.set('from', range.from);
+      if (range.to) params.set('to', range.to);
+      const json = await requestWithFallback(baseUrl, `/api/v1/financial/transactions?${params.toString()}`, [], { headers });
+      const items = asArray<unknown>(isRecord(json) ? json.transactions ?? json.items ?? json : json).map(normalizeTransaction);
+      return items.slice(0, limit);
+    },
+    async getTransaction(id: string) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { id }, { headers });
+      return normalizeTransactionDetail(json);
+    },
+    async listFinancialAccounts() {
+      const json = await requestWithFallback(baseUrl, '/api/v1/financial/accounts', { accounts: [] }, { headers });
+      const items = isRecord(json) ? json.accounts : json;
+      return asArray<unknown>(items).map((item) => {
+        const record = (isRecord(item) ? item : {}) as Record<string, any>;
+        const currency = asString(record.currency).toUpperCase();
+        const accountCurrency: 'UYU' | 'USD' | undefined = currency === 'UYU' || currency === 'USD' ? currency : undefined;
+        return { id: asString(record.id), name: asString(record.name, 'Financial account'), type: asString(record.type, 'bank'), mask: asString(record.mask) || undefined, currency: accountCurrency };
+      }).filter((item) => item.id);
+    },
+    async createFinancialAccount(input) {
+      const json = await safeFetchJson(baseUrl, '/api/v1/financial/accounts', { method: 'POST', body: input, headers });
+      const record = (isRecord(json) ? json : {}) as Record<string, any>;
+      const currency = asString(record.currency, input.currency).toUpperCase() as 'UYU' | 'USD';
+      return { id: asString(record.id), name: asString(record.name, input.name), type: asString(record.type, input.type || 'bank'), mask: asString(record.mask) || undefined, currency };
+    },
+    async updateTransactionContext(id, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { method: 'PATCH', body: input, headers });
+      return normalizeTransactionDetail(json);
+    },
+    async listEntityAliases(entityId) {
+      const suffix = entityId ? `?entityId=${encodeURIComponent(entityId)}` : '';
+      const json = await safeFetchJson(baseUrl, `/api/v1/aliases${suffix}`, { headers });
+      const aliases = isRecord(json) && Array.isArray(json.aliases) ? json.aliases : [];
+      return aliases
+        .map((item) => asString(isRecord(item) ? item.alias : item))
+        .filter(Boolean);
+    },
+    async createEntityAlias(input) {
+      const json = await safeFetchJson(baseUrl, '/api/v1/aliases', { method: 'POST', body: input, headers });
+      const record = (isRecord(json) ? json : {}) as Record<string, any>;
+      return { id: asString(record.id), alias: asString(record.alias, input.alias) };
+    },
+    async search(query: string, filters = {}) {
+      const params = new URLSearchParams();
+      params.set('q', query);
+      if (filters.source) params.set('source', filters.source);
+      if (filters.kind) params.set('kind', filters.kind);
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+
+      const json = await requestWithFallback(baseUrl, `/api/v1/search?${params.toString()}`, { events: [], entities: [], relations: [] }, { headers });
+      return normalizeSearchResults(json);
+    },
+    async listReviews(status = 'pending') {
+      const json = await requestWithFallback(baseUrl, `/api/v1/review/aliases?status=${status}`, [], { headers });
+      if (isRecord(json) && Array.isArray(json.items)) {
+        return normalizeReviews(json.items);
+      }
+
+      return normalizeReviews(json);
+    },
+    async listSemanticCandidates() {
+      const json = await requestWithFallback(baseUrl, '/api/v1/semantic/candidates?status=pending', { items: [] }, { headers });
+      const items = isRecord(json) && Array.isArray(json.items) ? json.items : [];
+      return items.map((item) => {
+        const record = (isRecord(item) ? item : {}) as Record<string, unknown>;
+        return {
+          id: asString(record.id), eventId: asString(record.eventId) || undefined,
+          subjectEntityId: asString(record.subjectEntityId) || undefined,
+          subjectValue: asString(record.subjectValue) || undefined,
+          subjectType: asString(record.subjectType) || undefined,
+          relationType: asString(record.relationType, 'related_to'), targetType: asString(record.targetType, 'concept'),
+          targetValue: asString(record.targetValue, 'Concept'), parentTargetValue: asString(record.parentTargetValue) || undefined,
+          confidence: asNumber(record.confidence, 0), rationale: asString(record.rationale) || undefined,
+          extractor: asString(record.extractor) || undefined, decisionKind: asString(record.decisionKind) || undefined,
+          domainValue: asString(record.domainValue) || undefined,
+          anchorRole: (asString(record.anchorRole) || undefined) as SemanticCandidate['anchorRole'],
+          proposedPath: asArray<string>(record.proposedPath),
+          alternatives: asArray<unknown>(record.alternatives).map((alternative) => {
+            const value = isRecord(alternative) ? alternative : {};
+            return { parent: asString(value.parent) || undefined, value: asString(value.value), confidence: asNumber(value.confidence, 0) };
+          }).filter((alternative) => alternative.value),
+          recurrenceCount: asNumber(record.recurrenceCount, 0) || undefined,
+          governanceVersion: asString(record.governanceVersion) || undefined, model: asString(record.model) || undefined,
+          status: asString(record.status, 'pending') as SemanticCandidate['status'],
+        };
+      }).filter((item) => item.id);
+    },
+    async resolveSemanticCandidate(id, input) {
+      await safeFetchJson(baseUrl, `/api/v1/semantic/candidates/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: input, headers });
+      return { ok: true };
+    },
+    async findEntityMatches(query: string) {
+      const term = query.trim();
+      if (!term) return [];
+      const json = await requestWithFallback(baseUrl, `/api/v1/entities/resolve?q=${encodeURIComponent(term)}`, { matches: [] }, { headers });
+      const matches = isRecord(json) && Array.isArray(json.matches) ? json.matches : [];
+      return matches.map((match) => {
+        const record = (isRecord(match) ? match : {}) as Record<string, any>;
+        return {
+          id: asString(record.id),
+          name: asString(record.value, asString(record.normalizedValue, 'Existing entity')),
+          type: asString(record.type, 'entity'),
+          aliasCount: asNumber(record.aliasCount, 0) || undefined,
+          canonical: record.isCanonical === true,
+        };
+      }).filter((match) => match.id && match.name);
+    },
+    async getEntity(id: string) {
+      const resolveJson = await requestWithFallback(baseUrl, `/api/v1/entities/resolve?id=${encodeURIComponent(id)}`, { matches: [] }, { headers });
+      const resolveRecord = isRecord(resolveJson) ? (resolveJson as Record<string, any>) : {};
+      const matches = Array.isArray(resolveRecord.matches) ? (resolveRecord.matches as Array<Record<string, any>>) : [];
+      const canonicalId = matches[0]?.canonicalEntityId
+        ? String(matches[0].canonicalEntityId)
+        : id;
+
+      const graph = await client.getEntityGraph(canonicalId, 2);
+      return graph.rootEntity;
+    },
+    async getEntityGraph(id: string, depth = 2) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/entities/${encodeURIComponent(id)}/graph?depth=${depth}&maxNodes=50&maxRelations=50`, { headers });
+
+      const graphRecord = isRecord(json) ? (json as Record<string, any>) : {};
+      const rootEntity = normalizeEntity(graphRecord.rootEntity ?? graphRecord.entity ?? graphRecord);
+      return {
+        rootEntity,
+        nodes: normalizeEntityLinks(graphRecord.nodes),
+        relations: asArray<unknown>(graphRecord.relations).map((item, index) => {
+          const relation = (isRecord(item) ? item : {}) as Record<string, any>;
+          return {
+            id: asString(relation.id, `graph_relation_${index + 1}`),
+            sourceEntityId: asString(relation.sourceEntityId) || undefined,
+            targetEntityId: asString(relation.targetEntityId) || undefined,
+            relationType: asString(relation.relationType) || undefined,
+            label: asString(relation.label, `Relation ${index + 1}`),
+            description: asString(relation.description, 'Graph relation'),
+            direction: (asString(relation.direction, 'incoming') as GraphRelation['direction']) || 'incoming',
+            depth: asNumber(relation.depth, 1) || undefined,
+            importanceScore: asNumber(relation.importanceScore, 0) || undefined,
+          };
+        }),
+      };
+    },
+    async inspectInsight(idOrQuery: { id?: string; q?: string }) {
+      const params = new URLSearchParams();
+      if (idOrQuery.id) params.set('id', idOrQuery.id);
+      if (idOrQuery.q) params.set('q', idOrQuery.q);
+      const json = await requestWithFallback(baseUrl, `/api/v1/insights?${params.toString()}`, {}, { headers });
+      return normalizeInsight(json);
+    },
+    async capture(kind, payload) {
+      const route =
+        kind === 'note'
+          ? '/api/v1/capture/note'
+          : kind === 'email'
+            ? '/api/v1/capture/email'
+            : kind === 'notification'
+              ? '/api/v1/capture/notification'
+              : kind === 'wallet'
+                ? '/api/v1/capture/wallet'
+                : '/api/v1/events';
+
+      const body =
+        kind === 'event'
+          ? {
+              id: payload.externalId || `event_${Date.now()}`,
+              source: asString(payload.source, 'mobile'),
+              kind: asString(payload.kind, 'other'),
+              title: asString(payload.title) || undefined,
+              body: asString(payload.body) || undefined,
+              timestamp: asString(payload.timestamp) || undefined,
+              externalId: asString(payload.externalId) || undefined,
+              idempotencyKey: asString(payload.idempotencyKey) || undefined,
+              raw: payload.raw ?? payload,
+              tags: asArray<string>(payload.tags).length > 0 ? asArray<string>(payload.tags) : [],
+            }
+          : {
+              ...payload,
+              id: asString(payload.id, `${kind}_${Date.now()}`),
+              ...(kind === 'wallet'
+                ? {
+                    merchant: asString(payload.merchant, asString(payload.merchantLabel) || undefined),
+                    amount: asString(payload.amount) || undefined,
+                  }
+                : {}),
+            };
+
+      await safeFetchJson(baseUrl, route, {
+        method: 'POST',
+        body,
+        headers,
+      });
+
+      return { ok: true };
+    },
+    async mergeEntity({ aliasEntityId, canonicalEntityId, reason, confidence }) {
+      await safeFetchJson(baseUrl, `/api/v1/entities/${encodeURIComponent(aliasEntityId)}/merge`, {
+        method: 'POST',
+        body: {
+          canonicalEntityId,
+          reason,
+          confidence,
+        },
+        headers,
+      });
+
+      return { ok: true };
+    },
+    async resolveAlias(aliasId, payload) {
+      await safeFetchJson(baseUrl, `/api/v1/review/aliases/${encodeURIComponent(aliasId)}/resolve`, {
+        method: 'POST',
+        body: payload,
+        headers,
+      });
+
+      return { ok: true };
+    },
+    async ignoreAlias(aliasId) {
+      await safeFetchJson(baseUrl, `/api/v1/review/aliases/${encodeURIComponent(aliasId)}/ignore`, {
+        method: 'POST',
+        body: {},
+        headers,
+      });
+
+      return { ok: true };
+    },
+    async reprocessEvent(eventId) {
+      await safeFetchJson(baseUrl, `/api/v1/events/${encodeURIComponent(eventId)}/reprocess`, {
+        method: 'POST',
+        body: {},
+        headers,
+      });
+
+      return { ok: true };
+    },
+  };
+
+  return client;
+}
+
+export async function loadDashboardBundle(client: BrainIAClient) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Today');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return { ...emptyDashboard, live: false, source: 'empty' as const, cachedAt: undefined };
+  }
+  if (previewState === 'edge') {
+    return { metrics: edgeMetrics, insights: demoInsights, digests: demoDigests, transactions: edgeTransactions, live: false, source: 'cache' as const, cachedAt: undefined };
+  }
+
+  const health = await client.health().catch(() => ({ ok: false }));
+  const cacheKey = buildCacheKey(client.baseUrl, 'dashboard:v2');
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const [metrics, insights, digests, transactions] = await Promise.all([
+        client.metrics(),
+        client.listInsights(3),
+        client.listDigests(2),
+        loadMonthlyFinancialSummaryTransactions(client),
+      ]);
+
+      return {
+        metrics,
+        insights,
+        digests,
+        transactions,
+      };
+    },
+    {
+      metrics: demoMetrics,
+      insights: demoInsights,
+      digests: demoDigests,
+      transactions: [],
+    },
+    !health.ok,
+    'dashboard'
+  );
+
+  return {
+    ...bundle.value,
+    live: health.ok,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadSearchBundle(client: BrainIAClient, query: string) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Search');
+  }
+  if (previewState === 'loading' && query.trim()) {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty' && query.trim()) {
+    return { results: [], live: false, source: 'empty' as const };
+  }
+
+  if (!query.trim()) {
+    return { results: [], live: false, source: 'empty' as const };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, `search:${query.toLowerCase()}`);
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const results = await client.search(query);
+      return { results };
+    },
+    {
+      results: [
+        {
+          id: 'entity_spotify',
+          title: 'Spotify',
+          subtitle: 'Merchant',
+          description: 'Recurring subscription merchant with recent money activity.',
+          type: 'entity',
+          route: '/entity/entity_spotify',
+          relevance: 0.94,
+          hint: 'Matched merchant name and subscription activity.',
+        },
+        {
+          id: 'tx_spotify',
+          title: 'Spotify charge',
+          subtitle: 'Transaction',
+          description: 'Recent subscription charge grouped under Subscriptions.',
+          type: 'transaction',
+          route: '/transaction/tx_spotify',
+          relevance: 0.86,
+          hint: 'Matched wallet activity and merchant name.',
+        },
+        {
+          id: 'insight_spotify',
+          title: 'Spotify appears as a recurring charge',
+          subtitle: 'Insight',
+          description: 'Spotify has repeated enough to treat it as a recurring subscription.',
+          type: 'insight',
+          route: '/insight/insight_spotify',
+          relevance: 0.82,
+          hint: 'Matched merchant history and insight summary.',
+        },
+        {
+          id: 'rel_spotify_subscriptions',
+          title: 'Spotify belongs to Subscriptions',
+          subtitle: 'Connection',
+          description: 'Spotify is connected to recurring subscription spending.',
+          type: 'relation',
+          route: '/entity/entity_spotify',
+          relevance: 0.78,
+          hint: 'Matched category connection.',
+        },
+      ],
+    },
+    false,
+    'search'
+  );
+
+  return {
+    ...bundle.value,
+    live: bundle.source === 'live',
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadFinancialBundle(client: BrainIAClient) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Money');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return { transactions: [], insights: [], digests: [], source: 'empty' as const };
+  }
+  if (previewState === 'edge') {
+    return { transactions: edgeTransactions, insights: demoInsights, digests: demoDigests, source: 'cache' as const };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, 'financials:v2');
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const [transactions, insights, digests] = await Promise.all([loadMonthlyFinancialSummaryTransactions(client), client.listInsights(3), client.listDigests(2)]);
+
+      return {
+        transactions,
+        insights,
+        digests,
+      };
+    },
+    {
+      transactions: [],
+      insights: demoInsights,
+      digests: demoDigests,
+    },
+    false,
+    'financials'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+const FINANCIAL_SUMMARY_LIMIT = 100;
+
+function currentMonthRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+/** Shared live dataset for Today and Money month-level summaries. */
+export function loadMonthlyFinancialSummaryTransactions(client: BrainIAClient) {
+  return client.listTransactions(FINANCIAL_SUMMARY_LIMIT, currentMonthRange());
+}
+
+export async function loadReviewBundle(client: BrainIAClient) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Review');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return { reviews: [], source: 'empty' as const };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, 'review');
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const reviews = await client.listReviews('pending');
+      return {
+        reviews,
+      };
+    },
+    { reviews: demoReviews },
+    false,
+    'review'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadEntityBundle(client: BrainIAClient, entityId: string) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Item detail');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return {
+      entity: {
+        id: entityId,
+        title: 'No item yet',
+        type: 'item',
+        canonical: false,
+        summary: 'No item details are available for this preview state.',
+        aliases: [],
+        relatedEvents: [],
+        relatedEntities: [],
+        relations: [],
+      },
+      graph: {
+        rootEntity: demoEntity(entityId),
+        nodes: [],
+        relations: [],
+      },
+      source: 'empty' as const,
+    };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, `entity:${entityId}`);
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const [entity, graph] = await Promise.all([client.getEntity(entityId), client.getEntityGraph(entityId)]);
+      return {
+        entity,
+        graph,
+      };
+    },
+    {
+      entity: demoEntity(entityId),
+      graph: {
+        rootEntity: demoEntity(entityId),
+        nodes: demoEntity(entityId).relatedEntities,
+        relations: demoEntity(entityId).relations,
+      },
+    },
+    false,
+    'entity'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadTransactionBundle(client: BrainIAClient, transactionId: string) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Transaction detail');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return {
+      transaction: {
+        id: transactionId,
+        merchantLabel: 'No transaction yet',
+        displayMerchantLabel: undefined,
+        amount: '$0.00',
+        currency: 'USD',
+        kind: 'expense',
+        observedAt: undefined,
+        category: 'Uncategorized',
+        account: undefined,
+        accountId: undefined,
+        merchantEntityId: undefined,
+        status: undefined,
+        primarySource: undefined,
+        evidenceCount: 0,
+        observedWindow: undefined,
+        evidence: [],
+      },
+      source: 'empty' as const,
+    };
+  }
+  if (previewState === 'edge') {
+    return { transaction: demoTransactionDetail('tx_long_category'), source: 'cache' as const };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, `transaction:v2:${transactionId}`);
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const transaction = await client.getTransaction(transactionId);
+      return { transaction };
+    },
+    {
+      // Never fabricate a financial record when its live detail cannot be loaded.
+      transaction: undefined as unknown as TransactionDetail,
+    },
+    false,
+    'transaction'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadInsightBundle(client: BrainIAClient, idOrQuery: { id?: string; q?: string }) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Insight detail');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return {
+      insight: {
+        id: idOrQuery.id ?? 'insight_empty',
+        title: 'No insight yet',
+        summary: 'No insight is available for this preview state.',
+        takeaways: [],
+        model: undefined,
+        timestamp: undefined,
+        relatedCount: undefined,
+      },
+      source: 'empty' as const,
+    };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, `insight:${idOrQuery.id ?? idOrQuery.q ?? 'default'}`);
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const insight = await client.inspectInsight(idOrQuery);
+      return { insight };
+    },
+    { insight: demoInsights.find((insight) => insight.id === idOrQuery.id) ?? demoInsights[0] },
+    false,
+    'insight'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}
+
+export async function loadDigestBundle(client: BrainIAClient, id: string) {
+  const previewState = getLocalPreviewState();
+  if (previewState === 'error') {
+    throwPreviewError('Digest detail');
+  }
+  if (previewState === 'loading') {
+    return waitForPreviewLoading();
+  }
+  if (previewState === 'empty') {
+    return {
+      digest: {
+        id,
+        title: 'No digest yet',
+        summary: 'No summary is available for this preview state.',
+        windowLabel: 'No activity',
+        metrics: [],
+      },
+      source: 'empty' as const,
+    };
+  }
+
+  const cacheKey = buildCacheKey(client.baseUrl, `digest:${id}`);
+  const bundle = await resolveBundle(
+    cacheKey,
+    async () => {
+      const digests = await client.listDigests(10);
+      return {
+        digest: digests.find((item) => item.id === id) ?? digests[0] ?? normalizeDigest({}, 0),
+      };
+    },
+    { digest: demoDigests.find((digest) => digest.id === id) ?? demoDigests[0] },
+    false,
+    'digest'
+  );
+
+  return {
+    ...bundle.value,
+    source: bundle.source,
+    cachedAt: bundle.cachedAt,
+  };
+}

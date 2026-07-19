@@ -1,0 +1,348 @@
+# Graph Report - BrainIA-Mobile  (2026-07-15)
+
+## Corpus Check
+- 64 files · ~256,838 words
+- Verdict: corpus is large enough that graph structure adds value.
+
+## Summary
+- 882 nodes · 1571 edges · 70 communities (56 shown, 14 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.5)
+- Token cost: 0 input · 0 output
+
+## Community Hubs (Navigation)
+- [[_COMMUNITY_api.ts|api.ts]]
+- [[_COMMUNITY_Data cards|Data cards]]
+- [[_COMMUNITY_Screen Component Spec|Screen Component Spec]]
+- [[_COMMUNITY_Concrete theme definitions|Concrete theme definitions]]
+- [[_COMMUNITY_useTheme|useTheme]]
+- [[_COMMUNITY_Functional requirements|Functional requirements]]
+- [[_COMMUNITY_dependencies|dependencies]]
+- [[_COMMUNITY_expo|expo]]
+- [[_COMMUNITY_P1. Mejora fuerte de UX|P1. Mejora fuerte de UX]]
+- [[_COMMUNITY_Detail and action components|Detail and action components]]
+- [[_COMMUNITY_Primitive components|Primitive components]]
+- [[_COMMUNITY_Iteration loop|Iteration loop]]
+- [[_COMMUNITY_State model|State model]]
+- [[_COMMUNITY_cleanDisplayText|cleanDisplayText]]
+- [[_COMMUNITY_review.tsx|review.tsx]]
+- [[_COMMUNITY_Practical Heuristics|Practical Heuristics]]
+- [[_COMMUNITY_share-apk.mjs|share-apk.mjs]]
+- [[_COMMUNITY_Design Direction|Design Direction]]
+- [[_COMMUNITY_themes.ts|themes.ts]]
+- [[_COMMUNITY_UX Iteration System|UX Iteration System]]
+- [[_COMMUNITY_Bibiz Reference Brief|Bibiz Reference Brief]]
+- [[_COMMUNITY_search.tsx|search.tsx]]
+- [[_COMMUNITY_useTheme|useTheme]]
+- [[_COMMUNITY_BrainIA-Mobile UX Rebuild Proposal|BrainIA-Mobile UX Rebuild Proposal]]
+- [[_COMMUNITY_Backend Contract|Backend Contract]]
+- [[_COMMUNITY_README|README.md]]
+- [[_COMMUNITY_Mobile Architecture|Mobile Architecture]]
+- [[_COMMUNITY_Expo Mobile UXUI Working Memory|Expo Mobile UX/UI Working Memory]]
+- [[_COMMUNITY_id.tsx|[id].tsx]]
+- [[_COMMUNITY_index.tsx|index.tsx]]
+- [[_COMMUNITY_scripts|scripts]]
+- [[_COMMUNITY_Iteration loop|Iteration loop]]
+- [[_COMMUNITY_Navigation|Navigation]]
+- [[_COMMUNITY_Rebuild Roadmap|Rebuild Roadmap]]
+- [[_COMMUNITY_tsconfig.json|tsconfig.json]]
+- [[_COMMUNITY_Recommended tabs|Recommended tabs]]
+- [[_COMMUNITY_Vision y Alcance|Vision y Alcance]]
+- [[_COMMUNITY_Information Architecture|Information Architecture]]
+- [[_COMMUNITY_Global UX Principles|Global UX Principles]]
+- [[_COMMUNITY_devDependencies|devDependencies]]
+- [[_COMMUNITY_ux-smoke.mjs|ux-smoke.mjs]]
+- [[_COMMUNITY_UX Rebuild Implementation Audit|UX Rebuild Implementation Audit]]
+- [[_COMMUNITY_Data Presentation Rules|Data Presentation Rules]]
+- [[_COMMUNITY_package.json|package.json]]
+- [[_COMMUNITY_BrainIA-Mobile|BrainIA-Mobile]]
+- [[_COMMUNITY_Component tiers|Component tiers]]
+- [[_COMMUNITY_Visual Direction|Visual Direction]]
+- [[_COMMUNITY_Capture|Capture]]
+- [[_COMMUNITY_Today|Today]]
+- [[_COMMUNITY_Search|Search]]
+- [[_COMMUNITY_Finance|Finance]]
+- [[_COMMUNITY_Review|Review]]
+- [[_COMMUNITY_Product Direction|Product Direction]]
+- [[_COMMUNITY_Component System Rebuild|Component System Rebuild]]
+- [[_COMMUNITY_Knowledge Entity Detail|Knowledge Entity Detail]]
+- [[_COMMUNITY_eslint.config.js|eslint.config.js]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_Screen specs|Screen specs]]
+- [[_COMMUNITY_State variants|State variants]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_Theme behavior|Theme behavior]]
+- [[_COMMUNITY_State variants|State variants]]
+- [[_COMMUNITY_ux-shots.mjs|ux-shots.mjs]]
+- [[_COMMUNITY_ActionPreview|ActionPreview]]
+- [[_COMMUNITY_ReviewQueueItem|ReviewQueueItem]]
+
+## God Nodes (most connected - your core abstractions)
+1. `useTheme()` - 72 edges
+2. `Screen Component Spec` - 52 edges
+3. `cleanDisplayText()` - 39 edges
+4. `useBrainIAClient()` - 26 edges
+5. `useAsyncResource()` - 23 edges
+6. `BrainIA-Mobile UX Rebuild Proposal` - 22 edges
+7. `useAppState()` - 20 edges
+8. `Concrete theme definitions` - 19 edges
+9. `Surface()` - 18 edges
+10. `ListRow()` - 17 edges
+
+## Surprising Connections (you probably didn't know these)
+- `NotFoundScreen()` --calls--> `useTheme()`  [EXTRACTED]
+  app/+not-found.tsx → lib/app-state.tsx
+- `MiniBarChart()` --calls--> `useTheme()`  [EXTRACTED]
+  components/cards/index.tsx → lib/app-state.tsx
+- `AnimatedPressable()` --calls--> `useTheme()`  [EXTRACTED]
+  components/primitives/index.tsx → lib/app-state.tsx
+- `CaptureScreen()` --calls--> `useTheme()`  [EXTRACTED]
+  app/(tabs)/capture.tsx → lib/app-state.tsx
+- `FinancialsScreen()` --calls--> `useBrainIAClient()`  [EXTRACTED]
+  app/(tabs)/financials.tsx → lib/app-state.tsx
+
+## Import Cycles
+- 1-file cycle: `app/+html.tsx -> app/+html.tsx`
+
+## Communities (70 total, 14 thin omitted)
+
+### Community 0 - "api.ts"
+Cohesion: 0.09
+Nodes (55): asArray(), asNumber(), asRecordMetrics(), asString(), buildCacheKey(), ClientConfig, demoDigests, demoEntity() (+47 more)
+
+### Community 1 - "Data cards"
+Cohesion: 0.04
+Nodes (45): Accessibility, `BreakdownItem`, Capture, `ChartCard`, `ChartPoint`, Common props, Component Inventory, Dashboard (+37 more)
+
+### Community 2 - "Screen Component Spec"
+Cohesion: 0.05
+Nodes (42): Component contract rules, Global layout contract, Implementation order, Intent, Intent, Intent, Intent, Intent (+34 more)
+
+### Community 3 - "Concrete theme definitions"
+Cohesion: 0.05
+Nodes (39): 1. Base tokens, 2. Semantic tokens, 3. Theme variants, 4. Component recipes, Architecture, Color system, Color system, Color system (+31 more)
+
+### Community 4 - "useTheme"
+Cohesion: 0.11
+Nodes (23): dashboardModes, themeModes, visibilityModes, CaptureKind, captureKinds, ActionRow(), CaptureForm(), CaptureSuccess() (+15 more)
+
+### Community 5 - "Functional requirements"
+Cohesion: 0.06
+Nodes (34): Acceptance criteria, Captura, Financias, FR-1, FR-10, FR-2, FR-3, FR-4 (+26 more)
+
+### Community 6 - "dependencies"
+Cohesion: 0.06
+Nodes (31): dependencies, expo, expo-constants, expo-font, @expo-google-fonts/fraunces, @expo-google-fonts/ibm-plex-mono, @expo-google-fonts/inter, @expo-google-fonts/jetbrains-mono (+23 more)
+
+### Community 7 - "expo"
+Cohesion: 0.07
+Nodes (28): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, backgroundColor, package, predictiveBackGestureEnabled (+20 more)
+
+### Community 8 - "P1. Mejora fuerte de UX"
+Cohesion: 0.07
+Nodes (26): Dependencia obligatoria, Milestone A, Milestone B, Milestone C, Milestones recomendados, P0.1 Rendering de datos y texto, P0.2 Estados de datos robustos, P0.3 Estabilidad del dashboard (+18 more)
+
+### Community 9 - "Detail and action components"
+Cohesion: 0.08
+Nodes (24): `ActionItem`, `ActionRow`, `CaptureForm`, `CapturePayload`, Detail and action components, `DetailBlock`, `ExpandablePanel`, `GraphNodeCard` (+16 more)
+
+### Community 10 - "Primitive components"
+Cohesion: 0.08
+Nodes (24): `AppShell`, `BottomTabs`, `Button`, `EmptyState`, `ErrorState`, `FilterChip`, `IconButton`, `LoadingSkeleton` (+16 more)
+
+### Community 11 - "Iteration loop"
+Cohesion: 0.19
+Nodes (20): loadSettings(), CacheEnvelope, clearAllJsonCache(), deleteJsonCache(), readIndex(), readJsonCache(), registerKey(), writeIndex() (+12 more)
+
+### Community 12 - "State model"
+Cohesion: 0.25
+Nodes (20): DigestDetailScreen(), EmailDetailScreen(), EntityDetailScreen(), EventDetailScreen(), InsightDetailScreen(), SettingsScreen(), CaptureScreen(), AppScreen() (+12 more)
+
+### Community 13 - "cleanDisplayText"
+Cohesion: 0.16
+Nodes (19): formatSourceLabel(), TransactionDetailScreen(), MetricCard(), TodayFinanceSnapshot(), EvidenceRow(), TransactionRow(), BottomSheet(), ErrorState() (+11 more)
+
+### Community 14 - "review.tsx"
+Cohesion: 0.11
+Nodes (12): CategoryIconName, emptyCopy(), ReviewScreen(), ReviewType, reviewTypes, uniqueSuggestions(), SummaryGrid(), ResolutionForm() (+4 more)
+
+### Community 15 - "Practical Heuristics"
+Cohesion: 0.09
+Nodes (21): Accessibility, Android, Capture UX, Color, Distilled Judgment, Expo/React Native, Finance UX, Information Architecture (+13 more)
+
+### Community 16 - "share-apk.mjs"
+Cohesion: 0.10
+Nodes (11): androidDir, apkPath, apkStat, defaultApkPath, __dirname, __filename, lanAddresses, port (+3 more)
+
+### Community 17 - "Design Direction"
+Cohesion: 0.11
+Nodes (17): Bibiz, Design Direction, Goal, Inspirations, Interaction principles, Linear, Monzo, Name (+9 more)
+
+### Community 18 - "themes.ts"
+Cohesion: 0.07
+Nodes (32): BootstrapScreen(), RootNavigator(), unstable_settings, NotFoundScreen(), TabLayout(), BrainIAClient, createBrainIAClient(), AppStateContext (+24 more)
+
+### Community 19 - "UX Iteration System"
+Cohesion: 0.20
+Nodes (10): Data-state checklist, Device matrix, Iteration log, Principio rector, Relationship to the backlog, Release gate, Required smoke test, UX Iteration System (+2 more)
+
+### Community 20 - "Bibiz Reference Brief"
+Cohesion: 0.14
+Nodes (13): Bibiz Reference Brief, BrainIA Translation, Capture, Home, Implementation Checklist, Money, Purpose, Reference Traits To Borrow (+5 more)
+
+### Community 21 - "search.tsx"
+Cohesion: 0.19
+Nodes (15): resultTypeLabel(), SearchScreen(), sourceFilters, MiniBarChart(), styles, DigestSummary, EntitySuggestion, InsightSummary (+7 more)
+
+### Community 22 - "useTheme"
+Cohesion: 0.19
+Nodes (15): FinancePeriod, FinanceView, MoneyTile(), periods, views, FinancialSnapshotCard(), ChartCard(), describeArc() (+7 more)
+
+### Community 23 - "BrainIA-Mobile UX Rebuild Proposal"
+Cohesion: 0.15
+Nodes (12): Acceptance Criteria, Backend Capabilities To Design Around, BrainIA-Mobile UX Rebuild Proposal, Digests, Insights, Open Product Decisions, Purpose, Screen Proposals (+4 more)
+
+### Community 24 - "Backend Contract"
+Cohesion: 0.18
+Nodes (11): Authentication expectation, Backend Contract, Backend source, Base contract, Client responsibilities, Core read flows, Data consumption rules, Implementation note (+3 more)
+
+### Community 25 - "README.md"
+Cohesion: 0.20
+Nodes (3): Decision Log, Product decisions, Product implications
+
+### Community 26 - "Mobile Architecture"
+Cohesion: 0.14
+Nodes (14): Architecture style, Auth integration, Data flow, Mobile Architecture, Network boundaries, Observability, Rendering strategy, Server state (+6 more)
+
+### Community 27 - "Expo Mobile UX/UI Working Memory"
+Cohesion: 0.22
+Nodes (8): Accessibility And Responsiveness, Agent Instructions, Encoding, Expo Mobile UX/UI Working Memory, Implementation And QA, Mobile Interaction Standards, Product Taste, Visual System
+
+### Community 28 - "[id].tsx"
+Cohesion: 0.16
+Nodes (10): DigestCard(), InsightCard(), DailyBrief(), DailyBriefItem, EntityPill(), EntitySummary(), GraphPreview(), GraphRelationRow (+2 more)
+
+### Community 29 - "index.tsx"
+Cohesion: 0.39
+Nodes (9): FinancialsScreen(), HomeScreen(), sumByKind(), formatCategoryInsight(), formatCategoryLabel(), formatCurrency(), isUncategorizedLabel(), parseCurrency() (+1 more)
+
+### Community 30 - "scripts"
+Cohesion: 0.22
+Nodes (9): scripts, android, ios, lint, prebuild, share:apk, smoke:web, start (+1 more)
+
+### Community 31 - "Iteration loop"
+Cohesion: 0.29
+Nodes (7): Iteration loop, Paso 1. Cambiar una sola cosa relevante, Paso 2. Ejecutar validacion tecnica minima, Paso 3. Abrir la app localmente, Paso 4. Revisar la pantalla en contexto, Paso 5. Corregir y repetir, Paso 6. Generar APK solo al final
+
+### Community 32 - "Navigation"
+Cohesion: 0.29
+Nodes (6): Dashboard behavior, Depth rules, Main navigation, Navigation, Search behavior, Secondary surfaces
+
+### Community 33 - "Rebuild Roadmap"
+Cohesion: 0.29
+Nodes (7): Milestone 1: UX Foundation, Milestone 2: Today + Search, Milestone 3: Finance Sub-App, Milestone 4: Knowledge Detail + Insights, Milestone 5: Capture + Review, Milestone 6: Release Hardening, Rebuild Roadmap
+
+### Community 35 - "tsconfig.json"
+Cohesion: 0.29
+Nodes (6): compilerOptions, paths, strict, extends, include, @/*
+
+### Community 37 - "Recommended tabs"
+Cohesion: 0.33
+Nodes (6): 1. Dashboard, 2. Search, 3. Capture, 4. Financials, 5. Review, Recommended tabs
+
+### Community 38 - "Vision y Alcance"
+Cohesion: 0.33
+Nodes (5): Objetivo principal, Principios, Producto, Resultados esperados, Vision y Alcance
+
+### Community 39 - "Information Architecture"
+Cohesion: 0.33
+Nodes (6): 1. Today, 2. Search, 3. Capture, 4. Finance, 5. Review, Information Architecture
+
+### Community 40 - "Global UX Principles"
+Cohesion: 0.33
+Nodes (6): Global UX Principles, Hide Backend Complexity, Make Finance A Sub-App, Make Insights First-Class, Make Review Feel Safe, Use Progressive Disclosure
+
+### Community 41 - "devDependencies"
+Cohesion: 0.33
+Nodes (6): devDependencies, eslint, eslint-config-expo, playwright, @types/react, typescript
+
+### Community 43 - "UX Rebuild Implementation Audit"
+Cohesion: 0.40
+Nodes (4): Current Completion Judgment, Evidence That Currently Passes, Remaining Gaps Before Marking Complete, UX Rebuild Implementation Audit
+
+### Community 44 - "Data Presentation Rules"
+Cohesion: 0.40
+Nodes (5): Data Presentation Rules, Dates, Graph Language, Money, Source Data
+
+### Community 45 - "package.json"
+Cohesion: 0.40
+Nodes (4): main, name, private, version
+
+### Community 46 - "BrainIA-Mobile"
+Cohesion: 0.40
+Nodes (5): BrainIA-Mobile, Decisiones de producto, Documentacion, Objetivo, Stack definido
+
+### Community 48 - "Component tiers"
+Cohesion: 0.50
+Nodes (4): Component tiers, Content cards, Detail and action components, Primitives
+
+### Community 49 - "Visual Direction"
+Cohesion: 0.50
+Nodes (4): Avoid, Core Visual Rules, Feel, Visual Direction
+
+### Community 50 - "Capture"
+Cohesion: 0.50
+Nodes (4): Capture, Current Problem, Design Rule, Target Structure
+
+### Community 51 - "Today"
+Cohesion: 0.50
+Nodes (4): Current Problem, Remove From Default Home, Target Structure, Today
+
+### Community 52 - "Search"
+Cohesion: 0.50
+Nodes (4): Current Problem, Result Card Types, Search, Target Structure
+
+### Community 53 - "Finance"
+Cohesion: 0.50
+Nodes (4): Current Problem, Finance, Target Structure, Transaction Detail
+
+### Community 54 - "Review"
+Cohesion: 0.50
+Nodes (4): Current Problem, Review, Target Structure, Tone
+
+### Community 55 - "Product Direction"
+Cohesion: 0.50
+Nodes (4): Language, Primary Experience, Primary User, Product Direction
+
+### Community 56 - "Component System Rebuild"
+Cohesion: 0.67
+Nodes (3): Component System Rebuild, Required Domain Components, Required Primitives
+
+### Community 57 - "Knowledge Entity Detail"
+Cohesion: 0.67
+Nodes (3): Current Problem, Knowledge Entity Detail, Target Structure
+
+## Knowledge Gaps
+- **501 isolated node(s):** `name`, `slug`, `version`, `orientation`, `backgroundColor` (+496 more)
+  These have ≤1 connection - possible missing edges or undocumented components.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+
+## Suggested Questions
+_Questions this graph is uniquely positioned to answer:_
+
+- **Why does `Component Inventory` connect `Data cards` to `Detail and action components`, `Primitive components`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+- **Why does `Screen Component Spec` connect `Screen Component Spec` to `Theme behavior`, `Theme behavior`, `Theme behavior`, `Theme behavior`, `State variants`, `Component tiers`, `README.md`, `Theme behavior`, `Screen specs`, `State variants`, `Theme behavior`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `Theme System` connect `Concrete theme definitions` to `README.md`?**
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
+- **What connects `name`, `slug`, `version` to the rest of the system?**
+  _501 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `api.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.09285714285714286 - nodes in this community are weakly interconnected._
+- **Should `Data cards` be split into smaller, more focused modules?**
+  _Cohesion score 0.043478260869565216 - nodes in this community are weakly interconnected._
+- **Should `Screen Component Spec` be split into smaller, more focused modules?**
+  _Cohesion score 0.047619047619047616 - nodes in this community are weakly interconnected._
