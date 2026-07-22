@@ -1,0 +1,217 @@
+{
+  "app/build.gradle": {
+    "mtime": 1784643626.0316737,
+    "ast_hash": "a64c35480e3caba0c7fd15dd69d816f6",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/MainActivity.kt": {
+    "mtime": 1783991516.5031812,
+    "ast_hash": "33ff6abf0dbdf4cef3d14e10818301da",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/MainApplication.kt": {
+    "mtime": 1784643626.033685,
+    "ast_hash": "0b789535b1d337344c3db1deec552fd3",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/notification/NotificationBridgeConfig.kt": {
+    "mtime": 1784643626.03469,
+    "ast_hash": "c9a88303f8c8101310ce1501d3189a81",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/notification/NotificationBridgeModule.kt": {
+    "mtime": 1784643626.0362036,
+    "ast_hash": "b6da9aa03cc0e54966c0cba895424af8",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/notification/NotificationBridgePackage.kt": {
+    "mtime": 1784061002.2969668,
+    "ast_hash": "a9564916c71c315fd44007b6333d84bb",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/notification/NotificationBridgeService.kt": {
+    "mtime": 1784648684.3939915,
+    "ast_hash": "bee56887ea9a53381779b8903ff5d925",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/notification/NotificationReconciliationWorker.kt": {
+    "mtime": 1784643626.0326798,
+    "ast_hash": "8477a36e78a1365e5ed66b1ecc316e87",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/voice/VoiceNoteModule.kt": {
+    "mtime": 1784634888.3098202,
+    "ast_hash": "d8fdf1fe7c6eae63d90b1c12bd0310b3",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/brainia/mobile/voice/VoiceNotePackage.kt": {
+    "mtime": 1784634888.3098202,
+    "ast_hash": "de7f32d9a98a615971ea03fca56b2374",
+    "semantic_hash": ""
+  },
+  "build.gradle": {
+    "mtime": 1783991516.7206118,
+    "ast_hash": "55cec08c744fbe7b1f1294009fe3f65d",
+    "semantic_hash": ""
+  },
+  "gradlew": {
+    "mtime": 1783991507.784082,
+    "ast_hash": "780b1d3e23a3b82154795f73df943a14",
+    "semantic_hash": ""
+  },
+  "settings.gradle": {
+    "mtime": 1783991516.7190912,
+    "ast_hash": "f11902a9f3d31e76fc2089db1a026934",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-hdpi/splashscreen_logo.png": {
+    "mtime": 1783991516.348777,
+    "ast_hash": "5acbbbc47c2962882daf7012f166132e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-mdpi/splashscreen_logo.png": {
+    "mtime": 1783991516.356936,
+    "ast_hash": "1deffa49da92b5570246ccf3cea59439",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-xhdpi/splashscreen_logo.png": {
+    "mtime": 1783991516.356936,
+    "ast_hash": "23367ff8481839ad6864ca04f13b8f36",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-xxhdpi/splashscreen_logo.png": {
+    "mtime": 1783991516.348777,
+    "ast_hash": "4d50d429d187c5bd6fd5baf91ce6a2f3",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png": {
+    "mtime": 1783991516.4981477,
+    "ast_hash": "5a06522f544682f77c020a3a735705c8",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher.webp": {
+    "mtime": 1783991510.9746544,
+    "ast_hash": "2dda665a3dffd96d5c22a63d1fbd2f50",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_background.webp": {
+    "mtime": 1783991513.865306,
+    "ast_hash": "8b804c2e3ffcb414d81159cdbe8e1338",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_foreground.webp": {
+    "mtime": 1783991513.9252014,
+    "ast_hash": "23d6c4c853d373ebc8a6b78e01a565f5",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_monochrome.webp": {
+    "mtime": 1783991512.3144596,
+    "ast_hash": "ddc9ce93ec17a515f270e1334f4d096d",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_round.webp": {
+    "mtime": 1783991511.398449,
+    "ast_hash": "79cacede8a6deac09c5eb46abbd48446",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher.webp": {
+    "mtime": 1783991510.9565165,
+    "ast_hash": "96dac275c08e40cdeec672e986d56d97",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_background.webp": {
+    "mtime": 1783991513.8733325,
+    "ast_hash": "5fc5ff595a9708fb1186f29d4cba0165",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_foreground.webp": {
+    "mtime": 1783991513.9257038,
+    "ast_hash": "21c6ff184e62fe81d5d99486c994b4a1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_monochrome.webp": {
+    "mtime": 1783991512.3144596,
+    "ast_hash": "3d7d2cdcf1efff070cd99b3a24b2af0a",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_round.webp": {
+    "mtime": 1783991511.398449,
+    "ast_hash": "8afd2a3c8f80ca2554a791cdaea89421",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher.webp": {
+    "mtime": 1783991510.9731412,
+    "ast_hash": "c63f369b209bb766684cd006c050f408",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_background.webp": {
+    "mtime": 1783991513.8723245,
+    "ast_hash": "1e8461bcda400d6f2e6ba0a789e9df32",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.webp": {
+    "mtime": 1783991513.9257038,
+    "ast_hash": "94e64d4a7a895c46bee57dd117eaaa4e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_monochrome.webp": {
+    "mtime": 1783991512.347595,
+    "ast_hash": "25ce7486d6cf2a88b12191bdc327889c",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp": {
+    "mtime": 1783991511.398449,
+    "ast_hash": "4016f7a08a47e6e56995cabd0fe654d8",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher.webp": {
+    "mtime": 1783991510.9731412,
+    "ast_hash": "49dec5c0e262a71a1ca684eb3d8c2640",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_background.webp": {
+    "mtime": 1783991513.873841,
+    "ast_hash": "3a76914a81170ce0bafc194cf299e0b8",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp": {
+    "mtime": 1783991513.9262016,
+    "ast_hash": "54904135a542a76951f4c4aa7618d942",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.webp": {
+    "mtime": 1783991512.347595,
+    "ast_hash": "c74b95ed269648784a5341dc7fc8c5d2",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp": {
+    "mtime": 1783991511.398449,
+    "ast_hash": "c8162b30ad76f0f8a2742dfdc184c518",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp": {
+    "mtime": 1783991510.9731412,
+    "ast_hash": "c089a1bee6d9ee0b7f6b0944ac7f14e1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.webp": {
+    "mtime": 1783991513.931231,
+    "ast_hash": "11c5ebf85672a8b1a823b29ffcc023a6",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp": {
+    "mtime": 1783991513.9322386,
+    "ast_hash": "56f4339ea33cd98feee64cf1b83ecd24",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.webp": {
+    "mtime": 1783991512.349123,
+    "ast_hash": "d294024561d781537913c8be15eed1e1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp": {
+    "mtime": 1783991511.4004662,
+    "ast_hash": "a9062eb0baf2f2de2ef49812796ea29b",
+    "semantic_hash": ""
+  }
+}

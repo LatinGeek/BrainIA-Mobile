@@ -1,0 +1,14 @@
+{
+  "0": "NotificationBridgeService",
+  "1": "NotificationBridgeModule",
+  "2": "VoiceNoteModule",
+  "3": "MainActivity",
+  "4": ".createNativeModules",
+  "5": "MainApplication",
+  "6": ".createNativeModules",
+  "7": "NotificationReconciliationWorker",
+  "8": "NotificationBridgeConfig.kt",
+  "9": "build.gradle",
+  "10": "build.gradle",
+  "11": "settings.gradle"
+}
