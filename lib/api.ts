@@ -464,6 +464,8 @@ function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
     category: asString(record.category) || undefined,
     account: asString(record.account) || undefined,
     accountId: asString(record.accountId) || undefined,
+    destinationAccount: asString(record.destinationAccount) || undefined,
+    destinationAccountId: asString(record.destinationAccountId) || undefined,
     merchantEntityId: asString(record.merchantEntityId ?? record.merchant_entity_id) || undefined,
     status: asString(record.status) || undefined,
     primarySource: asString(record.primarySource ?? record.primary_source ?? record.source) || undefined,
@@ -656,15 +658,21 @@ function normalizeEntityLinks(input: unknown): EntityLink[] {
 
 function normalizeEvent(input: unknown, index: number): EventSummary {
   const event = (isRecord(input) ? input : {}) as Record<string, any>;
+  const rawTitle = asString(event.title, 'Untitled event');
   return {
     id: asString(event.id, `event_${index + 1}`),
     source: asString(event.source, 'unknown'),
     kind: asString(event.kind, asString(event.inferredKind, 'event')),
-    title: asString(event.title, 'Untitled event'),
+    title: asString(event.displayTitle, rawTitle),
+    rawTitle,
+    description: asString(event.displayDescription) || undefined,
     body: asString(event.body) || undefined,
     receivedAt: asString(event.rawEventCreatedAt, asString(event.timestamp)) || undefined,
     inferredKind: asString(event.inferredKind) || undefined,
     confidence: asNumber(event.confidence, 0) || undefined,
+    interpretationStatus: asString(event.interpretationStatus) || undefined,
+    interpretationSource: asString(event.interpretationSource) || undefined,
+    interpretationFailureReason: asString(event.interpretationFailureReason) || undefined,
   };
 }
 
@@ -680,14 +688,14 @@ export type BrainIAClient = {
   metrics: () => Promise<SummaryMetric[]>;
   listEvents: (limit?: number) => Promise<EventSummary[]>;
   listEntities: (limit?: number) => Promise<EntitySuggestion[]>;
-  getExploreGraph: (limit?: number) => Promise<ExploreGraph>;
+  getExploreGraph: (limit?: number, options?: { includeEventEvidence?: boolean }) => Promise<ExploreGraph>;
   listInsights: (limit?: number) => Promise<InsightSummary[]>;
   listDigests: (limit?: number) => Promise<DigestSummary[]>;
   listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
   getTransaction: (id: string) => Promise<TransactionDetail>;
   listFinancialAccounts: () => Promise<FinancialAccount[]>;
   createFinancialAccount: (input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string }) => Promise<FinancialAccount>;
-  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; currency?: 'UYU' | 'USD' }) => Promise<TransactionDetail>;
+  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; destinationAccountId?: string | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
   listEntityAliases: (entityId?: string) => Promise<string[]>;
   createEntityAlias: (input: { entityId: string; alias: string }) => Promise<{ id: string; alias: string }>;
   search: (query: string, filters?: { source?: string; kind?: string; from?: string; to?: string }) => Promise<SearchResultItem[]>;
@@ -747,8 +755,9 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
         .filter((entity, index, all) => all.findIndex((candidate) => candidate.id === entity.id) === index)
         .slice(0, limit);
     },
-    async getExploreGraph(limit = 80) {
-      const json = await requestWithFallback(baseUrl, `/api/v1/graph?limit=${limit}`, { communities: [], nodes: [], relations: [], stats: {} }, { headers });
+    async getExploreGraph(limit = 80, options = {}) {
+      const includeEventEvidence = options.includeEventEvidence === true;
+      const json = await requestWithFallback(baseUrl, `/api/v1/graph?limit=${limit}&includeEventEvidence=${includeEventEvidence}`, { communities: [], nodes: [], relations: [], stats: {} }, { headers });
       const record = (isRecord(json) ? json : {}) as Record<string, any>;
       const nodes = asArray<unknown>(record.nodes).map((item) => {
         const node = (isRecord(item) ? item : {}) as Record<string, any>;
@@ -760,6 +769,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
           importanceScore: asNumber(node.importanceScore, 0),
           communityId: asString(node.communityId, asString(node.id)),
           hierarchyDepth: asNumber(node.hierarchyDepth, node.type === 'domain' ? 0 : 1),
+          eventId: asString(node.eventId) || undefined,
         };
       }).filter((node) => node.id);
       const relations = asArray<unknown>(record.relations).map((item, index) => {
@@ -1386,6 +1396,8 @@ export async function loadTransactionBundle(client: BrainIAClient, transactionId
         category: 'Uncategorized',
         account: undefined,
         accountId: undefined,
+        destinationAccount: undefined,
+        destinationAccountId: undefined,
         merchantEntityId: undefined,
         status: undefined,
         primarySource: undefined,

@@ -13,7 +13,7 @@ import { clearAllJsonCache } from '@/lib/cache';
 import { clearDiagnostics, readDiagnostics } from '@/lib/diagnostics';
 import { AppSettings, ThemeId } from '@/lib/domain';
 import { useAsyncResource } from '@/lib/hooks';
-import { getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, setCaptureAppPackages } from '@/lib/notification-bridge';
+import { getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, reconcileActiveNotifications, setCaptureAppPackages } from '@/lib/notification-bridge';
 
 const themeModes = [
   { value: 'editorial-minimal', label: 'Editorial' },
@@ -64,9 +64,10 @@ export default function SettingsScreen() {
     loading: notificationBridgeLoading,
     refresh: refreshNotificationBridge,
   } = useAsyncResource(notificationBridgeLoader, [notificationBridgeLoader]);
-  const listenerConnected = Boolean(notificationBridgeStatus?.accessEnabled && notificationBridgeStatus.connectedAt);
+  const listenerConnected = Boolean(notificationBridgeStatus?.accessEnabled && notificationBridgeStatus.listenerReady);
   const lastReceivedAt = notificationBridgeStatus?.lastReceivedAt;
   const lastForwardedAt = notificationBridgeStatus?.lastForwardedAt;
+  const lastReconciledAt = notificationBridgeStatus?.lastReconciledAt;
   const refreshCaptureApps = async () => {
     setAppSelectionLoading(true);
     try {
@@ -78,6 +79,16 @@ export default function SettingsScreen() {
   const openAppSelection = () => {
     setAppSelectionOpen(true);
     void refreshCaptureApps();
+  };
+  const [checkingActiveNotifications, setCheckingActiveNotifications] = useState(false);
+  const refreshNotificationBridgeStatus = async () => {
+    setCheckingActiveNotifications(true);
+    try {
+      await reconcileActiveNotifications();
+      await Promise.all([refreshCaptureApps(), refreshNotificationBridge()]);
+    } finally {
+      setCheckingActiveNotifications(false);
+    }
   };
   const toggleCaptureApp = (packageName: string) => {
     setCaptureApps((current) => {
@@ -170,12 +181,17 @@ export default function SettingsScreen() {
                 ? `Last notification read successfully: ${new Date(lastReceivedAt).toLocaleString()}.`
                 : 'No supported notification has been read yet.'}
             </Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
+              {lastReconciledAt
+                ? `Active notifications last checked: ${new Date(lastReconciledAt).toLocaleString()}.`
+                : 'Active notifications are checked when the listener connects, then every 30 minutes.'}
+            </Text>
             <Button label="Choose notification apps" onPress={openAppSelection} variant="secondary" />
             {notificationBridgeStatus?.lastError ? <Text style={[theme.typography.caption, { color: theme.status.warning }]}>{notificationBridgeStatus.lastError}</Text> : null}
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <Button label="Open notification access" onPress={() => { void openNotificationBridgeSettings(); }} variant="primary" />
-              <Button label="Refresh status" onPress={() => { void refreshNotificationBridge(); void refreshCaptureApps(); }} variant="secondary" />
+              <Button label={checkingActiveNotifications ? 'Checking active notifications...' : 'Check active notifications'} onPress={() => { void refreshNotificationBridgeStatus(); }} variant="secondary" disabled={checkingActiveNotifications} />
             </View>
           </Surface>
         </Section>

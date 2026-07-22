@@ -23,7 +23,9 @@ export default function TransactionDetailScreen() {
   const [category, setCategory] = useState('');
   const [currency, setCurrency] = useState<'UYU' | 'USD'>('UYU');
   const [accountId, setAccountId] = useState<string | null>(null);
-  const [accountName, setAccountName] = useState('');
+  const [destinationAccountId, setDestinationAccountId] = useState<string | null>(null);
+  const [fromAccountName, setFromAccountName] = useState('');
+  const [toAccountName, setToAccountName] = useState('');
   const [accounts, setAccounts] = useState<{ id: string; name: string; type: string; currency?: 'UYU' | 'USD' }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -68,7 +70,9 @@ export default function TransactionDetailScreen() {
     setCategory(transaction.category ?? '');
     setCurrency(transaction.currency === 'USD' ? 'USD' : 'UYU');
     setAccountId(transaction.accountId ?? null);
-    setAccountName(transaction.account ?? '');
+    setDestinationAccountId(transaction.destinationAccountId ?? null);
+    setFromAccountName(transaction.accountId ? '' : transaction.account ?? '');
+    setToAccountName(transaction.destinationAccountId ? '' : transaction.destinationAccount ?? '');
     setSaveError(null);
     setEditorOpen(true);
     void client.listFinancialAccounts().then(setAccounts).catch(() => setAccounts([]));
@@ -86,11 +90,22 @@ export default function TransactionDetailScreen() {
     setSaveError(null);
     try {
       let selectedAccountId = accountId;
-      if (!selectedAccountId && accountName.trim()) {
-        const created = await client.createFinancialAccount({ name: accountName.trim(), currency });
+      if (!selectedAccountId && fromAccountName.trim()) {
+        const created = await client.createFinancialAccount({ name: fromAccountName.trim(), currency });
         selectedAccountId = created.id;
       }
-      await client.updateTransactionContext(transaction.id, { category, accountId: selectedAccountId, currency });
+      let selectedDestinationAccountId = destinationAccountId;
+      if (transaction.kind === 'transfer' && !selectedDestinationAccountId && toAccountName.trim()) {
+        const created = await client.createFinancialAccount({ name: toAccountName.trim(), currency });
+        selectedDestinationAccountId = created.id;
+      }
+      await client.updateTransactionContext(transaction.id, {
+        category: transaction.kind === 'transfer' ? 'Transfer' : category,
+        accountId: selectedAccountId,
+        destinationAccountId: transaction.kind === 'transfer' ? selectedDestinationAccountId : null,
+        currency,
+        kind: transaction.kind === 'transfer' ? 'transfer' : undefined,
+      });
       setEditorOpen(false);
       await refresh();
     } catch (error) {
@@ -146,8 +161,11 @@ export default function TransactionDetailScreen() {
 
           <SectionHeader title="Transaction summary" />
           <View style={{ gap: 8 }}>
-            <ListRow title={formatCurrency(parseCurrency(transaction.amount), transaction.currency)} subtitle={transaction.kind === 'income' ? 'Income' : 'Expense'} description={transaction.observedAt} />
-            <ListRow title={formatCategoryLabel(transaction.category)} subtitle="Category" />
+            <ListRow title={formatCurrency(parseCurrency(transaction.amount), transaction.currency)} subtitle={transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Transfer' : 'Expense'} description={transaction.observedAt} />
+            {transaction.kind === 'transfer' ? <>
+              <ListRow title={maskAccount(transaction.account, settings.dataVisibility)} subtitle="From account" />
+              <ListRow title={maskAccount(transaction.destinationAccount, settings.dataVisibility)} subtitle="To account" />
+            </> : <ListRow title={formatCategoryLabel(transaction.category)} subtitle="Category" />}
             <ListRow title={maskAccount(transaction.account, settings.dataVisibility)} subtitle={`Account · ${transaction.currency}`} />
           </View>
 
@@ -206,20 +224,28 @@ export default function TransactionDetailScreen() {
 
       <BottomSheet visible={editorOpen} title="Transaction context" onClose={() => setEditorOpen(false)}>
         <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Category</Text>
-          <CategoryPicker categories={defaultCategoryPaths} selectedCategory={category} onSelect={setCategory} />
+          {transaction?.kind === 'transfer'
+            ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>This is an account transfer. It is excluded from spending, income, and category totals.</Text>
+            : <><Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Category</Text><CategoryPicker categories={defaultCategoryPaths} selectedCategory={category} onSelect={setCategory} /></>}
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Transaction currency</Text>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <FilterChip label="UYU" selected={currency === 'UYU'} onPress={() => { setCurrency('UYU'); setAccountId(null); setAccountName(''); }} />
-            <FilterChip label="USD" selected={currency === 'USD'} onPress={() => { setCurrency('USD'); setAccountId(null); setAccountName(''); }} />
+            <FilterChip label="UYU" selected={currency === 'UYU'} onPress={() => { setCurrency('UYU'); setAccountId(null); setDestinationAccountId(null); setFromAccountName(''); setToAccountName(''); }} />
+            <FilterChip label="USD" selected={currency === 'USD'} onPress={() => { setCurrency('USD'); setAccountId(null); setDestinationAccountId(null); setFromAccountName(''); setToAccountName(''); }} />
           </View>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Portfolio account</Text>
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{transaction?.kind === 'transfer' ? 'From account' : 'Portfolio account'}</Text>
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Only {currency} accounts can be linked to this transaction.</Text>
           {accounts.filter((account) => account.currency === currency).map((account) => (
-            <ListRow key={account.id} title={account.name} subtitle={`${account.type} · ${account.currency}`} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setAccountId(account.id); setAccountName(account.name); }} />
+            <ListRow key={account.id} title={account.name} subtitle={`${account.type} · ${account.currency}`} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setAccountId(account.id); setFromAccountName(''); }} />
           ))}
+          <Input label={transaction?.kind === 'transfer' ? 'New from account name' : 'New account name'} value={fromAccountName} onChangeText={(value) => { setFromAccountName(value); setAccountId(null); }} placeholder="Main bank account" />
+          {transaction?.kind === 'transfer' ? <>
+            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>To account</Text>
+            {accounts.filter((account) => account.currency === currency && account.id !== accountId).map((account) => (
+              <ListRow key={`destination_${account.id}`} title={account.name} subtitle={`${account.type} / ${account.currency}`} trailing={<Text style={{ color: destinationAccountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{destinationAccountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setDestinationAccountId(account.id); setToAccountName(''); }} />
+            ))}
+            <Input label="New to account name" value={toAccountName} onChangeText={(value) => { setToAccountName(value); setDestinationAccountId(null); }} placeholder="Destination bank account" />
+          </> : null}
           {!accounts.some((account) => account.currency === currency) ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No compatible account exists yet. Create a {currency} account below.</Text> : null}
-          <Input label="New account name" value={accountName} onChangeText={(value) => { setAccountName(value); setAccountId(null); }} placeholder="Main bank account" />
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>New account currency: {currency}</Text>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Button label="Save" onPress={saveContext} loading={saving} />

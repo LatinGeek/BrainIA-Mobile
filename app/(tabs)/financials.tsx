@@ -15,8 +15,8 @@ import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadFinancialBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatCategoryLabel, formatCurrency, parseCurrency } from '@/lib/format';
-import { groupTransactionsByField } from '@/lib/grouping';
+import { convertCurrency, formatCategoryLabel, formatCurrency, parseCurrency, SupportedCurrency, UYU_PER_USD } from '@/lib/format';
+import type { TransactionGroup } from '@/lib/grouping';
 
 const views = [
   { value: 'overview', label: 'Overview' },
@@ -35,24 +35,52 @@ const periods = [
 type FinanceView = (typeof views)[number]['value'];
 type FinancePeriod = (typeof periods)[number]['value'];
 
+const displayCurrencies = [
+  { value: 'UYU', label: 'UYU' },
+  { value: 'USD', label: 'USD' },
+] as const;
+
+function displayAmount(transaction: { amount: string; currency: string }, currency: SupportedCurrency) {
+  return convertCurrency(parseCurrency(transaction.amount), transaction.currency, currency);
+}
+
+function groupTransactionsInCurrency(
+  transactions: import('@/lib/domain').TransactionSummary[],
+  field: 'category' | 'account',
+  currency: SupportedCurrency,
+): TransactionGroup[] {
+  const groups = new Map<string, import('@/lib/domain').TransactionSummary[]>();
+  transactions.forEach((transaction) => {
+    const label = transaction[field] || 'Uncategorized';
+    groups.set(label, [...(groups.get(label) ?? []), transaction]);
+  });
+  return Array.from(groups.entries())
+    .map(([label, items]) => ({
+      label,
+      count: items.length,
+      items,
+      total: items.reduce((total, transaction) => total + (transaction.kind === 'expense' ? displayAmount(transaction, currency) : 0), 0),
+    }))
+    .sort((a, b) => b.total - a.total || b.count - a.count || a.label.localeCompare(b.label));
+}
+
 export default function FinancialsScreen() {
   const theme = useTheme();
   const client = useBrainIAClient();
   const [view, setView] = useState<FinanceView>('overview');
   const [period, setPeriod] = useState<FinancePeriod>('month');
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>('UYU');
   const loader = useMemo(() => () => loadFinancialBundle(client), [client]);
   const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
 
   const transactions = data?.transactions ?? [];
-  const displayCurrency = transactions[0]?.currency === 'USD' ? 'USD' : 'UYU';
-  const summaryTransactions = transactions.filter((transaction) => transaction.currency === displayCurrency);
   const insights = data?.insights ?? [];
-  const categoryGroups = groupTransactionsByField(summaryTransactions, 'category');
-  const accountGroups = groupTransactionsByField(summaryTransactions, 'account');
-  const expenses = summaryTransactions.filter((transaction) => transaction.kind !== 'income');
-  const income = summaryTransactions.filter((transaction) => transaction.kind === 'income');
-  const monthlySpend = expenses.reduce((total, transaction) => total + parseCurrency(transaction.amount), 0);
-  const totalIncome = income.reduce((total, transaction) => total + parseCurrency(transaction.amount), 0);
+  const expenses = transactions.filter((transaction) => transaction.kind === 'expense');
+  const categoryGroups = groupTransactionsInCurrency(expenses, 'category', displayCurrency);
+  const accountGroups = groupTransactionsInCurrency(expenses, 'account', displayCurrency);
+  const income = transactions.filter((transaction) => transaction.kind === 'income');
+  const monthlySpend = expenses.reduce((total, transaction) => total + displayAmount(transaction, displayCurrency), 0);
+  const totalIncome = income.reduce((total, transaction) => total + displayAmount(transaction, displayCurrency), 0);
   const netMovement = totalIncome - monthlySpend;
   const periodMultiplier = period === 'year' ? 12 : 1;
   const periodSpend = monthlySpend * periodMultiplier;
@@ -61,7 +89,7 @@ export default function FinancialsScreen() {
   const periodLabel = period === 'year' ? 'Annual projection' : 'Monthly expenses';
   const merchantGroups = Array.from(expenses.reduce((groups, transaction) => {
     const label = transaction.displayMerchantLabel ?? transaction.merchantLabel;
-    groups.set(label, (groups.get(label) ?? 0) + parseCurrency(transaction.amount));
+    groups.set(label, (groups.get(label) ?? 0) + displayAmount(transaction, displayCurrency));
     return groups;
   }, new Map<string, number>()).entries()).map(([label, total]) => ({ label, total }));
   const topCategory = categoryGroups[0];
@@ -94,6 +122,12 @@ export default function FinancialsScreen() {
           <SegmentedControl value={period} onChange={setPeriod} options={periods} />
           <SegmentedControl value={view} onChange={setView} options={views.map((item) => ({ ...item, count: item.value === 'transactions' ? transactions.length : undefined }))} />
 
+          <Panel tone="neutral" style={{ gap: theme.spacing.xs }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Summary currency</Text>
+            <SegmentedControl value={displayCurrency} onChange={(value) => setDisplayCurrency(value as SupportedCurrency)} options={displayCurrencies} />
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>All totals use 1 USD = UYU {UYU_PER_USD}. Original transaction amounts stay unchanged.</Text>
+          </Panel>
+
           {view === 'overview' ? (
             <>
               <Panel tone="finance" style={{ gap: theme.spacing.lg, paddingTop: theme.spacing.lg }}>
@@ -120,10 +154,10 @@ export default function FinancialsScreen() {
               />
               <FinancialSnapshotCard
                 title={periodLabel}
-                periodLabel={`${summaryTransactions.length} ${displayCurrency} transaction${summaryTransactions.length === 1 ? '' : 's'} tracked`}
+                periodLabel={`${transactions.length} transaction${transactions.length === 1 ? '' : 's'} converted to ${displayCurrency}`}
                 amount={formatCurrency(periodSpend, displayCurrency)}
                 amountTone="expense"
-                chartValues={transactions.map((transaction) => parseCurrency(transaction.amount))}
+                chartValues={expenses.map((transaction) => displayAmount(transaction, displayCurrency))}
               />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
                 <MoneyTile label="Net" value={formatCurrency(periodNet, displayCurrency)} tone={periodNet >= 0 ? 'positive' : 'danger'} />

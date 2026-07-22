@@ -85,6 +85,10 @@ export function maskAccount(value?: string, visibility: DataVisibility = 'balanc
 }
 
 export function presentTransactionSubtitle(transaction: TransactionSummary, visibility: DataVisibility) {
+  if (transaction.kind === 'transfer') {
+    const destination = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.destinationAccount, visibility) : undefined;
+    return joinDisplayParts(['Transfer', transaction.account ? `From ${maskAccount(transaction.account, visibility)}` : undefined, destination ? `To ${destination}` : undefined]);
+  }
   const account = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.account, visibility) : undefined;
   const category = transaction.kind === 'income' ? 'Income' : formatCategoryLabel(transaction.category);
   return joinDisplayParts([category, account]);

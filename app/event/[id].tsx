@@ -46,6 +46,17 @@ export default function EventDetailScreen() {
         <>
           <SectionHeader title="Captured event" />
           <Surface variant="raised" style={{ gap: theme.spacing.md }}>
+            {event.description ? (
+              <View style={{ gap: 4 }}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>BrainIA interpretation</Text>
+                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>{event.description}</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 4 }}>
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.warning }]}>Interpretation not available yet</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>The original event is preserved below. Reprocess it when model-assisted interpretation is available.</Text>
+              </View>
+            )}
             <View style={{ gap: 4 }}>
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Source</Text>
               <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{event.source}</Text>
@@ -55,7 +66,8 @@ export default function EventDetailScreen() {
             {event.receivedAt ? <ListRow title={formatDate(event.receivedAt)} subtitle="Received" /> : null}
           </Surface>
           <SectionHeader title="Original content" />
-          <Surface variant="subtle">
+          <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
+            {event.rawTitle ? <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{event.rawTitle}</Text> : null}
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{event.body ?? 'No source body is available for this event.'}</Text>
           </Surface>
           <SectionHeader title="Actions" subtitle="Choose the next step based on this activity type." />

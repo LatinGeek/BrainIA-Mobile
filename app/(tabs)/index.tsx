@@ -162,9 +162,9 @@ export default function HomeScreen() {
                 <Pressable key={transaction.id} accessibilityRole="button" accessibilityLabel={`Open ${transaction.displayMerchantLabel ?? transaction.merchantLabel}`} onPress={() => router.push(`/transaction/${transaction.id}`)}>
                   <Panel tone="finance" style={{ gap: theme.spacing.sm }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-                      <View style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: transaction.kind === 'income' ? theme.status.income : theme.status.expense }} />
-                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>{joinDisplayParts([transaction.kind === 'income' ? 'Income' : 'Expense', formatCategoryLabel(transaction.category), transaction.currency])}</Text>
-                      <Text style={[theme.typography.bodyStrong, { color: transaction.kind === 'income' ? theme.status.income : theme.status.expense }]}>{transaction.amount}</Text>
+                      <View style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: transaction.kind === 'income' ? theme.status.income : transaction.kind === 'transfer' ? theme.status.transfer : theme.status.expense }} />
+                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>{joinDisplayParts([transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Transfer' : 'Expense', transaction.kind === 'transfer' ? undefined : formatCategoryLabel(transaction.category), transaction.currency])}</Text>
+                      <Text style={[theme.typography.bodyStrong, { color: transaction.kind === 'income' ? theme.status.income : transaction.kind === 'transfer' ? theme.status.transfer : theme.status.expense }]}>{transaction.amount}</Text>
                     </View>
                     <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{transaction.displayMerchantLabel ?? transaction.merchantLabel}</Text>
                   </Panel>

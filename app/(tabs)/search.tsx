@@ -9,7 +9,7 @@ import {
   TopBar,
 } from '@/components/layout';
 import { DigestCard, InsightCard } from '@/components/cards';
-import { Button, CommandPanel, FilterChip, ListRow, Panel, SearchField, StatusBadge, Surface } from '@/components/primitives';
+import { Button, CommandPanel, FilterChip, ListRow, Panel, SearchField, StatusBadge, Surface, ToggleRow } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadSearchBundle } from '@/lib/api';
@@ -33,6 +33,7 @@ export default function SearchScreen() {
   const [sourceFilter, setSourceFilter] = useState<(typeof sourceFilters)[number]['value']>('all');
   const [focusedEntityId, setFocusedEntityId] = useState<string | undefined>();
   const [expandedGraph, setExpandedGraph] = useState<ExploreGraph | undefined>();
+  const [showEvidenceNodes, setShowEvidenceNodes] = useState(false);
   const debouncedQuery = useDebouncedValue(query, 250);
   const hasQuery = debouncedQuery.trim().length > 0;
 
@@ -60,7 +61,7 @@ export default function SearchScreen() {
   } = useAsyncResource(recentLoader, [recentLoader]);
   const entityLoader = useMemo(() => () => client.listEntities(), [client]);
   const { data: entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities } = useAsyncResource(entityLoader, [entityLoader]);
-  const graphLoader = useMemo(() => () => client.getExploreGraph(80), [client]);
+  const graphLoader = useMemo(() => () => client.getExploreGraph(80, { includeEventEvidence: showEvidenceNodes }), [client, showEvidenceNodes]);
   const { data: graph, loading: graphLoading, error: graphError, refresh: refreshGraph } = useAsyncResource(graphLoader, [graphLoader]);
 
   const results = data?.results ?? [];
@@ -161,7 +162,17 @@ export default function SearchScreen() {
                     <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Start broad, then tap a node to reveal the relationships that matter.</Text>
                   </View>
                 </View>
-                <GraphExplorer graph={displayGraph} focusedEntityId={focusedEntityId} onFocus={(entity) => setFocusedEntityId(entity.id)} onOpen={(entity) => router.push(`/entity/${entity.id}`)} />
+                <ToggleRow
+                  title="Show event evidence"
+                  subtitle="Include the captured emails, notifications, and financial events behind this map."
+                  value={showEvidenceNodes}
+                  onValueChange={(value) => {
+                    setShowEvidenceNodes(value);
+                    setFocusedEntityId(undefined);
+                    setExpandedGraph(undefined);
+                  }}
+                />
+                <GraphExplorer graph={displayGraph} focusedEntityId={focusedEntityId} onFocus={(entity) => setFocusedEntityId(entity.id)} onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)} />
                 <Button label="Refresh graph" onPress={() => { void refreshEntities(); void refreshGraph(); }} variant="secondary" />
               </Panel>
             ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? <EmptyState title="Your graph is still growing" description="Capture notes, emails, or notifications to create people, merchants, topics, and their connections." /> : null}

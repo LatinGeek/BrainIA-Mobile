@@ -75,6 +75,22 @@ export function formatCurrency(value: number, currency = 'USD') {
   }).format(value);
 }
 
+export type SupportedCurrency = 'UYU' | 'USD';
+
+/**
+ * Temporary user-configured reference rate for Money summaries. Individual
+ * transactions always retain their captured currency and amount.
+ */
+export const UYU_PER_USD = 40;
+
+export function convertCurrency(value: number, fromCurrency: string, toCurrency: SupportedCurrency) {
+  const source = fromCurrency.trim().toUpperCase();
+  if (source === toCurrency) return value;
+  if (source === 'USD' && toCurrency === 'UYU') return value * UYU_PER_USD;
+  if (source === 'UYU' && toCurrency === 'USD') return value / UYU_PER_USD;
+  return value;
+}
+
 export function parseCurrency(value: string) {
   const normalized = value.replace(/[^0-9.-]/g, '');
   const parsed = Number.parseFloat(normalized);

@@ -8,6 +8,7 @@ internal object NotificationBridgeConfig {
   const val KEY_LISTENER_CONNECTED_AT = "listenerConnectedAt"
   const val KEY_LAST_RECEIVED_AT = "lastReceivedAt"
   const val KEY_LAST_FORWARDED_AT = "lastForwardedAt"
+  const val KEY_LAST_RECONCILED_AT = "lastReconciledAt"
   const val KEY_LAST_ERROR = "lastError"
   const val KEY_CAPTURE_APP_PACKAGES = "captureAppPackages"
 }

@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { NativeEventEmitter, NativeModules, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
 
 import { CaptureSuccess } from '@/components/forms';
 import { AppScreen, Section, TopBar } from '@/components/layout';
@@ -30,6 +30,18 @@ export default function CaptureScreen() {
   const [source, setSource] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [recording, setRecording] = useState(false);
+  const voice = NativeModules.BrainIAVoiceNote;
+  const transcript = useMemo(() => new NativeEventEmitter(voice).addListener('BrainIAVoiceTranscript', ({ text }: { text: string }) => setBody(text)), [voice]);
+  useState(() => () => transcript.remove());
+
+  async function startVoiceNote() {
+    if (Platform.OS !== 'android' || !voice) { setResult({ ok: false, message: 'Voice notes are available in the Android app.' }); return; }
+    const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+    if (granted !== PermissionsAndroid.RESULTS.GRANTED) { setResult({ ok: false, message: 'Microphone permission is required to record a voice note.' }); return; }
+    setRecording(true); await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); await voice.start();
+  }
+  function stopVoiceNote() { if (recording) { voice?.stop(); setRecording(false); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } }
 
   const kindCopy = useMemo(() => {
     switch (kind) {
@@ -111,6 +123,7 @@ export default function CaptureScreen() {
           multiline
           accessibilityLabel="Quick capture text"
         />
+        {kind === 'note' ? <Pressable onPressIn={startVoiceNote} onPressOut={stopVoiceNote} style={{ alignItems: 'center', gap: 6, padding: 12 }}><Feather name="mic" size={26} color={recording ? theme.colors.danger : theme.colors.accentStrong} /><Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{recording ? 'Listening… release to finish' : 'Hold to record a voice note'}</Text></Pressable> : null}
         <Button label={busy ? 'Capturing...' : 'Capture'} onPress={submit} loading={busy} />
       </CommandPanel>
 

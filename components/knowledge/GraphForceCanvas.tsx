@@ -85,6 +85,7 @@ export default function GraphForceCanvas({
   dom?: import('expo/dom').DOMProps;
 }) {
   const graphRef = useRef<ForceGraphMethods<ForceNode, ForceLink> | undefined>(undefined);
+  const didFinalFitRef = useRef(false);
   const dataKey = JSON.stringify({ nodes, relations, communities });
   const graphData = useMemo(() => {
     const payload = JSON.parse(dataKey) as { nodes: GraphNode[]; relations: GraphRelation[]; communities: Community[] };
@@ -92,7 +93,7 @@ export default function GraphForceCanvas({
     const visibleCommunities = [...new Set(payload.nodes.map((node) => node.communityId))];
     const anchors = new Map(visibleCommunities.map((communityId, index) => {
       const angle = -Math.PI / 2 + (index / Math.max(1, visibleCommunities.length)) * Math.PI * 2;
-      return [communityId, { x: Math.cos(angle) * 150, y: Math.sin(angle) * 108 }];
+      return [communityId, { x: Math.cos(angle) * 108, y: Math.sin(angle) * 82 }];
     }));
     const graphNodes: ForceNode[] = payload.nodes.map((node) => {
       const communityIndex = visibleCommunities.indexOf(node.communityId);
@@ -123,13 +124,14 @@ export default function GraphForceCanvas({
   useEffect(() => {
     const graph = graphRef.current;
     if (!graph) return;
+    didFinalFitRef.current = false;
     graph.d3Force('x', forceX<ForceNode>((node) => node.anchorX).strength((node: ForceNode) => node.type === 'domain' ? 0.3 : 0.07));
     graph.d3Force('y', forceY<ForceNode>((node) => node.anchorY).strength((node: ForceNode) => node.type === 'domain' ? 0.3 : 0.07));
     graph.d3Force('collide', forceCollide<ForceNode>((node) => nodeRadius(node) + 10).strength(0.92));
     graph.d3Force('charge')?.strength(-92);
     graph.d3Force('link')?.distance((link: ForceLink) => isHierarchyLink(link) ? 48 : 95).strength((link: ForceLink) => isHierarchyLink(link) ? 0.86 : 0.12);
     graph.d3ReheatSimulation();
-    const timer = window.setTimeout(() => graph.zoomToFit(450, 42), 110);
+    const timer = window.setTimeout(() => graph.zoomToFit(450, 68), 650);
     return () => window.clearTimeout(timer);
   }, [dataKey]);
 
@@ -153,6 +155,11 @@ export default function GraphForceCanvas({
       cooldownTime={2200}
       d3AlphaDecay={0.028}
       d3VelocityDecay={0.32}
+      onEngineStop={() => {
+        if (didFinalFitRef.current) return;
+        didFinalFitRef.current = true;
+        graphRef.current?.zoomToFit(520, 72);
+      }}
       linkColor={(link) => selectedLinks.has(link.id) ? '#D9D4FF' : isHierarchyLink(link) ? '#536887' : '#34425E'}
       linkWidth={(link) => selectedLinks.has(link.id) ? 2 : isHierarchyLink(link) ? Math.max(0.8, link.confidence) : 0.55}
       linkLineDash={(link) => isHierarchyLink(link) ? null : [3, 4]}

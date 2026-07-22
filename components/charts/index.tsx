@@ -76,7 +76,6 @@ function DistributionRing({ values }: { values: { label: string; value: number; 
         })}
       </Svg>
       <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Distribution</Text>
         <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, textAlign: 'center', marginTop: 2 }]}>{Math.round(total)}</Text>
       </View>
     </View>

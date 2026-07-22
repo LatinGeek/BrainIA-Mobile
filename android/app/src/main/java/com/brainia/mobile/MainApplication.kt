@@ -14,6 +14,12 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 import com.brainia.mobile.notification.NotificationBridgePackage
+import com.brainia.mobile.notification.NotificationReconciliationWorker
+import com.brainia.mobile.voice.VoiceNotePackage
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 
 class MainApplication : Application(), ReactApplication {
 
@@ -25,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
           // Packages that cannot be autolinked yet can be added manually here, for example:
           // add(MyReactNativePackage())
           add(NotificationBridgePackage())
+          add(VoiceNotePackage())
         }
     )
   }
@@ -38,6 +45,11 @@ class MainApplication : Application(), ReactApplication {
     }
     loadReactNative(this)
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+    WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+      "brainia-notification-reconciliation",
+      ExistingPeriodicWorkPolicy.UPDATE,
+      PeriodicWorkRequestBuilder<NotificationReconciliationWorker>(30, TimeUnit.MINUTES).build(),
+    )
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {

@@ -5,6 +5,7 @@ type NotificationBridgeNativeModule = {
   isNotificationListenerEnabled: () => Promise<boolean>;
   openNotificationListenerSettings: () => void;
   getNotificationListenerStatus: () => Promise<NotificationBridgeStatus>;
+  reconcileActiveNotifications: () => Promise<boolean>;
   getInstalledCaptureApps: () => Promise<NotificationCaptureApp[]>;
   setCaptureAppPackages: (packages: string[]) => void;
 };
@@ -13,9 +14,11 @@ export type NotificationCaptureApp = { packageName: string; name: string; select
 
 export type NotificationBridgeStatus = {
   accessEnabled: boolean;
+  listenerReady: boolean;
   connectedAt: number;
   lastReceivedAt: number;
   lastForwardedAt: number;
+  lastReconciledAt: number;
   lastError?: string | null;
 };
 
@@ -43,10 +46,17 @@ export async function isNotificationBridgeEnabled() {
 
 export async function getNotificationBridgeStatus(): Promise<NotificationBridgeStatus> {
   if (Platform.OS !== 'android' || !nativeModule?.getNotificationListenerStatus) {
-    return { accessEnabled: false, connectedAt: 0, lastReceivedAt: 0, lastForwardedAt: 0 };
+    return { accessEnabled: false, listenerReady: false, connectedAt: 0, lastReceivedAt: 0, lastForwardedAt: 0, lastReconciledAt: 0 };
   }
 
   return nativeModule.getNotificationListenerStatus();
+}
+
+export async function reconcileActiveNotifications(): Promise<boolean> {
+  if (Platform.OS === 'android' && nativeModule?.reconcileActiveNotifications) {
+    return nativeModule.reconcileActiveNotifications();
+  }
+  return false;
 }
 
 export async function openNotificationBridgeSettings() {
