@@ -5,6 +5,7 @@ import {
   ExploreGraph,
   EntitySuggestion,
   FinancialAccount,
+  FinancialCategories,
   EntityLink,
   EventSummary,
   GraphRelation,
@@ -25,7 +26,7 @@ type ClientConfig = {
 };
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -471,6 +472,23 @@ function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
     primarySource: asString(record.primarySource ?? record.primary_source ?? record.source) || undefined,
     eventIds: asArray<unknown>(record.evidence).map((evidence) => asString(isRecord(evidence) ? evidence.rawEventId ?? evidence.raw_event_id : '')).filter(Boolean),
     evidenceCount: asNumber(record.evidenceCount ?? record.evidence?.length, 0) || undefined,
+    excludedFromReports: Boolean(record.excludedFromReports ?? record.excluded_from_reports),
+    adjustmentTargetBalance: asString(record.adjustmentTargetBalance ?? record.adjustment_target_balance) || undefined,
+  };
+}
+
+function normalizeFinancialAccount(item: unknown, fallback?: { name: string; currency: 'UYU' | 'USD'; type?: string }) : FinancialAccount {
+  const record = (isRecord(item) ? item : {}) as Record<string, any>;
+  const rawCurrency = asString(record.currency, fallback?.currency).toUpperCase();
+  const currency: 'UYU' | 'USD' | undefined = rawCurrency === 'UYU' || rawCurrency === 'USD' ? rawCurrency : undefined;
+  return {
+    id: asString(record.id),
+    name: asString(record.name, fallback?.name || 'Financial account'),
+    type: asString(record.type, fallback?.type || 'bank'),
+    mask: asString(record.mask) || undefined,
+    currency,
+    color: asString(record.color) || undefined,
+    balance: asString(record.balance, '0.00'),
   };
 }
 
@@ -694,8 +712,14 @@ export type BrainIAClient = {
   listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
   getTransaction: (id: string) => Promise<TransactionDetail>;
   listFinancialAccounts: () => Promise<FinancialAccount[]>;
-  createFinancialAccount: (input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string }) => Promise<FinancialAccount>;
+  listFinancialCategories: () => Promise<FinancialCategories>;
+  createFinancialAccount: (input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
+  updateFinancialAccount: (id: string, input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
+  deleteFinancialAccount: (id: string) => Promise<{ deleted: boolean; detachedTransactions: number }>;
+  createBalanceAdjustment: (accountId: string, input: { targetBalance: number; note?: string }) => Promise<TransactionDetail>;
   updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; destinationAccountId?: string | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
+  mergeTransactions: (canonicalId: string, duplicateId: string) => Promise<TransactionDetail>;
+  deleteTransaction: (id: string) => Promise<void>;
   listEntityAliases: (entityId?: string) => Promise<string[]>;
   createEntityAlias: (input: { entityId: string; alias: string }) => Promise<{ id: string; alias: string }>;
   search: (query: string, filters?: { source?: string; kind?: string; from?: string; to?: string }) => Promise<SearchResultItem[]>;
@@ -867,22 +891,45 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
     async listFinancialAccounts() {
       const json = await requestWithFallback(baseUrl, '/api/v1/financial/accounts', { accounts: [] }, { headers });
       const items = isRecord(json) ? json.accounts : json;
-      return asArray<unknown>(items).map((item) => {
-        const record = (isRecord(item) ? item : {}) as Record<string, any>;
-        const currency = asString(record.currency).toUpperCase();
-        const accountCurrency: 'UYU' | 'USD' | undefined = currency === 'UYU' || currency === 'USD' ? currency : undefined;
-        return { id: asString(record.id), name: asString(record.name, 'Financial account'), type: asString(record.type, 'bank'), mask: asString(record.mask) || undefined, currency: accountCurrency };
-      }).filter((item) => item.id);
+      return asArray<unknown>(items).map((item) => normalizeFinancialAccount(item)).filter((item) => item.id);
+    },
+    async listFinancialCategories() {
+      const json = await requestWithFallback(baseUrl, '/api/v1/financial/categories', { categories: { expense: [], income: [] } }, { headers });
+      const categories: Record<string, unknown> = isRecord(json) && isRecord(json.categories) ? json.categories : {};
+      return {
+        expense: asArray<unknown>(categories.expense).map((value) => asString(value)).filter(Boolean),
+        income: asArray<unknown>(categories.income).map((value) => asString(value)).filter(Boolean),
+      };
     },
     async createFinancialAccount(input) {
       const json = await safeFetchJson(baseUrl, '/api/v1/financial/accounts', { method: 'POST', body: input, headers });
-      const record = (isRecord(json) ? json : {}) as Record<string, any>;
-      const currency = asString(record.currency, input.currency).toUpperCase() as 'UYU' | 'USD';
-      return { id: asString(record.id), name: asString(record.name, input.name), type: asString(record.type, input.type || 'bank'), mask: asString(record.mask) || undefined, currency };
+      return normalizeFinancialAccount(json, input);
+    },
+    async updateFinancialAccount(id, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', body: input, headers });
+      return normalizeFinancialAccount(json, input);
+    },
+    async deleteFinancialAccount(id) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/accounts/${encodeURIComponent(id)}`, { method: 'DELETE', headers });
+      return {
+        deleted: isRecord(json) ? json.deleted === true : false,
+        detachedTransactions: isRecord(json) ? asNumber(json.detachedTransactions, 0) : 0,
+      };
+    },
+    async createBalanceAdjustment(accountId, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/accounts/${encodeURIComponent(accountId)}/adjustments`, { method: 'POST', body: input, headers });
+      return normalizeTransactionDetail(json);
     },
     async updateTransactionContext(id, input) {
       const json = await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { method: 'PATCH', body: input, headers });
       return normalizeTransactionDetail(json);
+    },
+    async mergeTransactions(canonicalId, duplicateId) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(canonicalId)}/merge`, { method: 'POST', body: { duplicateId }, headers });
+      return normalizeTransactionDetail(json);
+    },
+    async deleteTransaction(id) {
+      await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { method: 'DELETE', headers });
     },
     async listEntityAliases(entityId) {
       const suffix = entityId ? `?entityId=${encodeURIComponent(entityId)}` : '';
@@ -1095,7 +1142,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
   return client;
 }
 
-export async function loadDashboardBundle(client: BrainIAClient) {
+export async function loadDashboardBundle(client: BrainIAClient, financialPeriodStartDay = 1) {
   const previewState = getLocalPreviewState();
   if (previewState === 'error') {
     throwPreviewError('Today');
@@ -1119,7 +1166,7 @@ export async function loadDashboardBundle(client: BrainIAClient) {
         client.metrics(),
         client.listInsights(3),
         client.listDigests(2),
-        loadMonthlyFinancialSummaryTransactions(client),
+        loadMonthlyFinancialSummaryTransactions(client, financialPeriodStartDay),
       ]);
 
       return {
@@ -1226,7 +1273,7 @@ export async function loadSearchBundle(client: BrainIAClient, query: string) {
   };
 }
 
-export async function loadFinancialBundle(client: BrainIAClient) {
+export async function loadFinancialBundle(client: BrainIAClient, financialPeriodStartDay = 1) {
   const previewState = getLocalPreviewState();
   if (previewState === 'error') {
     throwPreviewError('Money');
@@ -1235,26 +1282,36 @@ export async function loadFinancialBundle(client: BrainIAClient) {
     return waitForPreviewLoading();
   }
   if (previewState === 'empty') {
-    return { transactions: [], insights: [], digests: [], source: 'empty' as const };
+    return { transactions: [], trendTransactions: [], accounts: [], insights: [], digests: [], source: 'empty' as const };
   }
   if (previewState === 'edge') {
-    return { transactions: edgeTransactions, insights: demoInsights, digests: demoDigests, source: 'cache' as const };
+    return { transactions: edgeTransactions, trendTransactions: edgeTransactions, accounts: [], insights: demoInsights, digests: demoDigests, source: 'cache' as const };
   }
 
-  const cacheKey = buildCacheKey(client.baseUrl, 'financials:v2');
+  const cacheKey = buildCacheKey(client.baseUrl, `financials:v4:${financialPeriodStartDay}`);
   const bundle = await resolveBundle(
     cacheKey,
     async () => {
-      const [transactions, insights, digests] = await Promise.all([loadMonthlyFinancialSummaryTransactions(client), client.listInsights(3), client.listDigests(2)]);
+      const [transactions, trendTransactions, accounts, insights, digests] = await Promise.all([
+        loadMonthlyFinancialSummaryTransactions(client, financialPeriodStartDay),
+        client.listTransactions(FINANCIAL_TREND_LIMIT, financialTrendRange(financialPeriodStartDay)),
+        client.listFinancialAccounts(),
+        client.listInsights(3),
+        client.listDigests(2),
+      ]);
 
       return {
         transactions,
+        trendTransactions,
+        accounts,
         insights,
         digests,
       };
     },
     {
       transactions: [],
+      trendTransactions: [],
+      accounts: [],
       insights: demoInsights,
       digests: demoDigests,
     },
@@ -1270,17 +1327,39 @@ export async function loadFinancialBundle(client: BrainIAClient) {
 }
 
 const FINANCIAL_SUMMARY_LIMIT = 100;
+const FINANCIAL_TREND_LIMIT = 100;
 
-function currentMonthRange() {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+export function currentFinancialPeriodRange(financialPeriodStartDay = 1, now = new Date()) {
+  const startDay = Number.isInteger(financialPeriodStartDay)
+    ? Math.min(28, Math.max(1, financialPeriodStartDay))
+    : 1;
+  const startsThisMonth = now.getDate() >= startDay;
+  const from = new Date(
+    now.getFullYear(),
+    now.getMonth() - (startsThisMonth ? 0 : 1),
+    startDay,
+  );
+  // The backend's `to` filter is inclusive, so stop one millisecond before
+  // the next boundary to keep adjacent financial cycles from overlapping.
+  const nextBoundary = new Date(from.getFullYear(), from.getMonth() + 1, startDay);
+  const to = new Date(nextBoundary.getTime() - 1);
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-/** Shared live dataset for Today and Money month-level summaries. */
-export function loadMonthlyFinancialSummaryTransactions(client: BrainIAClient) {
-  return client.listTransactions(FINANCIAL_SUMMARY_LIMIT, currentMonthRange());
+/** Six completed/current financial cycles for month-by-month cash-flow trends. */
+export function financialTrendRange(financialPeriodStartDay = 1, now = new Date(), monthCount = 6) {
+  const current = currentFinancialPeriodRange(financialPeriodStartDay, now);
+  const from = new Date(current.from);
+  from.setMonth(from.getMonth() - Math.max(0, monthCount - 1));
+  return { from: from.toISOString(), to: current.to };
+}
+
+/** Shared live dataset for Today and Money summaries in the user's financial cycle. */
+export function loadMonthlyFinancialSummaryTransactions(client: BrainIAClient, financialPeriodStartDay = 1) {
+  return client.listTransactions(
+    FINANCIAL_SUMMARY_LIMIT,
+    currentFinancialPeriodRange(financialPeriodStartDay),
+  );
 }
 
 export async function loadReviewBundle(client: BrainIAClient) {
@@ -1401,6 +1480,8 @@ export async function loadTransactionBundle(client: BrainIAClient, transactionId
         merchantEntityId: undefined,
         status: undefined,
         primarySource: undefined,
+        excludedFromReports: false,
+        adjustmentTargetBalance: undefined,
         evidenceCount: 0,
         observedWindow: undefined,
         evidence: [],

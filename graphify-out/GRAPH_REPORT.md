@@ -1,16 +1,16 @@
-# Graph Report - BrainIA-Mobile  (2026-07-22)
+# Graph Report - BrainIA-Mobile  (2026-07-31)
 
 ## Corpus Check
-- 188 files · ~202,832 words
+- 299 files · ~314,224 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1131 nodes · 1872 edges · 93 communities (74 shown, 19 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.76)
+- 1295 nodes · 2074 edges · 113 communities (90 shown, 23 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `00f9f830`
+- Built from commit: `3ef627b2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -76,6 +76,7 @@
 - [[_COMMUNITY_eslint.config.js|eslint.config.js]]
 - [[_COMMUNITY_Theme behavior|Theme behavior]]
 - [[_COMMUNITY_Screen specs|Screen specs]]
+- [[_COMMUNITY_useTheme|useTheme]]
 - [[_COMMUNITY_ux-shots.mjs|ux-shots.mjs]]
 - [[_COMMUNITY_ActionPreview|ActionPreview]]
 - [[_COMMUNITY_ReviewQueueItem|ReviewQueueItem]]
@@ -89,44 +90,55 @@
 - [[_COMMUNITY_cc|cc]]
 - [[_COMMUNITY_bo|bo]]
 - [[_COMMUNITY_sd|sd]]
+- [[_COMMUNITY_review.tsx|review.tsx]]
+- [[_COMMUNITY_VoiceNoteModule|VoiceNoteModule]]
 - [[_COMMUNITY_themes.ts|themes.ts]]
 - [[_COMMUNITY_app-state.tsx|app-state.tsx]]
 - [[_COMMUNITY_Technical Backlog|Technical Backlog]]
 - [[_COMMUNITY_GraphForceCanvas.tsx|GraphForceCanvas.tsx]]
+- [[_COMMUNITY_search.tsx|search.tsx]]
 - [[_COMMUNITY_NotificationReconciliationWorker|NotificationReconciliationWorker]]
+- [[_COMMUNITY_.createNativeModules|.createNativeModules]]
+- [[_COMMUNITY_P1. Mejora fuerte de UX|P1. Mejora fuerte de UX]]
+- [[_COMMUNITY_notification-bridge.ts|notification-bridge.ts]]
+- [[_COMMUNITY__layout.tsx|_layout.tsx]]
+- [[_COMMUNITY_P2. Extensiones y refinamiento futuro|P2. Extensiones y refinamiento futuro]]
+- [[_COMMUNITY_app-state.tsx|app-state.tsx]]
+- [[_COMMUNITY_financials.tsx|financials.tsx]]
+- [[_COMMUNITY_Inspirations|Inspirations]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useTheme()` - 77 edges
+1. `useTheme()` - 74 edges
 2. `Screen Component Spec` - 52 edges
 3. `cleanDisplayText()` - 39 edges
-4. `useBrainIAClient()` - 26 edges
+4. `useAppState()` - 24 edges
 5. `useAsyncResource()` - 23 edges
-6. `BrainIA-Mobile UX Rebuild Proposal` - 22 edges
-7. `useAppState()` - 20 edges
+6. `useBrainIAClient()` - 22 edges
+7. `BrainIA-Mobile UX Rebuild Proposal` - 22 edges
 8. `Concrete theme definitions` - 19 edges
 9. `Surface()` - 18 edges
-10. `EmptyState()` - 17 edges
+10. `Button()` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `NotFoundScreen()` --calls--> `useTheme()`  [EXTRACTED]
-  app/+not-found.tsx → lib/app-state.tsx
-- `TabLayout()` --calls--> `useAppState()`  [EXTRACTED]
-  app/(tabs)/_layout.tsx → lib/app-state.tsx
 - `MoneyTile()` --calls--> `useTheme()`  [EXTRACTED]
   app/(tabs)/financials.tsx → lib/app-state.tsx
 - `BootstrapScreen()` --calls--> `useAppState()`  [EXTRACTED]
   app/_layout.tsx → lib/app-state.tsx
 - `RootNavigator()` --calls--> `useAppState()`  [EXTRACTED]
   app/_layout.tsx → lib/app-state.tsx
+- `MiniBarChart()` --calls--> `useTheme()`  [EXTRACTED]
+  components/cards/index.tsx → lib/app-state.tsx
+- `AnimatedPressable()` --calls--> `useTheme()`  [EXTRACTED]
+  components/primitives/index.tsx → lib/app-state.tsx
 
 ## Import Cycles
 - 1-file cycle: `app/+html.tsx -> app/+html.tsx`
 
-## Communities (93 total, 19 thin omitted)
+## Communities (113 total, 23 thin omitted)
 
 ### Community 0 - "api.ts"
-Cohesion: 0.07
-Nodes (69): groupRelationsByType(), asArray(), asNumber(), asRecordMetrics(), asString(), buildCacheKey(), ClientConfig, currentMonthRange() (+61 more)
+Cohesion: 0.06
+Nodes (73): groupRelationsByType(), asArray(), asNumber(), asRecordMetrics(), asString(), BrainIAClient, buildCacheKey(), ClientConfig (+65 more)
 
 ### Community 1 - "Data cards"
 Cohesion: 0.04
@@ -141,8 +153,8 @@ Cohesion: 0.05
 Nodes (39): 1. Base tokens, 2. Semantic tokens, 3. Theme variants, 4. Component recipes, Architecture, Color system, Color system, Color system (+31 more)
 
 ### Community 4 - "useTheme"
-Cohesion: 0.24
-Nodes (15): loadSettings(), CacheEnvelope, clearAllJsonCache(), deleteJsonCache(), readIndex(), readJsonCache(), registerKey(), writeIndex() (+7 more)
+Cohesion: 0.09
+Nodes (33): dashboardModes, themeModes, visibilityModes, loadSettings(), normalizeFinancialPeriodStartDay(), CacheEnvelope, clearAllJsonCache(), deleteJsonCache() (+25 more)
 
 ### Community 5 - "Functional requirements"
 Cohesion: 0.06
@@ -153,8 +165,8 @@ Cohesion: 0.06
 Nodes (33): dependencies, d3-force-3d, expo, expo-constants, expo-font, @expo-google-fonts/fraunces, @expo-google-fonts/ibm-plex-mono, @expo-google-fonts/inter (+25 more)
 
 ### Community 7 - "expo"
-Cohesion: 0.07
-Nodes (29): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, backgroundColor, package, predictiveBackGestureEnabled (+21 more)
+Cohesion: 0.06
+Nodes (30): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, backgroundColor, package, predictiveBackGestureEnabled (+22 more)
 
 ### Community 8 - "P1. Mejora fuerte de UX"
 Cohesion: 0.09
@@ -193,35 +205,35 @@ Cohesion: 0.10
 Nodes (11): androidDir, apkPath, apkStat, defaultApkPath, __dirname, __filename, lanAddresses, port (+3 more)
 
 ### Community 17 - "Design Direction"
-Cohesion: 0.11
-Nodes (17): Bibiz, Design Direction, Goal, Inspirations, Interaction principles, Linear, Monzo, Name (+9 more)
+Cohesion: 0.18
+Nodes (11): Design Direction, Goal, Interaction principles, Name, Practical recommendation, Proposed layout language, Recommended direction, Suggested tone (+3 more)
 
 ### Community 18 - "themes.ts"
-Cohesion: 0.33
-Nodes (6): 1. Dashboard, 2. Search, 3. Capture, 4. Financials, 5. Review, Recommended tabs
+Cohesion: 0.14
+Nodes (32): HomeScreen(), sumByKind(), formatSourceLabel(), TransactionDetailScreen(), DigestCard(), FinancialSnapshotCard(), InsightCard(), MetricCard() (+24 more)
 
 ### Community 19 - "UX Iteration System"
-Cohesion: 0.20
-Nodes (10): Data-state checklist, Device matrix, Iteration log, Principio rector, Relationship to the backlog, Release gate, Required smoke test, UX Iteration System (+2 more)
+Cohesion: 0.12
+Nodes (17): Data-state checklist, Device matrix, Iteration log, Iteration loop, Paso 1. Cambiar una sola cosa relevante, Paso 2. Ejecutar validacion tecnica minima, Paso 3. Abrir la app localmente, Paso 4. Revisar la pantalla en contexto (+9 more)
 
 ### Community 20 - "Bibiz Reference Brief"
 Cohesion: 0.14
 Nodes (13): Bibiz Reference Brief, BrainIA Translation, Capture, Home, Implementation Checklist, Money, Purpose, Reference Traits To Borrow (+5 more)
 
 ### Community 21 - "t"
-Cohesion: 0.18
-Nodes (11): dashboardModes, themeModes, visibilityModes, getInstalledCaptureApps(), getNotificationBridgeStatus(), NotificationBridgeNativeModule, NotificationBridgeStatus, NotificationCaptureApp (+3 more)
+Cohesion: 0.09
+Nodes (22): artifacts, backtrace, backtraceGraph, commands, files, nodes, compileGroups, dependencies (+14 more)
 
 ### Community 22 - "c"
-Cohesion: 0.29
-Nodes (7): Iteration loop, Paso 1. Cambiar una sola cosa relevante, Paso 2. Ejecutar validacion tecnica minima, Paso 3. Abrir la app localmente, Paso 4. Revisar la pantalla en contexto, Paso 5. Corregir y repetir, Paso 6. Generar APK solo al final
+Cohesion: 0.14
+Nodes (16): NotFoundScreen(), ChartCard(), DistributionRing(), formatChartPercentage(), MiniBarChart(), RadialSegment, SpendingRadial(), styles (+8 more)
 
 ### Community 23 - "BrainIA-Mobile UX Rebuild Proposal"
 Cohesion: 0.15
 Nodes (12): Acceptance Criteria, Backend Capabilities To Design Around, BrainIA-Mobile UX Rebuild Proposal, Digests, Insights, Open Product Decisions, Purpose, Screen Proposals (+4 more)
 
 ### Community 24 - "Backend Contract"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (11): Authentication expectation, Backend Contract, Backend source, Base contract, Client responsibilities, Core read flows, Data consumption rules, Implementation note (+3 more)
 
 ### Community 25 - "README.md"
@@ -237,16 +249,16 @@ Cohesion: 0.22
 Nodes (8): Accessibility And Responsiveness, Agent Instructions, Encoding, Expo Mobile UX/UI Working Memory, Implementation And QA, Mobile Interaction Standards, Product Taste, Visual System
 
 ### Community 28 - "l"
-Cohesion: 0.18
-Nodes (10): completePendingReconciliations(), isConnected(), Boolean, String, NotificationBridgeService, requestReconciliation(), Long, NotificationListenerService (+2 more)
+Cohesion: 0.10
+Nodes (21): Boolean, Context, Long, String, NotificationBridgeDiagnostics, completePendingReconciliations(), isConnected(), isListenerConnectionError() (+13 more)
 
 ### Community 29 - "p"
 Cohesion: 0.20
 Nodes (5): String, MainActivity, Bundle, ReactActivity, ReactActivityDelegate
 
 ### Community 30 - "scripts"
-Cohesion: 0.22
-Nodes (9): scripts, android, ios, lint, prebuild, share:apk, smoke:web, start (+1 more)
+Cohesion: 0.20
+Nodes (10): scripts, android, ios, lint, prebuild, share:apk, smoke:web, start (+2 more)
 
 ### Community 31 - "p"
 Cohesion: 0.25
@@ -261,16 +273,16 @@ Cohesion: 0.29
 Nodes (7): Milestone 1: UX Foundation, Milestone 2: Today + Search, Milestone 3: Finance Sub-App, Milestone 4: Knowledge Detail + Insights, Milestone 5: Capture + Review, Milestone 6: Release Hardening, Rebuild Roadmap
 
 ### Community 34 - "n"
-Cohesion: 0.05
-Nodes (117): DigestDetailScreen(), EmailDetailScreen(), EntityDetailScreen(), EventDetailScreen(), InsightDetailScreen(), SettingsScreen(), CaptureKind, captureKinds (+109 more)
+Cohesion: 0.18
+Nodes (13): resultTypeLabel(), SearchScreen(), sourceFilters, GraphExplorer(), CommandPanel(), SearchField(), ToggleRow(), SearchResultItem (+5 more)
 
 ### Community 35 - "tsconfig.json"
 Cohesion: 0.29
 Nodes (6): compilerOptions, paths, strict, extends, include, @/*
 
 ### Community 36 - "target-appmodules-RelWithDebInfo-e08a06a60d0b184efdbc.json"
-Cohesion: 0.47
-Nodes (5): clearDiagnostics(), DiagnosticEntry, readDiagnostics(), readEntries(), recordDiagnostic()
+Cohesion: 0.09
+Nodes (22): artifacts, backtrace, backtraceGraph, commands, files, nodes, compileGroups, dependencies (+14 more)
 
 ### Community 37 - "n"
 Cohesion: 0.33
@@ -344,13 +356,21 @@ Nodes (3): Component System Rebuild, Required Domain Components, Required Primit
 Cohesion: 0.67
 Nodes (3): Current Problem, Knowledge Entity Detail, Target Structure
 
+### Community 68 - "useTheme"
+Cohesion: 0.09
+Nodes (22): artifacts, backtrace, backtraceGraph, commands, files, nodes, compileGroups, dependencies (+14 more)
+
+### Community 88 - "review.tsx"
+Cohesion: 0.09
+Nodes (22): artifacts, backtrace, backtraceGraph, commands, files, nodes, compileGroups, dependencies (+14 more)
+
+### Community 89 - "VoiceNoteModule"
+Cohesion: 0.20
+Nodes (15): DigestDetailScreen(), EmailDetailScreen(), EntityDetailScreen(), EventDetailScreen(), InsightDetailScreen(), SettingsScreen(), CaptureScreen(), CaptureForm() (+7 more)
+
 ### Community 90 - "themes.ts"
 Cohesion: 0.15
 Nodes (14): TabLayout(), ThemeId, consoleTheme, editorial, hexToRgba(), makeShadow(), motion, radius (+6 more)
-
-### Community 91 - "app-state.tsx"
-Cohesion: 0.14
-Nodes (14): BootstrapScreen(), RootNavigator(), unstable_settings, NotFoundScreen(), BrainIAClient, createBrainIAClient(), AppStateContext, AppStateProvider() (+6 more)
 
 ### Community 92 - "Technical Backlog"
 Cohesion: 0.07
@@ -361,27 +381,51 @@ Cohesion: 0.15
 Nodes (6): Community, ForceLink, ForceNode, GraphNode, GraphRelation, palette
 
 ### Community 95 - "NotificationReconciliationWorker"
-Cohesion: 0.40
-Nodes (3): NotificationReconciliationWorker, Result, Worker
+Cohesion: 0.29
+Nodes (6): cancelReconnect(), Context, NotificationReconciliationWorker, scheduleReconnect(), Result, Worker
+
+### Community 96 - ".createNativeModules"
+Cohesion: 0.09
+Nodes (28): CaptureKind, captureKinds, Currency, TransactionType, emptyCopy(), formatRelationLabel(), ReviewScreen(), ReviewType (+20 more)
+
+### Community 98 - "notification-bridge.ts"
+Cohesion: 0.33
+Nodes (6): 1. Dashboard, 2. Search, 3. Capture, 4. Financials, 5. Review, Recommended tabs
+
+### Community 99 - "_layout.tsx"
+Cohesion: 0.33
+Nodes (4): BootstrapScreen(), RootNavigator(), unstable_settings, AppStateProvider()
+
+### Community 112 - "app-state.tsx"
+Cohesion: 0.27
+Nodes (12): AppScreen(), DetailBlock(), Section(), SectionHeader(), styles, TopBar(), IconButton(), ListRow() (+4 more)
+
+### Community 115 - "financials.tsx"
+Cohesion: 0.16
+Nodes (16): displayAmount(), displayCurrencies, FinancePeriod, FinanceView, financialPeriodLabel(), FinancialsScreen(), groupTransactionsInCurrency(), MoneyTile() (+8 more)
+
+### Community 116 - "Inspirations"
+Cohesion: 0.33
+Nodes (6): Bibiz, Inspirations, Linear, Monzo, Notion, Stripe
 
 ## Knowledge Gaps
-- **583 isolated node(s):** `artifacts`, `backtrace`, `commands`, `files`, `nodes` (+578 more)
+- **659 isolated node(s):** `artifacts`, `backtrace`, `commands`, `files`, `nodes` (+654 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Component Inventory` connect `Data cards` to `Detail and action components`, `Primitive components`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `nativeModule` connect `Iteration loop` to `t`?**
-  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+- **Why does `nativeModule` connect `Iteration loop` to `useTheme`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Why does `Screen Component Spec` connect `Screen Component Spec` to `h`, `us`, `review.tsx`, `ce`, `Component tiers`, `_`, `cc`, `bo`, `sd`, `cleanDisplayText`, `README.md`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **What connects `artifacts`, `backtrace`, `commands` to the rest of the system?**
-  _583 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _659 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `api.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06885758998435054 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06456140350877193 - nodes in this community are weakly interconnected._
 - **Should `Data cards` be split into smaller, more focused modules?**
   _Cohesion score 0.043478260869565216 - nodes in this community are weakly interconnected._
 - **Should `Screen Component Spec` be split into smaller, more focused modules?**

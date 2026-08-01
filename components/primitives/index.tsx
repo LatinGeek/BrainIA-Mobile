@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   PressableProps,
   ScrollView,
@@ -308,41 +310,155 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  scrollable = false,
 }: {
   options: readonly { value: T; label: string; icon?: ReactNode; count?: number }[];
   value: T;
   onChange: (value: T) => void;
+  scrollable?: boolean;
 }) {
   const theme = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const viewportWidthRef = useRef(0);
+  const contentWidthRef = useRef(0);
+  const scrollOffsetRef = useRef(0);
+  const optionLayoutsRef = useRef(new Map<T, { x: number; width: number }>());
+  const [scrollEdges, setScrollEdges] = useState({ left: false, right: false });
 
-  return (
-    <View accessibilityRole="tablist" style={[styles.segmented, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radius.lg }]}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <AnimatedPressable
-            key={option.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={option.label}
-            onPress={() => onChange(option.value)}
-            style={[
-              styles.segment,
-              {
-                backgroundColor: selected ? theme.colors.accent : theme.colors.surface,
-                borderColor: selected ? theme.colors.accent : theme.colors.border,
-                borderRadius: theme.radius.md,
-              },
-            ]}
-          >
-            {option.icon}
-            <Text style={[theme.typography.caption, { color: selected ? theme.colors.onAccent : theme.colors.textSecondary }]}>{cleanDisplayText(option.label)}</Text>
-            {typeof option.count === 'number' ? <Text style={[theme.typography.caption, { color: selected ? theme.colors.onAccent : theme.colors.textMuted }]}>{option.count}</Text> : null}
-          </AnimatedPressable>
-        );
-      })}
-    </View>
-  );
+  const updateScrollEdges = useCallback((offsetX: number) => {
+    if (!scrollable) return;
+    scrollOffsetRef.current = offsetX;
+    const edgeThreshold = 8;
+    const next = {
+      left: offsetX > edgeThreshold,
+      right: offsetX + viewportWidthRef.current < contentWidthRef.current - edgeThreshold,
+    };
+    setScrollEdges((current) => current.left === next.left && current.right === next.right ? current : next);
+  }, [scrollable]);
+
+  const scrollByPage = useCallback((direction: -1 | 1) => {
+    const maximumOffset = Math.max(0, contentWidthRef.current - viewportWidthRef.current);
+    const distance = Math.max(104, viewportWidthRef.current * 0.62);
+    scrollRef.current?.scrollTo({
+      x: Math.max(0, Math.min(maximumOffset, scrollOffsetRef.current + direction * distance)),
+      animated: true,
+    });
+  }, []);
+
+  const revealOption = useCallback((optionValue: T, animated = true) => {
+    if (!scrollable) return;
+    const layout = optionLayoutsRef.current.get(optionValue);
+    const viewportWidth = viewportWidthRef.current;
+    if (!layout || viewportWidth <= 0) return;
+    scrollRef.current?.scrollTo({
+      x: Math.max(0, layout.x + layout.width / 2 - viewportWidth / 2),
+      animated,
+    });
+  }, [scrollable]);
+
+  useEffect(() => {
+    revealOption(value);
+  }, [revealOption, value]);
+
+  const segments = options.map((option) => {
+    const selected = option.value === value;
+    const selectedTextColor = scrollable ? theme.colors.accentStrong : theme.colors.onAccent;
+    return (
+      <AnimatedPressable
+        key={option.value}
+        accessibilityRole="tab"
+        accessibilityState={{ selected }}
+        accessibilityLabel={option.label}
+        onLayout={scrollable ? (event) => {
+          optionLayoutsRef.current.set(option.value, event.nativeEvent.layout);
+          if (selected) revealOption(option.value, false);
+        } : undefined}
+        onPress={() => {
+          onChange(option.value);
+          revealOption(option.value);
+        }}
+        style={[
+          styles.segmentBase,
+          scrollable ? styles.segmentScrollable : styles.segmentFlexible,
+          {
+            backgroundColor: selected ? (scrollable ? theme.colors.accentSoft : theme.colors.accent) : (scrollable ? 'transparent' : theme.colors.surface),
+            borderColor: selected ? theme.colors.accentStrong : (scrollable ? 'transparent' : theme.colors.border),
+            borderRadius: theme.radius.md,
+          },
+        ]}
+      >
+        {option.icon}
+        {scrollable ? <View style={[styles.segmentSignal, { backgroundColor: selected ? theme.colors.accentStrong : theme.colors.textMuted + '66' }]} /> : null}
+        <Text numberOfLines={1} style={[theme.typography.caption, { color: selected ? selectedTextColor : theme.colors.textSecondary, fontWeight: selected ? '700' : '600' }]}>
+          {cleanDisplayText(option.label)}
+        </Text>
+        {typeof option.count === 'number' ? (
+          <View style={[styles.segmentCount, { backgroundColor: selected ? theme.colors.accentStrong + '1F' : theme.colors.surfaceRaised }]}>
+            <Text style={[theme.typography.caption, { color: selected ? selectedTextColor : theme.colors.textMuted }]}>{option.count}</Text>
+          </View>
+        ) : null}
+      </AnimatedPressable>
+    );
+  });
+
+  const containerStyle = [styles.segmented, { backgroundColor: scrollable ? theme.colors.surfaceSubtle : theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radius.lg }];
+
+  if (scrollable) {
+    return (
+      <View accessibilityRole="tablist" style={[containerStyle, styles.segmentedScrollable]}>
+        <View style={[styles.segmentedEdgeGutter, styles.segmentedEdgeGutterLeft, { backgroundColor: theme.colors.surfaceSubtle, borderColor: theme.colors.border }]}>
+          {scrollEdges.left ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityLabel="Scroll tabs left"
+              onPress={() => scrollByPage(-1)}
+              scaleTo={0.92}
+              style={[styles.segmentedEdgeButton, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border }]}
+            >
+              <Feather name="chevron-left" size={16} color={theme.colors.textSecondary} />
+            </AnimatedPressable>
+          ) : null}
+        </View>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.segmentedViewport}
+          horizontal
+          directionalLockEnabled
+          decelerationRate="fast"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.segmentedScrollableContent}
+          onLayout={(event) => {
+            viewportWidthRef.current = event.nativeEvent.layout.width;
+            updateScrollEdges(scrollOffsetRef.current);
+            revealOption(value, false);
+          }}
+          onContentSizeChange={(width) => {
+            contentWidthRef.current = width;
+            updateScrollEdges(scrollOffsetRef.current);
+          }}
+          onScroll={(event) => updateScrollEdges(event.nativeEvent.contentOffset.x)}
+          scrollEventThrottle={16}
+        >
+          {segments}
+        </ScrollView>
+        <View style={[styles.segmentedEdgeGutter, styles.segmentedEdgeGutterRight, { backgroundColor: theme.colors.surfaceSubtle, borderColor: theme.colors.border }]}>
+          {scrollEdges.right ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityLabel="Scroll tabs right"
+              onPress={() => scrollByPage(1)}
+              scaleTo={0.92}
+              style={[styles.segmentedEdgeButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentStrong + '66' }]}
+            >
+              <Feather name="chevron-right" size={16} color={theme.colors.accentStrong} />
+            </AnimatedPressable>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
+  return <View accessibilityRole="tablist" style={containerStyle}>{segments}</View>;
 }
 
 export function DisclosureSection({
@@ -509,22 +625,26 @@ export function BottomSheet({ visible, title, children, onClose }: { visible: bo
   const maxSheetHeight = Math.max(320, height - insets.top - insets.bottom - 24);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={[styles.sheetScrim, { paddingTop: insets.top + theme.spacing.sm, paddingBottom: insets.bottom + theme.spacing.md }]}>
-        <Surface variant="raised" radius="xl" style={{ gap: theme.spacing.md, marginTop: 'auto', maxHeight: maxSheetHeight }}>
-          <View style={styles.rowBetween}>
-            <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
-            <IconButton icon={<Feather name="x" size={18} color={theme.colors.textPrimary} />} label="Close" onPress={onClose} />
-          </View>
-          <ScrollView
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.sm }}
-          >
-            {children}
-          </ScrollView>
-        </Surface>
-      </View>
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
+      <KeyboardAvoidingView style={styles.keyboardAvoidingSheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={[styles.sheetScrim, { paddingTop: insets.top + theme.spacing.sm, paddingBottom: insets.bottom + theme.spacing.md }]}>
+          <Surface variant="raised" radius="xl" style={{ gap: theme.spacing.md, marginTop: 'auto', maxHeight: maxSheetHeight }}>
+            <View style={styles.rowBetween}>
+              <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
+              <IconButton icon={<Feather name="x" size={18} color={theme.colors.textPrimary} />} label="Close" onPress={onClose} />
+            </View>
+            <ScrollView
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.lg }}
+            >
+              {children}
+            </ScrollView>
+          </Surface>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -553,10 +673,23 @@ const styles = StyleSheet.create({
     padding: 5,
     gap: 5,
   },
-  segment: {
-    minHeight: 38,
-    minWidth: 74,
+  segmentedScrollable: {
+    padding: 0,
+    gap: 0,
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
+  },
+  segmentedViewport: {
     flex: 1,
+  },
+  segmentedScrollableContent: {
+    flexDirection: 'row',
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    gap: 2,
+  },
+  segmentBase: {
+    minHeight: 38,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 14,
     paddingHorizontal: 9,
@@ -566,11 +699,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
   },
+  segmentFlexible: {
+    minWidth: 74,
+    flex: 1,
+  },
+  segmentScrollable: {
+    minWidth: 104,
+    minHeight: 42,
+    paddingHorizontal: 14,
+  },
+  segmentSignal: {
+    width: 5,
+    height: 5,
+    borderRadius: 999,
+  },
+  segmentCount: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentedEdgeGutter: {
+    width: 38,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  segmentedEdgeGutterLeft: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderTopLeftRadius: 17,
+    borderBottomLeftRadius: 17,
+  },
+  segmentedEdgeGutterRight: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderTopRightRadius: 17,
+    borderBottomRightRadius: 17,
+  },
+  segmentedEdgeButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sheetScrim: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.28)',
     paddingHorizontal: 16,
+  },
+  keyboardAvoidingSheet: {
+    flex: 1,
   },
   pill: {
     alignSelf: 'flex-start',

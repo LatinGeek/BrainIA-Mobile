@@ -72,19 +72,17 @@ export function maskAccount(value?: string, visibility: DataVisibility = 'balanc
     return visibility === 'essential' ? 'Account hidden' : 'Unknown account';
   }
 
-  if (visibility === 'detailed') {
+  if (visibility !== 'essential') {
     return cleaned;
   }
-
-  const trailingDigits = cleaned.match(/(\d{2,4})\D*$/)?.[1];
-  if (trailingDigits) {
-    return `Account ...${trailingDigits}`;
-  }
-
-  return visibility === 'essential' ? 'Account hidden' : cleaned.replace(/[A-Za-z0-9]/g, '*');
+  return 'Account hidden';
 }
 
 export function presentTransactionSubtitle(transaction: TransactionSummary, visibility: DataVisibility) {
+  if (transaction.excludedFromReports) {
+    const account = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.account, visibility) : undefined;
+    return joinDisplayParts(['Balance adjustment', 'Excluded from reports', account]);
+  }
   if (transaction.kind === 'transfer') {
     const destination = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.destinationAccount, visibility) : undefined;
     return joinDisplayParts(['Transfer', transaction.account ? `From ${maskAccount(transaction.account, visibility)}` : undefined, destination ? `To ${destination}` : undefined]);

@@ -46,6 +46,8 @@ export type TransactionSummary = {
   primarySource?: string;
   eventIds?: string[];
   evidenceCount?: number;
+  excludedFromReports?: boolean;
+  adjustmentTargetBalance?: string;
 };
 
 export type SearchResultItem = {
@@ -199,6 +201,13 @@ export type FinancialAccount = {
   type: string;
   mask?: string;
   currency?: 'UYU' | 'USD';
+  color?: string;
+  balance: string;
+};
+
+export type FinancialCategories = {
+  expense: string[];
+  income: string[];
 };
 
 export type AppSettings = {
@@ -206,6 +215,7 @@ export type AppSettings = {
   baseUrl: string;
   apiKey: string;
   clientId: string;
+  financialPeriodStartDay: number;
   dashboardMode: 'balanced' | 'knowledge' | 'finance';
   dataVisibility: 'essential' | 'balanced' | 'detailed';
   digestNotifications: boolean;

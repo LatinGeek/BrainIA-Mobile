@@ -8,6 +8,7 @@ type NotificationBridgeNativeModule = {
   reconcileActiveNotifications: () => Promise<boolean>;
   getInstalledCaptureApps: () => Promise<NotificationCaptureApp[]>;
   setCaptureAppPackages: (packages: string[]) => void;
+  flushDiagnosticLogs: () => Promise<boolean>;
 };
 
 export type NotificationCaptureApp = { packageName: string; name: string; selected: boolean };
@@ -19,7 +20,12 @@ export type NotificationBridgeStatus = {
   lastReceivedAt: number;
   lastForwardedAt: number;
   lastReconciledAt: number;
+  reconnectRequestedAt: number;
   lastError?: string | null;
+  reconnectAttempts: number;
+  queuedDiagnosticCount: number;
+  diagnosticsLastUploadedAt: number;
+  diagnosticsLastUploadError?: string | null;
 };
 
 const nativeModule = NativeModules.BrainIANotificationBridge as NotificationBridgeNativeModule | undefined;
@@ -46,7 +52,7 @@ export async function isNotificationBridgeEnabled() {
 
 export async function getNotificationBridgeStatus(): Promise<NotificationBridgeStatus> {
   if (Platform.OS !== 'android' || !nativeModule?.getNotificationListenerStatus) {
-    return { accessEnabled: false, listenerReady: false, connectedAt: 0, lastReceivedAt: 0, lastForwardedAt: 0, lastReconciledAt: 0 };
+    return { accessEnabled: false, listenerReady: false, connectedAt: 0, lastReceivedAt: 0, lastForwardedAt: 0, lastReconciledAt: 0, reconnectRequestedAt: 0, reconnectAttempts: 0, queuedDiagnosticCount: 0, diagnosticsLastUploadedAt: 0 };
   }
 
   return nativeModule.getNotificationListenerStatus();
@@ -74,4 +80,9 @@ export async function getInstalledCaptureApps(): Promise<NotificationCaptureApp[
 
 export function setCaptureAppPackages(packages: string[]) {
   if (Platform.OS === 'android' && nativeModule?.setCaptureAppPackages) nativeModule.setCaptureAppPackages(packages);
+}
+
+export async function flushNotificationBridgeDiagnostics() {
+  if (Platform.OS !== 'android' || !nativeModule?.flushDiagnosticLogs) return false;
+  return nativeModule.flushDiagnosticLogs();
 }

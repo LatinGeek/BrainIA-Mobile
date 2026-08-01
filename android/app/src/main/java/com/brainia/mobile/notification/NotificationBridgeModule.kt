@@ -1,13 +1,11 @@
 package com.brainia.mobile.notification
 
 import android.content.Context
-import android.content.ComponentName
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.content.pm.ApplicationInfo
 import android.provider.Settings
-import android.service.notification.NotificationListenerService
 import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -32,6 +30,15 @@ class NotificationBridgeModule(
       .putString(NotificationBridgeConfig.KEY_CLIENT_ID, clientId?.trim().orEmpty())
       .apply()
     clearLegacyReconciliationError(prefs)
+    NotificationBridgeDiagnostics.record(reactContext, "info", "configuration_updated", "Notification bridge configuration was refreshed")
+    Thread { NotificationBridgeDiagnostics.flush(reactContext) }.start()
+    NotificationReconciliationWorker.ensurePeriodicHealthCheck(reactContext)
+    if (NotificationManagerCompat.getEnabledListenerPackages(reactContext).contains(reactContext.packageName) &&
+      !NotificationBridgeService.isConnected()
+    ) {
+      NotificationBridgeService.requestListenerReconnect(reactContext, force = true)
+      NotificationReconciliationWorker.scheduleReconnect(reactContext)
+    }
   }
 
   @ReactMethod
@@ -44,16 +51,34 @@ class NotificationBridgeModule(
   fun getNotificationListenerStatus(promise: Promise) {
     val prefs = reactContext.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, Context.MODE_PRIVATE)
     clearLegacyReconciliationError(prefs)
+    val accessEnabled = NotificationManagerCompat.getEnabledListenerPackages(reactContext).contains(reactContext.packageName)
+    if (accessEnabled && !NotificationBridgeService.isConnected()) {
+      NotificationBridgeService.requestListenerReconnect(reactContext)
+      NotificationReconciliationWorker.scheduleReconnect(reactContext)
+    }
     val status = Arguments.createMap().apply {
-      putBoolean("accessEnabled", NotificationManagerCompat.getEnabledListenerPackages(reactContext).contains(reactContext.packageName))
+      putBoolean("accessEnabled", accessEnabled)
       putBoolean("listenerReady", NotificationBridgeService.isConnected())
       putDouble("connectedAt", prefs.getLong(NotificationBridgeConfig.KEY_LISTENER_CONNECTED_AT, 0).toDouble())
       putDouble("lastReceivedAt", prefs.getLong(NotificationBridgeConfig.KEY_LAST_RECEIVED_AT, 0).toDouble())
       putDouble("lastForwardedAt", prefs.getLong(NotificationBridgeConfig.KEY_LAST_FORWARDED_AT, 0).toDouble())
       putDouble("lastReconciledAt", prefs.getLong(NotificationBridgeConfig.KEY_LAST_RECONCILED_AT, 0).toDouble())
+      putDouble("reconnectRequestedAt", prefs.getLong(NotificationBridgeConfig.KEY_LISTENER_RECONNECT_REQUESTED_AT, 0).toDouble())
       putString("lastError", prefs.getString(NotificationBridgeConfig.KEY_LAST_ERROR, null))
+      putInt("reconnectAttempts", prefs.getInt(NotificationBridgeConfig.KEY_RECONNECT_ATTEMPTS, 0))
+      putInt("queuedDiagnosticCount", NotificationBridgeDiagnostics.queuedCount(reactContext))
+      putDouble("diagnosticsLastUploadedAt", prefs.getLong(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOADED_AT, 0).toDouble())
+      putString("diagnosticsLastUploadError", prefs.getString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, null))
     }
     promise.resolve(status)
+  }
+
+  @ReactMethod
+  fun flushDiagnosticLogs(promise: Promise) {
+    Thread {
+      val uploaded = NotificationBridgeDiagnostics.flush(reactContext)
+      reactContext.runOnJSQueueThread { promise.resolve(uploaded) }
+    }.start()
   }
 
   @ReactMethod
@@ -68,14 +93,22 @@ class NotificationBridgeModule(
     val connected = NotificationBridgeService.requestReconciliation(resolve)
     if (connected) return
 
-    NotificationBridgeService.queueReconciliationAfterReconnect(resolve)
-    try {
-      NotificationListenerService.requestRebind(
-        ComponentName(reactContext, NotificationBridgeService::class.java),
-      )
-    } catch (_: Exception) {
+    if (!NotificationManagerCompat.getEnabledListenerPackages(reactContext).contains(reactContext.packageName)) {
       resolve(false)
       return
+    }
+
+    NotificationBridgeService.queueReconciliationAfterReconnect(resolve)
+    listOf(0L, 2_500L, 5_000L, 7_500L).forEach { delay ->
+      Handler(Looper.getMainLooper()).postDelayed({
+        if (!settled.get() && !NotificationBridgeService.isConnected()) {
+          val requested = NotificationBridgeService.requestListenerReconnect(reactContext, force = true)
+          if (!requested) {
+            NotificationBridgeService.removePendingReconciliation(resolve)
+            resolve(false)
+          }
+        }
+      }, delay)
     }
 
     // Android normally invokes onListenerConnected immediately after rebind.
@@ -83,8 +116,9 @@ class NotificationBridgeModule(
     // system declines or delays that request.
     Handler(Looper.getMainLooper()).postDelayed({
       if (settled.compareAndSet(false, true)) {
+        NotificationBridgeService.removePendingReconciliation(resolve)
         reactContext.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, Context.MODE_PRIVATE)
-          .edit().putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Listener is reconnecting; active notifications could not be checked yet").apply()
+          .edit().putString(NotificationBridgeConfig.KEY_LAST_ERROR, NotificationBridgeService.LISTENER_RECONNECTING_MESSAGE).apply()
         reactContext.runOnJSQueueThread { promise.resolve(false) }
       }
     }, RECONCILIATION_RECONNECT_TIMEOUT_MILLIS)
@@ -141,6 +175,6 @@ class NotificationBridgeModule(
   }
 
   private companion object {
-    const val RECONCILIATION_RECONNECT_TIMEOUT_MILLIS = 8_000L
+    const val RECONCILIATION_RECONNECT_TIMEOUT_MILLIS = 10_000L
   }
 }

@@ -12,7 +12,7 @@ import { DailyBrief } from '@/components/knowledge';
 import { AppScreen, Section, TopBar } from '@/components/layout';
 import { Button, Panel, StatusBadge } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
-import { useBrainIAClient, useTheme } from '@/lib/app-state';
+import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatCategoryInsight, formatCategoryLabel, formatCurrency, formatDate, isUncategorizedLabel, joinDisplayParts, parseCurrency } from '@/lib/format';
@@ -25,19 +25,23 @@ function sumByKind(transactions: { amount: string; kind: string }[], kind: 'inco
 }
 
 export default function HomeScreen() {
-  const theme = useTheme();
-  const client = useBrainIAClient();
-  const loader = useMemo(() => () => loadDashboardBundle(client), [client]);
+  const { client, settings, theme } = useAppState();
+  const loader = useMemo(
+    () => () => loadDashboardBundle(client, settings.financialPeriodStartDay),
+    [client, settings.financialPeriodStartDay],
+  );
   const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
   const reviewLoader = useMemo(() => () => client.listReviews('pending'), [client]);
   const { data: pendingReviews, refresh: refreshReviews } = useAsyncResource(reviewLoader, [reviewLoader]);
   useFocusEffect(useCallback(() => {
+    void refresh();
     void refreshReviews();
-  }, [refreshReviews]));
+  }, [refresh, refreshReviews]));
 
   const transactions = data?.transactions ?? [];
-  const summaryCurrency = transactions[0]?.currency === 'USD' ? 'USD' : 'UYU';
-  const summaryTransactions = transactions.filter((transaction) => transaction.currency === summaryCurrency);
+  const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
+  const summaryCurrency = reportTransactions[0]?.currency === 'USD' ? 'USD' : 'UYU';
+  const summaryTransactions = reportTransactions.filter((transaction) => transaction.currency === summaryCurrency);
   const insights = data?.insights ?? [];
   const digests = data?.digests ?? [];
   const monthlySpend = sumByKind(summaryTransactions, 'expense');

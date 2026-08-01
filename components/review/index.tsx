@@ -22,17 +22,6 @@ export function MergePreview() {
   return <EmptyState title="Merge preview" description="Suggested item merges will appear here when BrainIA finds likely duplicates." />;
 }
 
-export const defaultCategoryPaths = [
-  'Food / Delivery',
-  'Food / Groceries',
-  'Subscriptions',
-  'Bills / Utilities',
-  'Transport',
-  'Shopping',
-  'Health',
-  'Home',
-];
-
 export function CategoryPicker({
   categories,
   selectedCategory,
@@ -85,6 +74,8 @@ function categoryIconFor(path: string): NonNullable<ComponentProps<typeof Feathe
   if (normalized.includes('subscription')) return 'repeat';
   if (normalized.includes('bill') || normalized.includes('utilit')) return 'credit-card';
   if (normalized.includes('transport')) return 'truck';
+  if (normalized.includes('entertainment')) return 'film';
+  if (normalized.includes('going out')) return 'users';
   if (normalized.includes('health')) return 'heart';
   if (normalized.includes('home')) return 'home';
   return 'tag';

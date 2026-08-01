@@ -15,6 +15,7 @@
     "android": {
       "package": "com.brainia.mobile",
       "versionCode": 4,
+      "softwareKeyboardLayoutMode": "resize",
       "backgroundColor": "#F5F7FA",
       "adaptiveIcon": {
         "backgroundColor": "#F7F5F0",

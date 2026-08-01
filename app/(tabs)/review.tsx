@@ -11,7 +11,7 @@ import {
 } from '@/components/layout';
 import { BottomSheet, Button, FilterChip, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
-import { CategoryPicker, defaultCategoryPaths } from '@/components/review';
+import { CategoryPicker } from '@/components/review';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadReviewBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -50,6 +50,8 @@ export default function ReviewScreen() {
   const { data: events, loading: eventsLoading, error: eventsError, refresh: refreshEvents } = useAsyncResource(eventsLoader, [eventsLoader]);
   const semanticLoader = useMemo(() => () => client.listSemanticCandidates(), [client]);
   const { data: semanticCandidates, refresh: refreshSemantic } = useAsyncResource(semanticLoader, [semanticLoader]);
+  const categoriesLoader = useMemo(() => () => client.listFinancialCategories(), [client]);
+  const { data: financialCategories } = useAsyncResource(categoriesLoader, [categoriesLoader]);
 
   const reviews = useMemo(() => data?.reviews ?? [], [data?.reviews]);
   const selected = reviews.find((item) => item.id === selectedId) ?? reviews[0];
@@ -57,10 +59,12 @@ export default function ReviewScreen() {
   const categoryOptions = useMemo(
     () =>
       uniqueStrings([
-        ...defaultCategoryPaths,
+        ...(financialCategories?.expense ?? []),
+        ...(financialCategories?.income ?? []),
+        ...reviews.map((item) => item.categoryPath.join(' / ')),
         ...customCategories,
       ]),
-    [customCategories]
+    [customCategories, financialCategories, reviews]
   );
   const selectedCategoryLabel = categoryPath.trim() || 'Choose a category';
   const selectedEntityQuery = selected?.originalValue ?? selected?.alias ?? '';
