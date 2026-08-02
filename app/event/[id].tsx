@@ -20,6 +20,7 @@ export default function EventDetailScreen() {
   const transactionsLoader = useMemo(() => () => client.listTransactions(100), [client]);
   const { data: transactions } = useAsyncResource(transactionsLoader, [transactionsLoader]);
   const linkedTransaction = transactions?.find((transaction) => transaction.eventIds?.includes(id));
+  const categoryLabel = event?.primaryCategoryKey?.split('.').map((part) => part.replaceAll('_', ' ').replace(/^\w/u, (character) => character.toUpperCase())).join(' › ');
 
   async function reprocess() {
     if (!event) return;
@@ -63,6 +64,11 @@ export default function EventDetailScreen() {
             </View>
             <ListRow title={event.kind} subtitle="Captured type" />
             <ListRow title={event.inferredKind ?? event.kind} subtitle="Interpreted as" />
+            {categoryLabel ? <ListRow title={categoryLabel} subtitle="Knowledge category" description={event.taxonomyVersion ? `Taxonomy ${event.taxonomyVersion}` : undefined} /> : null}
+            {event.facets?.length ? <View style={{ gap: 4 }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Context</Text>
+              <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{event.facets.map((facet) => `${facet.type.replaceAll('_', ' ')}: ${facet.value}`).join(' · ')}</Text>
+            </View> : null}
             {event.receivedAt ? <ListRow title={formatDate(event.receivedAt)} subtitle="Received" /> : null}
           </Surface>
           <SectionHeader title="Original content" />

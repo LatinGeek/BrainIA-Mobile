@@ -33,7 +33,7 @@ export default function ReviewScreen() {
   const client = useBrainIAClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reviewType, setReviewType] = useState<ReviewType>('merchants');
-  const [friendlyName, setFriendlyName] = useState('');
+  const [friendlyNameDraft, setFriendlyNameDraft] = useState<{ reviewId: string; value: string } | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [equivalentEntityIds, setEquivalentEntityIds] = useState<string[]>([]);
   const [categoryPath, setCategoryPath] = useState('');
@@ -55,6 +55,9 @@ export default function ReviewScreen() {
 
   const reviews = useMemo(() => data?.reviews ?? [], [data?.reviews]);
   const selected = reviews.find((item) => item.id === selectedId) ?? reviews[0];
+  const friendlyName = friendlyNameDraft && friendlyNameDraft.reviewId === selected?.id
+    ? friendlyNameDraft.value
+    : selected?.normalizedValue ?? selected?.alias ?? '';
   const grouped = useMemo(() => groupReviews(reviews), [reviews]);
   const categoryOptions = useMemo(
     () =>
@@ -67,39 +70,51 @@ export default function ReviewScreen() {
     [customCategories, financialCategories, reviews]
   );
   const selectedCategoryLabel = categoryPath.trim() || 'Choose a category';
-  const selectedEntityQuery = selected?.originalValue ?? selected?.alias ?? '';
+  const selectedEntityQuery = friendlyName.trim();
   const selectedReviewId = selected?.id;
 
   useEffect(() => {
-    if (!selectedEntityQuery || !selectedReviewId) return;
+    if (selectedEntityQuery.length < 2 || !selectedReviewId) return;
 
     let active = true;
-    Promise.resolve().then(() => {
-      if (active) setLoadingEntitySuggestions(true);
-    });
-    client.findEntityMatches(selectedEntityQuery)
-      .then((matches) => {
-        if (active) setEntitySuggestions(matches.filter((match) => match.id !== selectedReviewId));
-      })
-      .catch(() => {
-        if (active) setEntitySuggestions([]);
-      })
-      .finally(() => {
-        if (active) setLoadingEntitySuggestions(false);
-      });
+    const timer = setTimeout(() => {
+      setLoadingEntitySuggestions(true);
+      client.findEntityMatches(selectedEntityQuery)
+        .then((matches) => {
+          if (active) setEntitySuggestions(matches.filter((match) => match.id !== selected?.entityId && (!selected?.entityType || match.type === selected.entityType)));
+        })
+        .catch(() => {
+          if (active) setEntitySuggestions([]);
+        })
+        .finally(() => {
+          if (active) setLoadingEntitySuggestions(false);
+        });
+    }, 280);
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [client, selectedEntityQuery, selectedReviewId]);
+  }, [client, selected?.entityId, selected?.entityType, selectedEntityQuery, selectedReviewId]);
 
   function chooseReview(item: ReviewItem) {
     setSelectedId(item.id);
-    setFriendlyName(item.normalizedValue ?? item.alias);
+    setFriendlyNameDraft({ reviewId: item.id, value: item.normalizedValue ?? item.alias });
     setSelectedEntityId(null);
     setEquivalentEntityIds([]);
+    setEntitySuggestions([]);
+    setLoadingEntitySuggestions(false);
     setCategoryPath(item.categoryPath.join(' / '));
     setCategorySheetOpen(false);
+  }
+
+  function changeFriendlyName(value: string) {
+    if (!selected) return;
+    setFriendlyNameDraft({ reviewId: selected.id, value });
+    setSelectedEntityId(null);
+    setEquivalentEntityIds([]);
+    setEntitySuggestions([]);
+    setLoadingEntitySuggestions(false);
   }
 
   function chooseEntitySuggestion(suggestion: EntitySuggestion) {
@@ -257,23 +272,21 @@ export default function ReviewScreen() {
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {uniqueSuggestions(selected).map((suggestion) => (
-                    <FilterChip key={suggestion} label={suggestion} selected={(friendlyName || selected.alias) === suggestion} onPress={() => setFriendlyName(suggestion)} />
+                    <FilterChip key={suggestion} label={suggestion} selected={friendlyName === suggestion} onPress={() => changeFriendlyName(suggestion)} />
                   ))}
                 </View>
                 <Input
                   label="Friendly name"
-                  value={friendlyName || selected.alias}
-                  onChangeText={(value) => {
-                    setFriendlyName(value);
-                    setSelectedEntityId(null);
-                  }}
+                  value={friendlyName}
+                  onChangeText={changeFriendlyName}
                   placeholder="Merchant or topic name"
                 />
                 <Surface variant="subtle" style={{ gap: 8 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Same entity matches</Text>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Select every matching name, then set the friendly name above. BrainIA merges every selected variant into that preferred entity and keeps their aliases and evidence.</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Possible existing matches</Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Suggestions update as you type. Select every name that represents the same merchant; BrainIA keeps their aliases and evidence together.</Text>
                   {loadingEntitySuggestions ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Checking known entities…</Text> : null}
-                  {!loadingEntitySuggestions && entitySuggestions.length === 0 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No close matches found.</Text> : null}
+                  {!loadingEntitySuggestions && selectedEntityQuery.length < 2 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Type at least two characters to search existing names.</Text> : null}
+                  {!loadingEntitySuggestions && selectedEntityQuery.length >= 2 && entitySuggestions.length === 0 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No close matches found. This can be saved as a new name.</Text> : null}
                   {entitySuggestions.map((suggestion) => (
                     <ListRow
                       key={suggestion.id}

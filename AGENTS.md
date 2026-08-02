@@ -55,6 +55,6 @@ Use `docs/bibiz-reference-brief.md` as the active visual reference for current B
 - Required technical checks before a build or handoff after UI changes:
   - `npm run lint`
   - `npx tsc --noEmit`
-  - `npm run smoke:web`
+  - `npm run agent:harness` (starts Expo web, runs static checks, and executes the browser smoke suite)
 - Runtime QA should cover compact and standard/large phone widths, loading/empty/error states, long content, keyboard behavior, safe areas, and bottom-tab overlap.
 - Any screen touched for UX/UI should be checked for text clipping, overflow, accidental technical copy, and accessibility labels on custom controls.

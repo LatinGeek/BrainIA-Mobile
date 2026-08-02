@@ -34,6 +34,8 @@ export default function SearchScreen() {
   const [focusedEntityId, setFocusedEntityId] = useState<string | undefined>();
   const [expandedGraph, setExpandedGraph] = useState<ExploreGraph | undefined>();
   const [showEvidenceNodes, setShowEvidenceNodes] = useState(false);
+  const [showIdentityNodes, setShowIdentityNodes] = useState(false);
+  const [taxonomyStack, setTaxonomyStack] = useState<{ key: string; label: string }[]>([]);
   const debouncedQuery = useDebouncedValue(query, 250);
   const hasQuery = debouncedQuery.trim().length > 0;
 
@@ -61,7 +63,13 @@ export default function SearchScreen() {
   } = useAsyncResource(recentLoader, [recentLoader]);
   const entityLoader = useMemo(() => () => client.listEntities(), [client]);
   const { data: entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities } = useAsyncResource(entityLoader, [entityLoader]);
-  const graphLoader = useMemo(() => () => client.getExploreGraph(80, { includeEventEvidence: showEvidenceNodes }), [client, showEvidenceNodes]);
+  const graphLoader = useMemo(() => () => client.getExploreGraph(80, {
+    includeEventEvidence: showEvidenceNodes,
+    includeIdentities: showIdentityNodes,
+    projection: showEvidenceNodes || showIdentityNodes ? 'network' : 'taxonomy',
+    root: showEvidenceNodes || showIdentityNodes ? undefined : taxonomyStack.at(-1)?.key,
+    depth: showEvidenceNodes || showIdentityNodes ? 2 : 1,
+  }), [client, showEvidenceNodes, showIdentityNodes, taxonomyStack]);
   const { data: graph, loading: graphLoading, error: graphError, refresh: refreshGraph } = useAsyncResource(graphLoader, [graphLoader]);
 
   const results = data?.results ?? [];
@@ -163,16 +171,39 @@ export default function SearchScreen() {
                   </View>
                 </View>
                 <ToggleRow
+                  title="Show people and services"
+                  subtitle="Reveal merchants, apps, contacts, and accounts connected to the category map."
+                  value={showIdentityNodes}
+                  onValueChange={(value) => {
+                    setShowIdentityNodes(value);
+                    if (value) setShowEvidenceNodes(false);
+                    setTaxonomyStack([]);
+                    setFocusedEntityId(undefined);
+                    setExpandedGraph(undefined);
+                  }}
+                />
+                <ToggleRow
                   title="Show event evidence"
                   subtitle="Include the captured emails, notifications, and financial events behind this map."
                   value={showEvidenceNodes}
                   onValueChange={(value) => {
                     setShowEvidenceNodes(value);
+                    if (value) setShowIdentityNodes(false);
+                    setTaxonomyStack([]);
                     setFocusedEntityId(undefined);
                     setExpandedGraph(undefined);
                   }}
                 />
-                <GraphExplorer graph={displayGraph} focusedEntityId={focusedEntityId} onFocus={(entity) => setFocusedEntityId(entity.id)} onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)} />
+                {!showEvidenceNodes && !showIdentityNodes && taxonomyStack.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <FilterChip label="All domains" selected={false} onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
+                  {taxonomyStack.map((item, index) => <FilterChip key={item.key} label={item.label} selected={index === taxonomyStack.length - 1} onPress={() => { setTaxonomyStack((current) => current.slice(0, index + 1)); setFocusedEntityId(undefined); }} />)}
+                </View> : null}
+                <GraphExplorer graph={displayGraph} focusedEntityId={focusedEntityId} onFocus={(entity) => {
+                  setFocusedEntityId(entity.id);
+                  if (!showEvidenceNodes && !showIdentityNodes && entity.taxonomyKey && entity.hasMore) {
+                    setTaxonomyStack((current) => current.some((item) => item.key === entity.taxonomyKey) ? current : [...current, { key: entity.taxonomyKey!, label: entity.name }]);
+                  }
+                }} onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)} />
                 <Button label="Refresh graph" onPress={() => { void refreshEntities(); void refreshGraph(); }} variant="secondary" />
               </Panel>
             ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? <EmptyState title="Your graph is still growing" description="Capture notes, emails, or notifications to create people, merchants, topics, and their connections." /> : null}

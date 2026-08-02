@@ -41,6 +41,8 @@ export type TransactionSummary = {
   accountId?: string;
   destinationAccount?: string;
   destinationAccountId?: string;
+  destinationAmount?: string;
+  destinationCurrency?: string;
   merchantEntityId?: string;
   status?: string;
   primarySource?: string;
@@ -75,10 +77,16 @@ export type EventSummary = {
   interpretationStatus?: 'resolved' | 'review' | 'retryable' | 'unclassified' | string;
   interpretationSource?: string;
   interpretationFailureReason?: string;
+  taxonomyVersion?: string;
+  primaryCategoryKey?: string;
+  secondaryCategoryKeys?: string[];
+  facets?: { type: string; value: string; confidence: number }[];
 };
 
 export type ReviewItem = {
   id: string;
+  entityId?: string;
+  entityType?: string;
   alias: string;
   categoryPath: string[];
   reason: string;
@@ -127,6 +135,13 @@ export type ExploreGraphNode = EntitySuggestion & {
   communityId: string;
   hierarchyDepth: number;
   eventId?: string;
+  nodeKind?: 'category' | 'identity' | 'evidence';
+  taxonomyKey?: string;
+  parentEntityId?: string;
+  breadcrumb?: string[];
+  childCount?: number;
+  evidenceCount?: number;
+  hasMore?: boolean;
 };
 
 export type ExploreGraphRelation = {

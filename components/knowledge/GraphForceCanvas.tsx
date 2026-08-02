@@ -1,8 +1,8 @@
 'use dom';
 
-import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
+import type { ForceGraphMethods } from 'react-force-graph-2d';
 import { forceCollide, forceX, forceY } from 'd3-force-3d';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type GraphNode = {
   id: string;
@@ -45,6 +45,7 @@ type ForceNode = GraphNode & {
 };
 
 type ForceLink = GraphRelation & { source: string; target: string };
+type ForceGraphComponent = typeof import('react-force-graph-2d').default;
 
 const palette = ['#8D7CFF', '#53D3F0', '#56D5A0', '#F5A45D', '#F37A96', '#CE91F5'];
 
@@ -84,6 +85,7 @@ export default function GraphForceCanvas({
   onFocus: (id: string) => Promise<void>;
   dom?: import('expo/dom').DOMProps;
 }) {
+  const [ForceGraph2D, setForceGraph2D] = useState<ForceGraphComponent | null>(null);
   const graphRef = useRef<ForceGraphMethods<ForceNode, ForceLink> | undefined>(undefined);
   const didFinalFitRef = useRef(false);
   const dataKey = JSON.stringify({ nodes, relations, communities });
@@ -122,6 +124,16 @@ export default function GraphForceCanvas({
   }, [dataKey]);
 
   useEffect(() => {
+    let active = true;
+    void import('react-force-graph-2d').then((module) => {
+      if (active) setForceGraph2D(() => module.default);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const graph = graphRef.current;
     if (!graph) return;
     didFinalFitRef.current = false;
@@ -136,6 +148,10 @@ export default function GraphForceCanvas({
   }, [dataKey]);
 
   const selectedLinks = new Set(graphData.links.filter((link) => endpointId(link.source) === focusedEntityId || endpointId(link.target) === focusedEntityId).map((link) => link.id));
+
+  if (!ForceGraph2D) {
+    return <div aria-label="graph loading state" style={{ width: '100%', height: '100%', background: '#090F1D' }} />;
+  }
 
   return <div style={{ width: '100%', height: '100%', background: '#090F1D', overflow: 'hidden', touchAction: 'none' }}>
     <ForceGraph2D

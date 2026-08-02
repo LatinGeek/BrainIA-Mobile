@@ -4,56 +4,81 @@ const baseUrl = process.argv[2] || process.env.SMOKE_BASE_URL || 'http://127.0.0
 const viewport = { width: 390, height: 844 };
 
 const checks = [
-  { path: '/', marker: 'Daily brief', label: 'home' },
-  { path: '/search', marker: 'Universal retrieval', label: 'search' },
+  { path: '/', marker: 'Today', label: 'home' },
+  { path: '/search', marker: 'Discover', label: 'search' },
   { path: '/settings', marker: 'Appearance', label: 'settings' },
-  { path: '/financials', marker: 'At a glance', label: 'financials' },
-  { path: '/entity/entity_spotify', marker: 'What this is', label: 'entity' },
-  { path: '/insight/insight_finance', marker: 'Key takeaways', label: 'insight' },
-  { path: '/digest/digest_week', marker: 'Activity metrics', label: 'digest' },
-  { path: '/transaction/tx_spotify', marker: 'Transaction summary', label: 'transaction' },
+  { path: '/financials', marker: 'Money', label: 'financials' },
+  { path: '/entity/entity_spotify', marker: 'Knowledge detail', label: 'entity' },
+  { path: '/insight/insight_finance', marker: 'Readable conclusion', label: 'insight' },
+  { path: '/digest/digest_week', marker: 'Time-window summary', label: 'digest' },
+  { path: '/transaction/tx_spotify', marker: 'Money movement', label: 'transaction' },
 ];
 
 async function checkPage(page, path, marker, label) {
-  await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle', timeout: 120000 });
+  await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.getByText(marker, { exact: false }).first().waitFor({ timeout: 120000 });
   console.log(`${label.toUpperCase()}_OK`);
 }
 
-async function checkProposalInteractions(page) {
-  await page.goto(`${baseUrl}/search`, { waitUntil: 'networkidle', timeout: 120000 });
-  await page.getByLabel('Search BrainIA').fill('Spotify');
-  await page.getByText('Transactions', { exact: false }).first().waitFor({ timeout: 120000 });
-  await page.getByText('Insights', { exact: false }).first().waitFor({ timeout: 120000 });
-  console.log('SEARCH_GROUPS_OK');
+async function checkReviewDraft(page, navigate = true) {
+  if (navigate) {
+    await page.goto(`${baseUrl}/review?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  }
+  const input = page.getByLabel('Friendly name');
+  await input.waitFor({ timeout: 120000 });
+  await input.fill('');
+  await page.waitForTimeout(400);
+  if (await input.inputValue() !== '') {
+    throw new Error('Review friendly name repopulated after being intentionally cleared.');
+  }
+  await input.fill('La Casa Azul');
+  await page.waitForTimeout(400);
+  if (await input.inputValue() !== 'La Casa Azul') {
+    throw new Error('Review friendly name did not preserve the user-entered draft.');
+  }
+  await page.getByText('Possible existing matches', { exact: false }).first().waitFor({ timeout: 120000 });
+  console.log('REVIEW_DRAFT_OK');
+}
 
-  await page.goto(`${baseUrl}/financials`, { waitUntil: 'networkidle', timeout: 120000 });
-  await page.getByRole('tab', { name: 'Year' }).click();
-  await page.getByText('Annual projection', { exact: false }).first().waitFor({ timeout: 120000 });
+async function checkProposalInteractions(page) {
+  await page.goto(`${baseUrl}/search`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  const searchInput = page.getByLabel('Search your knowledge graph');
+  await searchInput.fill('Spotify');
+  if (await searchInput.inputValue() !== 'Spotify') throw new Error('Search did not preserve the entered query.');
+  await page.getByText('Grouped results', { exact: false }).first().waitFor({ timeout: 120000 });
+  console.log('SEARCH_INPUT_OK');
+
+  await page.goto(`${baseUrl}/financials?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByRole('radio', { name: 'Financial period: Year' }).click();
+  await page.getByText('Projected annual picture', { exact: false }).first().waitFor({ timeout: 120000 });
   console.log('FINANCE_PERIODS_OK');
 
-  await page.goto(`${baseUrl}/review`, { waitUntil: 'networkidle', timeout: 120000 });
-  await page.getByRole('tab', { name: /Reprocess/ }).waitFor({ timeout: 120000 });
-  await page.getByRole('tab', { name: /Resolved/ }).waitFor({ timeout: 120000 });
+  await page.goto(`${baseUrl}/review?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByText('Reprocess', { exact: true }).first().waitFor({ timeout: 120000 });
+  await page.getByText('Resolved', { exact: true }).first().waitFor({ timeout: 120000 });
   console.log('REVIEW_LANES_OK');
 }
 
 async function checkPreviewStates(page) {
-  await page.goto(`${baseUrl}/financials?ux=empty`, { waitUntil: 'networkidle', timeout: 120000 });
+  await page.goto(`${baseUrl}/financials?ux=empty`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.getByRole('tab', { name: /Transactions/ }).click();
   await page.getByText('No transactions', { exact: false }).first().waitFor({ timeout: 120000 });
   console.log('EMPTY_MONEY_OK');
 
-  await page.goto(`${baseUrl}/review?ux=empty`, { waitUntil: 'networkidle', timeout: 120000 });
+  await page.goto(`${baseUrl}/review?ux=empty`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.getByText('Nothing here', { exact: false }).first().waitFor({ timeout: 120000 });
   console.log('EMPTY_REVIEW_OK');
 
-  await page.goto(`${baseUrl}/financials?ux=edge`, { waitUntil: 'networkidle', timeout: 120000 });
+  await page.goto(`${baseUrl}/review?ux=loading`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByLabel('card loading state').first().waitFor({ timeout: 120000 });
+  console.log('LOADING_REVIEW_OK');
+
+  await page.goto(`${baseUrl}/financials?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.getByText('International Grocery Cooperative Downtown Branch', { exact: false }).first().waitFor({ timeout: 120000 });
   console.log('EDGE_MONEY_OK');
 
-  await page.goto(`${baseUrl}/?ux=error`, { waitUntil: 'networkidle', timeout: 120000 });
-  await page.getByText('Saved view unavailable', { exact: false }).first().waitFor({ timeout: 120000 });
+  await page.goto(`${baseUrl}/?ux=error`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByText('Live data unavailable', { exact: false }).first().waitFor({ timeout: 120000 });
   console.log('ERROR_TODAY_OK');
 
   await page.goto(`${baseUrl}/?ux=loading`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -67,14 +92,27 @@ async function checkPreviewStates(page) {
 
 try {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport });
+  const runtimeErrors = [];
+  const createPage = async () => {
+    const nextPage = await browser.newPage({ viewport });
+    nextPage.on('pageerror', (error) => runtimeErrors.push(error));
+    return nextPage;
+  };
+  let page = await createPage();
 
   for (const check of checks) {
     await checkPage(page, check.path, check.marker, check.label);
   }
 
   await checkProposalInteractions(page);
+  await checkReviewDraft(page, false);
+  await page.close();
+  page = await createPage();
   await checkPreviewStates(page);
+
+  if (runtimeErrors.length) {
+    throw new Error(`Browser runtime errors:\n${runtimeErrors.map((error) => error.stack || error.message).join('\n\n')}`);
+  }
 
   await browser.close();
   console.log('UX_SMOKE_OK');

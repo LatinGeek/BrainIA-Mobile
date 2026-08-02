@@ -467,6 +467,8 @@ function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
     accountId: asString(record.accountId) || undefined,
     destinationAccount: asString(record.destinationAccount) || undefined,
     destinationAccountId: asString(record.destinationAccountId) || undefined,
+    destinationAmount: asString(record.destinationAmount) || undefined,
+    destinationCurrency: asString(record.destinationCurrency) || undefined,
     merchantEntityId: asString(record.merchantEntityId ?? record.merchant_entity_id) || undefined,
     status: asString(record.status) || undefined,
     primarySource: asString(record.primarySource ?? record.primary_source ?? record.source) || undefined,
@@ -548,6 +550,8 @@ function normalizeReviews(input: unknown): ReviewItem[] {
 
     return {
       id: asString(review.id, `alias_${index + 1}`),
+      entityId: asString(review.entityId ?? review.entity_id) || undefined,
+      entityType: asString(review.entityType ?? review.entity_type) || undefined,
       alias: asString(review.alias ?? review.suggestedAlias ?? review.suggested_alias ?? originalValue ?? normalizedValue, `Alias ${index + 1}`),
       categoryPath: asArray<string>(review.categoryPath ?? review.suggestedCategoryPath ?? review.suggested_category_path),
       reason: asString(review.reason, 'Needs review'),
@@ -691,6 +695,13 @@ function normalizeEvent(input: unknown, index: number): EventSummary {
     interpretationStatus: asString(event.interpretationStatus) || undefined,
     interpretationSource: asString(event.interpretationSource) || undefined,
     interpretationFailureReason: asString(event.interpretationFailureReason) || undefined,
+    taxonomyVersion: asString(event.taxonomyVersion) || undefined,
+    primaryCategoryKey: asString(event.primaryCategoryKey) || undefined,
+    secondaryCategoryKeys: asArray<string>(event.secondaryCategoryKeys),
+    facets: asArray<unknown>(event.facets).map((item) => {
+      const facet = (isRecord(item) ? item : {}) as Record<string, any>;
+      return { type: asString(facet.type), value: asString(facet.value), confidence: asNumber(facet.confidence, 0) };
+    }).filter((facet) => facet.type && facet.value),
   };
 }
 
@@ -706,7 +717,7 @@ export type BrainIAClient = {
   metrics: () => Promise<SummaryMetric[]>;
   listEvents: (limit?: number) => Promise<EventSummary[]>;
   listEntities: (limit?: number) => Promise<EntitySuggestion[]>;
-  getExploreGraph: (limit?: number, options?: { includeEventEvidence?: boolean }) => Promise<ExploreGraph>;
+  getExploreGraph: (limit?: number, options?: { includeEventEvidence?: boolean; includeIdentities?: boolean; projection?: 'network' | 'taxonomy'; root?: string; depth?: number }) => Promise<ExploreGraph>;
   listInsights: (limit?: number) => Promise<InsightSummary[]>;
   listDigests: (limit?: number) => Promise<DigestSummary[]>;
   listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
@@ -717,7 +728,7 @@ export type BrainIAClient = {
   updateFinancialAccount: (id: string, input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
   deleteFinancialAccount: (id: string) => Promise<{ deleted: boolean; detachedTransactions: number }>;
   createBalanceAdjustment: (accountId: string, input: { targetBalance: number; note?: string }) => Promise<TransactionDetail>;
-  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; destinationAccountId?: string | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
+  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; destinationAccountId?: string | null; destinationAmount?: number | null; destinationCurrency?: 'UYU' | 'USD' | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
   mergeTransactions: (canonicalId: string, duplicateId: string) => Promise<TransactionDetail>;
   deleteTransaction: (id: string) => Promise<void>;
   listEntityAliases: (entityId?: string) => Promise<string[]>;
@@ -781,7 +792,15 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
     },
     async getExploreGraph(limit = 80, options = {}) {
       const includeEventEvidence = options.includeEventEvidence === true;
-      const json = await requestWithFallback(baseUrl, `/api/v1/graph?limit=${limit}&includeEventEvidence=${includeEventEvidence}`, { communities: [], nodes: [], relations: [], stats: {} }, { headers });
+      const params = new URLSearchParams({
+        limit: String(limit),
+        includeEventEvidence: String(includeEventEvidence),
+        includeIdentities: String(options.includeIdentities === true),
+        projection: options.projection ?? 'network',
+        depth: String(options.depth ?? 2),
+      });
+      if (options.root) params.set('root', options.root);
+      const json = await requestWithFallback(baseUrl, `/api/v1/graph?${params}`, { communities: [], nodes: [], relations: [], stats: {} }, { headers });
       const record = (isRecord(json) ? json : {}) as Record<string, any>;
       const nodes = asArray<unknown>(record.nodes).map((item) => {
         const node = (isRecord(item) ? item : {}) as Record<string, any>;
@@ -794,6 +813,13 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
           communityId: asString(node.communityId, asString(node.id)),
           hierarchyDepth: asNumber(node.hierarchyDepth, node.type === 'domain' ? 0 : 1),
           eventId: asString(node.eventId) || undefined,
+          nodeKind: (asString(node.nodeKind) || undefined) as ExploreGraph['nodes'][number]['nodeKind'],
+          taxonomyKey: asString(node.taxonomyKey) || undefined,
+          parentEntityId: asString(node.parentEntityId) || undefined,
+          breadcrumb: asArray<string>(node.breadcrumb),
+          childCount: asNumber(node.childCount, 0),
+          evidenceCount: asNumber(node.evidenceCount, 0),
+          hasMore: Boolean(node.hasMore),
         };
       }).filter((node) => node.id);
       const relations = asArray<unknown>(record.relations).map((item, index) => {
@@ -1373,6 +1399,9 @@ export async function loadReviewBundle(client: BrainIAClient) {
   if (previewState === 'empty') {
     return { reviews: [], source: 'empty' as const };
   }
+  if (previewState === 'edge') {
+    return { reviews: demoReviews, source: 'preview-edge' as const };
+  }
 
   const cacheKey = buildCacheKey(client.baseUrl, 'review');
   const bundle = await resolveBundle(
@@ -1477,6 +1506,8 @@ export async function loadTransactionBundle(client: BrainIAClient, transactionId
         accountId: undefined,
         destinationAccount: undefined,
         destinationAccountId: undefined,
+        destinationAmount: undefined,
+        destinationCurrency: undefined,
         merchantEntityId: undefined,
         status: undefined,
         primarySource: undefined,

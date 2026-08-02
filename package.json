@@ -52,6 +52,7 @@
     "typecheck": "tsc --noEmit",
     "prebuild": "expo prebuild",
     "smoke:web": "node scripts/ux-smoke.mjs",
+    "agent:harness": "node scripts/agent-harness.mjs",
     "share:apk": "node scripts/share-apk.mjs"
   },
   "private": true

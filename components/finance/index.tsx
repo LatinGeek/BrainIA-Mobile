@@ -31,8 +31,10 @@ export function TransactionRow({ transaction, onPress }: { transaction: Transact
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 4 }]}>{subtitle}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[theme.typography.bodyStrong, { color: amountColor, fontVariant: ['tabular-nums'] }]}>{formatCurrency(parseCurrency(transaction.amount), transaction.currency)}</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transaction.currency}</Text>
+            <Text style={[theme.typography.bodyStrong, { color: amountColor, fontVariant: ['tabular-nums'] }]}>{transaction.kind === 'transfer' ? '− ' : ''}{formatCurrency(parseCurrency(transaction.amount), transaction.currency)}</Text>
+            {transaction.kind === 'transfer' && transaction.destinationAmount && transaction.destinationCurrency ? (
+              <Text style={[theme.typography.caption, { color: theme.status.income, fontVariant: ['tabular-nums'] }]}>+ {formatCurrency(parseCurrency(transaction.destinationAmount), transaction.destinationCurrency)}</Text>
+            ) : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transaction.currency}</Text>}
             {settings.dataVisibility !== 'essential' && transaction.evidenceCount ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${transaction.evidenceCount} source${transaction.evidenceCount === 1 ? '' : 's'}`}</Text> : null}
           </View>
           {onPress ? <Feather name="chevron-right" size={18} color={theme.colors.textMuted} /> : null}

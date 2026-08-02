@@ -79,13 +79,19 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
   };
 
   const summary = focused
-    ? `${communityById.get(focused.communityId)?.label ?? 'Connected group'} · ${focusedRelations.length} direct connection${focusedRelations.length === 1 ? '' : 's'}`
-    : `${visualGraph.stats.nodesCount} entities arranged into live connection clusters`;
+    ? focused.nodeKind === 'category'
+      ? `${focused.breadcrumb?.join(' › ') ?? communityById.get(focused.communityId)?.label ?? 'Category'} · ${focused.evidenceCount ?? 0} captured event${focused.evidenceCount === 1 ? '' : 's'}`
+      : `${communityById.get(focused.communityId)?.label ?? 'Connected group'} · ${focusedRelations.length} direct connection${focusedRelations.length === 1 ? '' : 's'}`
+    : visualGraph.nodes.every((node) => node.nodeKind === 'category')
+      ? `${visualGraph.stats.nodesCount} categories · tap a category to descend one level`
+      : `${visualGraph.stats.nodesCount} entities arranged into live connection clusters`;
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-        Zoom out to see the full map. Repeated events are grouped beneath one meaning; open a concept to inspect its individual evidence.
+        {visualGraph.nodes.every((node) => node.nodeKind === 'category')
+          ? 'Start with a life area, then tap a category to reveal the next level. Counts include all activity below each branch.'
+          : 'Zoom out to see the full map. Repeated events are grouped beneath one meaning; open a concept to inspect its individual evidence.'}
       </Text>
 
       <View style={{ height: 332, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: '#090F1D' }}>
@@ -105,7 +111,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
         <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{focused.name}</Text>
         <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{summary}</Text>
         {focused.description ? <Text numberOfLines={3} style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{focused.description}</Text> : null}
-        <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, marginTop: 4 }]}>Open entity details</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, marginTop: 4 }]}>{focused.nodeKind === 'category' && focused.hasMore ? 'Tap the node to explore this category' : 'Open entity details'}</Text>
       </Pressable> : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Each colored island is a named community. Its center is the most connected entity in that cluster.</Text>}
     </View>
   );

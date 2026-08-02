@@ -109,7 +109,19 @@
   "108": "CMakeCXXCompilerId.cpp",
   "109": "CMakeCCompilerId.c",
   "110": "CMakeCXXCompilerId.cpp",
+  "111": "P2. Extensiones y refinamiento futuro",
   "112": "app-state.tsx",
+  "113": "agent-harness.md",
   "115": "financials.tsx",
-  "116": "Inspirations"
+  "116": "capture-agent-smoke.mjs",
+  "117": "isRecord",
+  "118": "NotificationBridgeModule",
+  "119": "review.tsx",
+  "120": "getLocalPreviewState",
+  "121": "notification-bridge.ts",
+  "122": ".createNativeModules",
+  "123": ".createNativeModules",
+  "124": "safeFetchJson",
+  "125": "currentFinancialPeriodRange",
+  "126": "transaction-edit-agent-smoke.mjs"
 }
