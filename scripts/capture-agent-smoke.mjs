@@ -47,6 +47,16 @@ try {
     throw new Error(`Account fixture was not loaded: ${JSON.stringify(mockedAccounts)}`);
   }
   await categoriesResponse;
+
+  await page.getByText('Capture a thought', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Capture note', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByLabel('Voice capture is available on Android', { exact: true }).waitFor({ timeout: 120000 });
+  for (const removedLabel of ['Alert', 'Email', 'Event', 'Optional capture details']) {
+    if (await page.getByText(removedLabel, { exact: true }).count()) {
+      throw new Error(`${removedLabel} unexpectedly rendered in the note capture flow.`);
+    }
+  }
+
   await page.getByText('Money', { exact: true }).first().click();
   await page.getByText('Transfer', { exact: true }).first().click();
   await page.getByLabel('Source transfer amount', { exact: true }).waitFor({ timeout: 120000 });

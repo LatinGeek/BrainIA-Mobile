@@ -25,6 +25,9 @@ export const MoneyMetric = MetricCard;
 
 export function InsightCard({ insight, onPress }: { insight: InsightSummary; onPress?: () => void }) {
   const theme = useTheme();
+  const title = cleanDisplayText(insight.title);
+  const summary = cleanDisplayText(insight.summary);
+  const repeatsTitle = summary.toLocaleLowerCase() === title.toLocaleLowerCase();
   const takeaways = Array.from(
     new Set(
       insight.takeaways
@@ -38,14 +41,14 @@ export function InsightCard({ insight, onPress }: { insight: InsightSummary; onP
       <Surface variant="raised" style={{ borderColor: theme.status.insight + '44' }}>
         <View style={[styles.cardSignal, { backgroundColor: theme.status.insight }]} />
         <View style={styles.rowBetween}>
-          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(insight.title)}</Text>
+          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, flex: 1 }]}>{title}</Text>
           <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
         </View>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{cleanDisplayText(insight.summary)}</Text>
+        {!repeatsTitle ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{summary}</Text> : null}
         <View style={[styles.rowWrap, { marginTop: theme.spacing.md }]}>
           {takeaways.slice(0, 3).map((takeaway) => (
             <View key={takeaway} style={[styles.pill, { backgroundColor: theme.colors.surfaceSubtle }]}>
-              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(takeaway)}</Text>
+              <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(takeaway)}</Text>
             </View>
           ))}
         </View>
@@ -70,7 +73,7 @@ export function DigestCard({ digest, onPress }: { digest: DigestSummary; onPress
           </View>
           <Feather name="calendar" size={16} color={theme.colors.accentStrong} />
         </View>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{cleanDisplayText(digest.summary)}</Text>
+        <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{cleanDisplayText(digest.summary)}</Text>
         <View style={[styles.rowWrap, { marginTop: theme.spacing.md }]}>
           {digest.metrics?.slice(0, 3).map((metric) => (
             <View key={metric.label} style={[styles.pill, { backgroundColor: theme.colors.surface }]}>

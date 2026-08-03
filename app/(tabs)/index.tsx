@@ -55,22 +55,26 @@ export default function HomeScreen() {
   const briefItems = [
     pendingReviews?.length ? {
       id: 'review-pending',
-      text: `${pendingReviews.length} data decision${pendingReviews.length === 1 ? '' : 's'} can improve future search and graph connections.`,
+      title: `${pendingReviews.length} data decision${pendingReviews.length === 1 ? '' : 's'} need review`,
+      summary: 'Reviewing them can improve future search and graph connections.',
       onActionPress: () => router.push('/review'),
     } : undefined,
-    primaryInsight ? {
-      id: `insight:${primaryInsight.id}`,
-      text: primaryInsight.summary,
+    ...(primaryInsight?.cards?.length ? primaryInsight.cards.map((card, index) => ({
+      id: `insight:${primaryInsight.id}:${index}`,
+      title: card.title,
+      summary: card.summary,
       onActionPress: () => router.push(`/insight/${primaryInsight.id}`),
-    } : undefined,
-    primaryDigest ? {
-      id: `digest:${primaryDigest.id}`,
-      text: primaryDigest.summary,
+    })) : (primaryInsight ? [{ id: `insight:${primaryInsight.id}`, title: primaryInsight.title, summary: primaryInsight.summary, onActionPress: () => router.push(`/insight/${primaryInsight.id}`) }] : [])),
+    ...(primaryDigest?.cards?.length ? primaryDigest.cards.map((card, index) => ({
+      id: `digest:${primaryDigest.id}:${index}`,
+      title: card.title,
+      summary: card.summary,
       onActionPress: () => router.push(`/digest/${primaryDigest.id}`),
-    } : undefined,
+    })) : (primaryDigest ? [{ id: `digest:${primaryDigest.id}`, title: primaryDigest.title, summary: primaryDigest.summary, onActionPress: () => router.push(`/digest/${primaryDigest.id}`) }] : [])),
     topCategory ? {
       id: `category:${topCategory.label}`,
-      text: formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, summaryCurrency)),
+      title: 'Largest spending area',
+      summary: formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, summaryCurrency)),
       onActionPress: () => {
         const transactionNeedingReview = topCategory.items[0];
         if (isUncategorizedLabel(topCategory.label) && transactionNeedingReview) {

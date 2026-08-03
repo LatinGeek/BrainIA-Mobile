@@ -7,11 +7,22 @@ export type SummaryMetric = {
   tone?: 'neutral' | 'positive' | 'warning' | 'danger';
 };
 
+export type BriefCard = {
+  title: string;
+  summary: string;
+  recommendedAction?: string;
+};
+
 export type InsightSummary = {
   id: string;
   title: string;
   summary: string;
   takeaways: string[];
+  whyItMatters?: string;
+  recommendedAction?: string;
+  confidence?: number;
+  cards?: BriefCard[];
+  detectors?: string[];
   model?: string;
   timestamp?: string;
   relatedCount?: number;
@@ -25,6 +36,9 @@ export type DigestSummary = {
   eventCount?: number;
   relatedInsightCount?: number;
   metrics?: SummaryMetric[];
+  highlights?: string[];
+  recommendedAction?: string;
+  cards?: BriefCard[];
 };
 
 export type TransactionSummary = {
@@ -92,6 +106,7 @@ export type ReviewItem = {
   reason: string;
   source?: string;
   eventId?: string;
+  financialKind?: 'expense' | 'income' | 'transfer';
   originalValue?: string;
   normalizedValue?: string;
   status: 'pending' | 'resolved' | 'ignored';

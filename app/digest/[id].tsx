@@ -29,10 +29,14 @@ export default function DigestDetailScreen() {
       ) : digest ? (
         <>
           <DigestCard digest={digest} />
-          <SectionHeader title="What changed" />
-          <Surface variant="subtle">
-            <ListRow title={digest.summary} subtitle={digest.windowLabel} />
-          </Surface>
+          {digest.highlights?.length ? (
+            <>
+              <SectionHeader title="Highlights" />
+              <View style={{ gap: 8 }}>
+                {digest.highlights.map((highlight) => <ListRow key={highlight} title={highlight} />)}
+              </View>
+            </>
+          ) : null}
 
           <SectionHeader title="Activity metrics" />
           <View style={{ gap: 8 }}>
@@ -40,6 +44,15 @@ export default function DigestDetailScreen() {
               <ListRow key={metric.label} title={metric.label} subtitle={metric.value} />
             )) : <EmptyState title="No metrics yet" description="Metrics will appear once enough activity is summarized." />}
           </View>
+
+          {digest.recommendedAction ? (
+            <>
+              <SectionHeader title="Next step" />
+              <Surface variant="subtle">
+                <ListRow title={digest.recommendedAction} />
+              </Surface>
+            </>
+          ) : null}
 
           <SectionHeader title="Follow up" />
           <EmptyState

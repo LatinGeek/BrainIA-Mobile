@@ -77,6 +77,7 @@ try {
     command('node', ['scripts/review-agent-smoke.mjs', baseUrl]);
     command('node', ['scripts/capture-agent-smoke.mjs', baseUrl]);
     command('node', ['scripts/transaction-edit-agent-smoke.mjs', baseUrl]);
+    command('node', ['scripts/account-delete-agent-smoke.mjs', baseUrl]);
   }
   console.log('AGENT_HARNESS_OK');
 } finally {

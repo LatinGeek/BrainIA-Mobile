@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeOutUp,
@@ -371,6 +371,10 @@ export default function FinancialsScreen() {
   const transactions = data?.transactions ?? [];
   const accounts = data?.accounts ?? [];
   const insights = data?.insights ?? [];
+  const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => [
+    'spending_variation',
+    'recurrence_subscription',
+  ].includes(detector)));
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
   const expenses = reportTransactions.filter((transaction) => transaction.kind === 'expense');
   const categoryGroups = groupTransactionsInCurrency(expenses, 'category', displayCurrency);
@@ -452,38 +456,35 @@ export default function FinancialsScreen() {
     }
   }
 
+  async function deleteAccount(account: FinancialAccount) {
+    setDeletingAccountId(account.id);
+    try {
+      const result = await client.deleteFinancialAccount(account.id);
+      setExpandedAccountId((current) => current === account.id ? null : current);
+      await refresh();
+      if (result.detachedTransactions > 0) {
+        Alert.alert(
+          'Account deleted',
+          `${result.detachedTransactions} transaction${result.detachedTransactions === 1 ? '' : 's'} remain in your history and are now unassigned.`,
+        );
+      }
+    } catch (deleteError) {
+      Alert.alert('Unable to delete account', deleteError instanceof Error ? deleteError.message : 'Try again.');
+    } finally {
+      setDeletingAccountId(null);
+    }
+  }
+
   function confirmDeleteAccount(account: FinancialAccount) {
-    Alert.alert(
-      'Delete account?',
-      `${account.name} will be removed. Existing transactions will be preserved but will no longer be assigned to this account.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              setDeletingAccountId(account.id);
-              try {
-                const result = await client.deleteFinancialAccount(account.id);
-                setExpandedAccountId((current) => current === account.id ? null : current);
-                await refresh();
-                if (result.detachedTransactions > 0) {
-                  Alert.alert(
-                    'Account deleted',
-                    `${result.detachedTransactions} transaction${result.detachedTransactions === 1 ? '' : 's'} remain in your history and are now unassigned.`,
-                  );
-                }
-              } catch (deleteError) {
-                Alert.alert('Unable to delete account', deleteError instanceof Error ? deleteError.message : 'Try again.');
-              } finally {
-                setDeletingAccountId(null);
-              }
-            })();
-          },
-        },
-      ],
-    );
+    const message = `${account.name} will be removed. Existing transactions will be preserved but will no longer be assigned to this account.`;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Delete account?\n\n${message}`)) void deleteAccount(account);
+      return;
+    }
+    Alert.alert('Delete account?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void deleteAccount(account) },
+    ]);
   }
 
   function openAdjustment(account: FinancialAccount) {
@@ -632,8 +633,8 @@ export default function FinancialsScreen() {
 
           {view === 'insights' ? (
             <Section title="Finance insights" subtitle="Patterns worth noticing.">
-              {insights.length ? (
-                insights.map((insight) => <InsightCard key={insight.id} insight={insight} onPress={() => router.push(`/insight/${insight.id}`)} />)
+              {financeInsights.length ? (
+                financeInsights.map((insight) => <InsightCard key={insight.id} insight={insight} onPress={() => router.push(`/insight/${insight.id}`)} />)
               ) : (
                 <EmptyState title="No finance insights yet" description="Recurring charges, unusual activity, and category trends will appear here." />
               )}

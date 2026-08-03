@@ -183,7 +183,7 @@ export default function TransactionDetailScreen() {
       setMergeCandidates(items.filter(
         (candidate) =>
           candidate.id !== transaction.id
-          && candidate.kind === transaction.kind
+          && (candidate.kind === transaction.kind || (transaction.kind === 'transfer' && candidate.kind === 'expense'))
           && !candidate.excludedFromReports,
       ));
     } catch (error) {
@@ -414,7 +414,9 @@ export default function TransactionDetailScreen() {
 
       <BottomSheet visible={manageOpen} title="Manage transaction" onClose={() => !merging && setManageOpen(false)}>
         <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Keep this transaction as the main record. Choose another transaction only when both records describe the same payment from different apps or sources.</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{transaction?.kind === 'transfer'
+            ? 'Keep this transfer as the main record. You can consolidate a duplicate transfer or an expense that represents the same outgoing transfer from another app or source.'
+            : 'Keep this transaction as the main record. Choose another transaction only when both records describe the same payment from different apps or sources.'}</Text>
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Possible duplicate</Text>
           {mergeCandidates.length ? mergeCandidates.map((candidate) => (
             <ListRow
@@ -425,7 +427,7 @@ export default function TransactionDetailScreen() {
               trailing={<Text style={{ color: theme.colors.accentStrong }}>Merge</Text>}
               onPress={() => confirmMerge(candidate.id, candidate.displayMerchantLabel ?? candidate.merchantLabel)}
             />
-          )) : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No other recent transaction of the same type is available to consolidate.</Text>}
+          )) : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transaction?.kind === 'transfer' ? 'No recent duplicate transfer or expense is available to consolidate.' : 'No other recent transaction of the same type is available to consolidate.'}</Text>}
           <View style={{ gap: theme.spacing.xs }}>
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Incorrect record?</Text>
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Hide only this financial projection. Its captured email, notification, or event remains untouched.</Text>

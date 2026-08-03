@@ -2,13 +2,24 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, NativeEventEmitter, NativeModules, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, NativeEventEmitter, NativeModules, PermissionsAndroid, Platform, Text, View } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { CaptureSuccess } from '@/components/forms';
 import { AccountIcon } from '@/components/finance/AccountIcon';
 import { CategoryPicker } from '@/components/review';
 import { AppScreen, Section, TopBar } from '@/components/layout';
-import { BottomSheet, Button, CommandPanel, DisclosureSection, Input, ListRow, SegmentedControl, StatusBadge } from '@/components/primitives';
+import { AnimatedPressable, BottomSheet, Button, CommandPanel, DisclosureSection, Input, ListRow, Panel, SegmentedControl, StatusBadge } from '@/components/primitives';
 import { EmptyState } from '@/components/states';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import type { FinancialAccount, FinancialCategories } from '@/lib/domain';
@@ -16,9 +27,6 @@ import type { FinancialAccount, FinancialCategories } from '@/lib/domain';
 const captureKinds = [
   { value: 'note', label: 'Note', icon: 'edit-3' },
   { value: 'wallet', label: 'Money', icon: 'dollar-sign' },
-  { value: 'notification', label: 'Alert', icon: 'bell' },
-  { value: 'email', label: 'Email', icon: 'mail' },
-  { value: 'event', label: 'Event', icon: 'box' },
 ] as const;
 
 type CaptureKind = (typeof captureKinds)[number]['value'];
@@ -42,6 +50,88 @@ function appendTranscript(current: string, transcript: string) {
   return cleanCurrent ? `${cleanCurrent} ${cleanTranscript}` : cleanTranscript;
 }
 
+function VoiceRecordButton({
+  state,
+  label,
+  onPressIn,
+  onPressOut,
+}: {
+  state: VoiceState;
+  label: string;
+  onPressIn: () => void;
+  onPressOut: () => void;
+}) {
+  const theme = useTheme();
+  const pulse = useSharedValue(0);
+  const recording = state === 'recording';
+  const processing = state === 'requesting' || state === 'starting' || state === 'transcribing';
+  const disabled = !voiceModule || state === 'transcribing';
+
+  useEffect(() => {
+    if (recording) {
+      pulse.value = withRepeat(
+        withSequence(withTiming(1, { duration: 720 }), withTiming(0, { duration: 720 })),
+        -1,
+      );
+    } else {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(0, { duration: theme.motion.fast });
+    }
+    return () => cancelAnimation(pulse);
+  }, [pulse, recording, theme.motion.fast]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.28 * (1 - pulse.value),
+    transform: [{ scale: 1 + pulse.value * 0.42 }],
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={voiceModule ? label : 'Voice capture is available on Android'}
+      accessibilityHint={voiceModule ? 'Press and hold while speaking, then release to transcribe.' : undefined}
+      accessibilityState={{ disabled, busy: processing || recording }}
+      disabled={disabled}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      scaleTo={0.92}
+      style={{
+        width: 52,
+        height: 48,
+        borderRadius: theme.radius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'visible',
+        backgroundColor: recording ? `${theme.colors.danger}18` : theme.colors.accentSoft,
+        borderWidth: 1,
+        borderColor: recording ? `${theme.colors.danger}99` : state === 'error' ? `${theme.colors.danger}66` : `${theme.colors.accentStrong}55`,
+      }}
+    >
+      {recording ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              width: 46,
+              height: 46,
+              borderRadius: 23,
+              borderWidth: 1,
+              borderColor: theme.colors.danger,
+            },
+            pulseStyle,
+          ]}
+        />
+      ) : null}
+      {processing ? (
+        <ActivityIndicator size="small" color={theme.colors.accentStrong} />
+      ) : (
+        <Feather name="mic" size={21} color={recording || state === 'error' ? theme.colors.danger : theme.colors.accentStrong} />
+      )}
+    </AnimatedPressable>
+  );
+}
+
 export default function CaptureScreen() {
   const theme = useTheme();
   const client = useBrainIAClient();
@@ -51,7 +141,6 @@ export default function CaptureScreen() {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>('UYU');
   const [merchant, setMerchant] = useState('');
-  const [source, setSource] = useState('');
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -226,18 +315,9 @@ export default function CaptureScreen() {
             : 'Hold to record a voice note';
 
   const kindCopy = useMemo(() => {
-    switch (kind) {
-      case 'wallet':
-        return 'Record money in, money out, or a transfer between your accounts.';
-      case 'email':
-        return 'Save email-like content with a subject and sender if useful.';
-      case 'notification':
-        return 'Preserve the notification text before it disappears.';
-      case 'event':
-        return 'Use this only for generic activity that does not fit another type.';
-      default:
-        return 'Drop a thought, reminder, receipt note, or useful detail.';
-    }
+    return kind === 'wallet'
+      ? 'Record money in, money out, or a transfer between your accounts.'
+      : 'Save a thought, reminder, or useful detail before it slips away.';
   }, [kind]);
 
   async function submit() {
@@ -268,8 +348,8 @@ export default function CaptureScreen() {
       return;
     }
 
-    if (kind !== 'wallet' && !body.trim() && !title.trim()) {
-      setResult({ ok: false, message: 'Add a note or title before capturing.' });
+    if (kind === 'note' && !body.trim()) {
+      setResult({ ok: false, message: 'Add a note before capturing.' });
       return;
     }
 
@@ -291,13 +371,13 @@ export default function CaptureScreen() {
               destinationAmount: transactionType === 'transfer' ? destinationAmount.trim() || undefined : undefined,
               destinationCurrency: transactionType === 'transfer' ? selectedDestinationAccount?.currency : undefined,
               category: transactionType === 'transfer' ? undefined : category || undefined,
-              source: source.trim() || 'mobile',
+              source: 'mobile',
               tags: ['mobile', 'finance', transactionType],
             }
           : {
-              title: title.trim() || body.trim().slice(0, 64),
+              title: body.trim().slice(0, 64),
               body: body.trim(),
-              source: source.trim() || 'mobile',
+              source: 'mobile',
               tags: ['mobile', kind],
             };
 
@@ -309,7 +389,6 @@ export default function CaptureScreen() {
       setAmount('');
       setCurrency('UYU');
       setMerchant('');
-      setSource('');
       setAccountId(null);
       setDestinationAccountId(null);
       setDestinationAmount('');
@@ -325,12 +404,12 @@ export default function CaptureScreen() {
   return (
     <AppScreen>
       <TopBar
-        title="New event"
-        subtitle="Choose what you are adding, then save it in a few taps."
+        title="Capture"
+        subtitle="Turn a passing thought or money movement into something useful."
         secondaryAction={<StatusBadge label={busy ? 'Saving' : 'Ready'} tone={busy ? 'warning' : 'positive'} />}
       />
 
-      <Section title="Event type" subtitle="Money opens a focused form for expenses, income, and account transfers.">
+      <Section title="Capture mode" subtitle="Choose a quick note or open the focused money flow.">
         <SegmentedControl
           value={kind}
           onChange={changeCaptureKind}
@@ -343,7 +422,8 @@ export default function CaptureScreen() {
       </Section>
 
       {kind === 'wallet' ? (
-        <CommandPanel>
+        <Animated.View key="money-capture" entering={FadeInDown.duration(260)}>
+        <CommandPanel style={{ borderColor: `${theme.status.income}38` }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
             <View
               style={{
@@ -477,13 +557,42 @@ export default function CaptureScreen() {
             loading={busy}
           />
         </CommandPanel>
+        </Animated.View>
       ) : (
-        <>
-          <CommandPanel>
+        <Animated.View key="note-capture" entering={FadeInDown.duration(260)}>
+          <Panel tone="finance" padding="lg" style={{ gap: theme.spacing.lg, overflow: 'hidden' }}>
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                width: 132,
+                height: 132,
+                borderRadius: 66,
+                right: -62,
+                top: -70,
+                backgroundColor: `${theme.status.income}0C`,
+                borderWidth: 1,
+                borderColor: `${theme.status.income}16`,
+              }}
+            />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-              <Feather name="zap" size={20} color={theme.colors.accentStrong} />
-              <View style={{ flex: 1 }}>
-                <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Quick capture</Text>
+              <View
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: `${theme.status.income}16`,
+                  borderWidth: 1,
+                  borderColor: `${theme.status.income}30`,
+                }}
+              >
+                <Feather name="edit-3" size={20} color={theme.status.income} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[theme.typography.overline, { color: theme.status.income }]}>Quick note</Text>
+                <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Capture a thought</Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{kindCopy}</Text>
               </View>
             </View>
@@ -493,45 +602,24 @@ export default function CaptureScreen() {
               placeholder="What do you want to remember?"
               multiline
               accessibilityLabel="Quick capture text"
+              style={{ minHeight: 168, textAlignVertical: 'top' }}
             />
-            {kind === 'note' ? (
-              <View style={{ borderRadius: theme.radius.lg, borderWidth: 1, borderColor: voiceState === 'recording' ? theme.colors.danger + '88' : voiceState === 'error' ? theme.colors.danger + '66' : theme.colors.border, backgroundColor: voiceState === 'recording' ? theme.colors.danger + '12' : theme.colors.surfaceSubtle, overflow: 'hidden' }}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={voiceStatus}
-                  disabled={voiceState === 'transcribing'}
-                  onPressIn={() => { void startVoiceNote(); }}
-                  onPressOut={stopVoiceNote}
-                  style={{ minHeight: 74, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
-                >
-                  <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: voiceState === 'recording' ? theme.colors.danger + '22' : theme.colors.accentSoft }}>
-                    {voiceState === 'transcribing' || voiceState === 'requesting' || voiceState === 'starting'
-                      ? <ActivityIndicator size="small" color={theme.colors.accentStrong} />
-                      : <Feather name="mic" size={22} color={voiceState === 'recording' ? theme.colors.danger : theme.colors.accentStrong} />}
-                  </View>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: voiceState === 'error' ? theme.colors.danger : theme.colors.textPrimary }]}>{voiceStatus}</Text>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-                      {voiceState === 'transcribing' ? 'The transcript will appear in the text field when ready.' : 'Keep holding while you speak.'}
-                    </Text>
-                  </View>
-                </Pressable>
-                {voicePreview ? <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary, paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.sm }]}>{voicePreview}</Text> : null}
-                {voiceError ? <Text style={[theme.typography.caption, { color: theme.colors.danger, paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.sm }]}>{voiceError}</Text> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <Button label={voiceState === 'transcribing' ? 'Transcribing...' : busy ? 'Capturing...' : 'Capture note'} onPress={submit} loading={busy} disabled={voiceBusy} size="lg" />
               </View>
+              <VoiceRecordButton state={voiceState} label={voiceStatus} onPressIn={() => { void startVoiceNote(); }} onPressOut={stopVoiceNote} />
+            </View>
+            {voiceState !== 'idle' || voicePreview || voiceError ? (
+              <Animated.View entering={FadeInUp.duration(180)} exiting={FadeOut.duration(140)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 5, backgroundColor: voiceState === 'error' || voiceState === 'recording' ? theme.colors.danger : theme.status.income }} />
+                <Text numberOfLines={2} accessibilityLiveRegion="polite" style={[theme.typography.caption, { flex: 1, color: voiceState === 'error' ? theme.colors.danger : theme.colors.textSecondary }]}>
+                  {voiceError || voicePreview || voiceStatus}
+                </Text>
+              </Animated.View>
             ) : null}
-            <Button label={voiceState === 'transcribing' ? 'Waiting for transcript…' : busy ? 'Capturing...' : 'Capture'} onPress={submit} loading={busy} disabled={voiceBusy} />
-          </CommandPanel>
-
-          <Section title="Details" subtitle="Optional fields improve search and summaries.">
-            <DisclosureSection title="Optional capture details" subtitle="Open when the source needs structure.">
-              <Input label={kind === 'email' ? 'Subject' : 'Title'} value={title} onChangeText={setTitle} placeholder="Short label" />
-              {kind === 'email' || kind === 'notification' || kind === 'event' ? (
-                <Input label={kind === 'email' ? 'From' : 'Source'} value={source} onChangeText={setSource} placeholder="Email, app, automation, mobile" />
-              ) : null}
-            </DisclosureSection>
-          </Section>
-        </>
+          </Panel>
+        </Animated.View>
       )}
 
       {result?.ok ? (

@@ -11,7 +11,8 @@ export { DigestCard, DigestSummaryCard, InsightCard, InsightArticleCard };
 
 export type DailyBriefItem = {
   id: string;
-  text: string;
+  title: string;
+  summary?: string;
   onActionPress: () => void;
 };
 
@@ -19,31 +20,25 @@ export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
   const theme = useTheme();
 
   return (
-    <Panel tone="accent" style={{ gap: theme.spacing.md, paddingTop: theme.spacing.lg }}>
-      <View style={{ width: 34, height: 4, borderRadius: 999, backgroundColor: theme.colors.accent }} />
+    <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Daily brief</Text>
         <View style={{ borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent, paddingHorizontal: 10, paddingVertical: 5 }}>
           <Text style={[theme.typography.caption, { color: theme.colors.onAccent }]}>Priority scan</Text>
         </View>
       </View>
-      <View style={{ gap: theme.spacing.sm }}>
-        {items.slice(0, 4).map((item) => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="button"
-            accessibilityLabel={cleanDisplayText(item.text)}
-            onPress={item.onActionPress}
-            style={{ borderLeftWidth: 3, borderColor: theme.colors.accent, paddingLeft: 12, paddingRight: 10, paddingVertical: 12, backgroundColor: theme.colors.surface + '66', borderRadius: theme.radius.sm }}
-          >
+      {items.slice(0, 4).map((item) => (
+        <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={cleanDisplayText(item.title)} onPress={item.onActionPress}>
+          <Panel tone="accent" style={{ gap: theme.spacing.sm, borderLeftWidth: 3, borderColor: theme.colors.accent }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(item.text)}</Text>
+              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(item.title)}</Text>
               <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
             </View>
-          </Pressable>
-        ))}
-      </View>
-    </Panel>
+            {item.summary ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(item.summary)}</Text> : null}
+          </Panel>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 

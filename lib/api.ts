@@ -1,5 +1,6 @@
 import { cleanDisplayText } from './format';
 import {
+  BriefCard,
   DigestSummary,
   EntityDetail,
   ExploreGraph,
@@ -81,6 +82,27 @@ function uniqueStrings(values: Array<string | undefined>, limit = 3) {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value && value.trim().length > 0)))).slice(0, limit);
 }
 
+function compactNarrative(value: unknown, fallback = '', maxLength = 320) {
+  const text = normalizeNarrativeText(value, fallback)
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*•]\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (text.length <= maxLength) return text;
+  const clipped = text.slice(0, maxLength + 1);
+  const punctuation = Math.max(clipped.lastIndexOf('.'), clipped.lastIndexOf('!'), clipped.lastIndexOf('?'));
+  const sentence = punctuation >= Math.min(40, Math.floor(maxLength / 2)) ? clipped.slice(0, punctuation + 1).trim() : '';
+  return sentence || `${text.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function friendlyWindow(from: unknown, to: unknown) {
+  const start = new Date(asString(from));
+  const end = new Date(asString(to));
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '';
+  const format = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return start.toDateString() === end.toDateString() ? format(end) : `${format(start)} – ${format(end)}`;
+}
+
 function buildCacheKey(baseUrl: string, namespace: string) {
   return `${trimSlash(baseUrl)}:${namespace}`.replace(/[^a-zA-Z0-9._:-]+/g, '_');
 }
@@ -135,13 +157,14 @@ async function safeFetchJson(baseUrl: string, path: string, options: RequestOpti
   }
 
   const startedAt = Date.now();
+  const hasBody = options.body !== undefined;
   const response = await fetch(`${trimSlash(baseUrl)}${path}`, {
     method: options.method ?? 'GET',
     headers: {
-      'content-type': 'application/json',
+      ...(hasBody ? { 'content-type': 'application/json' } : {}),
       ...(options.headers ?? {}),
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: hasBody ? JSON.stringify(options.body) : undefined,
   });
 
   const text = await response.text();
@@ -395,16 +418,40 @@ function isPlaceholderInsightText(value?: string) {
   return !normalized || /^insight\s+\d+$/.test(normalized) || normalized === 'insight';
 }
 
+function normalizeContentCards(value: unknown, fallback: BriefCard[], limit: number): BriefCard[] {
+  const cards = asArray<Record<string, any>>(value)
+    .map((card) => ({
+      title: compactNarrative(card.title, '', 90),
+      summary: compactNarrative(card.summary, '', 240),
+      recommendedAction: compactNarrative(card.recommendedAction, '', 180) || undefined,
+    }))
+    .filter((card) => card.title && card.summary);
+  return cards.length ? cards.slice(0, limit) : fallback.slice(0, limit);
+}
+
 function normalizeInsight(item: unknown, index = 0): InsightSummary {
-  const record = isRecord(item) ? item : {};
-  const rawTitle = normalizeNarrativeText(record.title, '');
-  const rawSummary = normalizeNarrativeText(record.summary, '');
+  const record = (isRecord(item) ? item : {}) as Record<string, any>;
+  const response = isRecord(record.response) ? record.response as Record<string, any> : {};
+  const content = isRecord(response.content) ? response.content as Record<string, any> : isRecord(record.content) ? record.content as Record<string, any> : {};
+  const candidates = asArray<Record<string, any>>(response.candidates ?? record.evidence);
+  const primary = isRecord(candidates[0]) ? candidates[0] : {};
+  const rawTitle = compactNarrative(content.title ?? record.title ?? primary.title ?? record.query, '', 90);
+  const rawSummary = compactNarrative(content.summary ?? primary.explanation ?? record.summary, '', 320);
   const title = isPlaceholderInsightText(rawTitle) && !isPlaceholderInsightText(rawSummary) ? rawSummary : rawTitle;
   const summary = isPlaceholderInsightText(rawSummary) ? title : rawSummary;
   const takeaways = uniqueStrings(
-    asArray<string>(record.takeaways)
-      .map((takeaway) => normalizeNarrativeText(takeaway))
+    [...asArray<string>(content.takeaways ?? record.takeaways), ...candidates.map((candidate) => asString(candidate.title))]
+      .map((takeaway) => compactNarrative(takeaway, '', 180))
       .filter((takeaway) => takeaway !== title && takeaway !== summary)
+  );
+  const cards = normalizeContentCards(
+    content.cards,
+    candidates.map((candidate) => ({
+      title: compactNarrative(candidate.title, '', 90),
+      summary: compactNarrative(candidate.explanation, '', 240),
+      recommendedAction: compactNarrative(candidate.suggestedAction, '', 180) || undefined,
+    })).filter((card) => card.title && card.summary),
+    3,
   );
 
   return {
@@ -412,6 +459,11 @@ function normalizeInsight(item: unknown, index = 0): InsightSummary {
     title,
     summary,
     takeaways,
+    whyItMatters: compactNarrative(content.whyItMatters, '', 240) || undefined,
+    recommendedAction: compactNarrative(content.recommendedAction ?? record.suggestedAction ?? primary.suggestedAction, '', 180) || undefined,
+    confidence: asNumber(record.confidence, 0) || undefined,
+    cards,
+    detectors: uniqueStrings(candidates.map((candidate) => asString(candidate.detector)), 10),
     model: asString(record.model) || undefined,
     timestamp: asString(record.createdAt ?? record.timestamp) || undefined,
     relatedCount: asNumber(record.relatedCount ?? record.supportingCount, 0) || undefined,
@@ -419,23 +471,66 @@ function normalizeInsight(item: unknown, index = 0): InsightSummary {
 }
 
 function isUsefulInsight(insight: InsightSummary) {
-  return !isPlaceholderInsightText(insight.title) || !isPlaceholderInsightText(insight.summary) || insight.takeaways.length > 0;
+  const routineOnly = insight.detectors?.length && insight.detectors.every((detector) => [
+    'source_activity_change',
+    'category_activity_change',
+    'cross_domain_temporal_correlation',
+    'high_confidence_graph_change',
+  ].includes(detector));
+  return !routineOnly && (!isPlaceholderInsightText(insight.title) || !isPlaceholderInsightText(insight.summary) || insight.takeaways.length > 0);
 }
 
 function normalizeDigest(item: unknown, index = 0): DigestSummary {
   const record = (isRecord(item) ? item : {}) as Record<string, any>;
-  const metrics = Array.isArray(record.metrics)
-    ? normalizeMetrics(record.metrics)
-    : asRecordMetrics(record.metrics);
+  const response = isRecord(record.response) ? record.response as Record<string, any> : record;
+  const content = isRecord(response.content) ? response.content as Record<string, any> : {};
+  const rawMetrics = response.metrics ?? record.metrics;
+  const aggregateMetrics = isRecord(rawMetrics) ? rawMetrics as Record<string, any> : {};
+  const eventCount = asNumber(record.eventCount ?? record.totalEvents ?? aggregateMetrics.totalEvents, 0);
+  const sourceRows = asArray<Record<string, any>>(aggregateMetrics.eventsBySource);
+  const kindRows = asArray<Record<string, any>>(aggregateMetrics.eventsByInferredKind ?? aggregateMetrics.eventsByKind);
+  const topSource = sourceRows[0];
+  const topKind = kindRows[0];
+  const metrics = Array.isArray(rawMetrics)
+    ? normalizeMetrics(rawMetrics)
+    : eventCount || sourceRows.length || kindRows.length
+      ? [
+          { label: 'Captured', value: String(eventCount) },
+          ...(topSource ? [{ label: 'Top source', value: `${asString(topSource.source)} · ${asNumber(topSource.count)}` }] : []),
+          ...(topKind ? [{ label: 'Top activity', value: `${asString(topKind.kind)} · ${asNumber(topKind.count)}` }] : []),
+        ]
+      : asRecordMetrics(rawMetrics);
+  const legacyHighlights = [
+    topSource ? `${asString(topSource.source)} was the most active source with ${asNumber(topSource.count)} items.` : '',
+    topKind ? `${asString(topKind.kind)} was the most common activity type.` : '',
+  ];
+  const highlights = uniqueStrings(
+    [...asArray<string>(content.highlights), ...legacyHighlights].map((value) => compactNarrative(value, '', 180)),
+    4,
+  );
+  const fallbackSummary = eventCount
+    ? `${eventCount} ${eventCount === 1 ? 'item was' : 'items were'} captured in this period${topSource ? `, led by ${asString(topSource.source)}` : ''}.`
+    : 'No new activity was captured in this period.';
+  const cards = normalizeContentCards(
+    content.cards,
+    highlights.map((summary, index) => ({
+      title: index === 0 ? 'Activity at a glance' : 'Worth noticing',
+      summary,
+    })),
+    4,
+  );
 
   return {
     id: asString(record.id, `digest_${index + 1}`),
-    title: normalizeNarrativeText(record.title, `Digest ${index + 1}`),
-    summary: normalizeNarrativeText(record.summary, 'Digest summary'),
-    windowLabel: normalizeNarrativeText(record.windowLabel ?? record.scope, 'Recent activity'),
-    eventCount: asNumber(record.eventCount ?? record.totalEvents, 0) || undefined,
-    relatedInsightCount: asNumber(record.relatedInsightCount ?? record.relatedInsightsCount, 0) || undefined,
+    title: compactNarrative(content.title ?? record.title, 'Your activity digest', 90),
+    summary: compactNarrative(content.summary, fallbackSummary, 320),
+    windowLabel: compactNarrative(record.windowLabel, '', 80) || friendlyWindow(record.windowFrom ?? response.window?.from, record.windowTo ?? response.window?.to) || 'Recent activity',
+    eventCount: eventCount || undefined,
+    relatedInsightCount: asNumber(record.relatedInsightCount ?? record.relatedInsightsCount ?? response.relatedInsights?.length, 0) || undefined,
     metrics,
+    highlights,
+    recommendedAction: compactNarrative(content.recommendedAction, '', 180) || undefined,
+    cards,
   };
 }
 
@@ -557,6 +652,7 @@ function normalizeReviews(input: unknown): ReviewItem[] {
       reason: asString(review.reason, 'Needs review'),
       source: asString(review.source) || undefined,
       eventId: asString(review.eventId ?? review.event_id) || undefined,
+      financialKind: (asString(review.financialKind ?? review.financial_kind) as ReviewItem['financialKind']) || undefined,
       originalValue,
       normalizedValue,
       status: (asString(review.status, 'pending') as ReviewItem['status']) || 'pending',
@@ -719,7 +815,9 @@ export type BrainIAClient = {
   listEntities: (limit?: number) => Promise<EntitySuggestion[]>;
   getExploreGraph: (limit?: number, options?: { includeEventEvidence?: boolean; includeIdentities?: boolean; projection?: 'network' | 'taxonomy'; root?: string; depth?: number }) => Promise<ExploreGraph>;
   listInsights: (limit?: number) => Promise<InsightSummary[]>;
+  getInsightRun: (id: string) => Promise<InsightSummary>;
   listDigests: (limit?: number) => Promise<DigestSummary[]>;
+  getDigestRun: (id: string) => Promise<DigestSummary>;
   listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
   getTransaction: (id: string) => Promise<TransactionDetail>;
   listFinancialAccounts: () => Promise<FinancialAccount[]>;
@@ -890,6 +988,10 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
 
       return [];
     },
+    async getInsightRun(id: string) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/insights/history/${encodeURIComponent(id)}`, { id }, { headers });
+      return normalizeInsight(json);
+    },
     async listDigests(limit = 4) {
       const json = await requestWithFallback(baseUrl, `/api/v1/digests/history?limit=${limit}`, { runs: [] }, { headers });
       if (isRecord(json) && Array.isArray(json.runs)) {
@@ -901,6 +1003,10 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       }
 
       return [];
+    },
+    async getDigestRun(id: string) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/digests/history/${encodeURIComponent(id)}`, { id }, { headers });
+      return normalizeDigest(json);
     },
     async listTransactions(limit = 8, range = {}) {
       const params = new URLSearchParams({ limit: String(limit) });
@@ -1561,6 +1667,9 @@ export async function loadInsightBundle(client: BrainIAClient, idOrQuery: { id?:
         title: 'No insight yet',
         summary: 'No insight is available for this preview state.',
         takeaways: [],
+        whyItMatters: undefined,
+        recommendedAction: undefined,
+        confidence: undefined,
         model: undefined,
         timestamp: undefined,
         relatedCount: undefined,
@@ -1573,7 +1682,9 @@ export async function loadInsightBundle(client: BrainIAClient, idOrQuery: { id?:
   const bundle = await resolveBundle(
     cacheKey,
     async () => {
-      const insight = await client.inspectInsight(idOrQuery);
+      const insight = idOrQuery.id?.startsWith('insight_')
+        ? await client.getInsightRun(idOrQuery.id)
+        : await client.inspectInsight(idOrQuery);
       return { insight };
     },
     { insight: demoInsights.find((insight) => insight.id === idOrQuery.id) ?? demoInsights[0] },
@@ -1604,6 +1715,8 @@ export async function loadDigestBundle(client: BrainIAClient, id: string) {
         summary: 'No summary is available for this preview state.',
         windowLabel: 'No activity',
         metrics: [],
+        highlights: [],
+        recommendedAction: undefined,
       },
       source: 'empty' as const,
     };
@@ -1613,10 +1726,7 @@ export async function loadDigestBundle(client: BrainIAClient, id: string) {
   const bundle = await resolveBundle(
     cacheKey,
     async () => {
-      const digests = await client.listDigests(10);
-      return {
-        digest: digests.find((item) => item.id === id) ?? digests[0] ?? normalizeDigest({}, 0),
-      };
+      return { digest: await client.getDigestRun(id) };
     },
     { digest: demoDigests.find((digest) => digest.id === id) ?? demoDigests[0] },
     false,

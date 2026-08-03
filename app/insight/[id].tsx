@@ -31,10 +31,14 @@ export default function InsightDetailScreen() {
       ) : insight ? (
         <>
           <InsightCard insight={insight} />
-          <SectionHeader title="Summary" />
-          <Surface variant="subtle">
-            <ListRow title={insight.summary} subtitle="Why it matters" />
-          </Surface>
+          {insight.whyItMatters ? (
+            <>
+              <SectionHeader title="Why it matters" />
+              <Surface variant="subtle">
+                <ListRow title={insight.whyItMatters} />
+              </Surface>
+            </>
+          ) : null}
 
           <SectionHeader title="Key takeaways" />
           <View style={{ gap: 8 }}>
@@ -42,6 +46,15 @@ export default function InsightDetailScreen() {
               <ListRow key={takeaway} title={takeaway} />
             )) : <EmptyState title="No takeaways yet" description="There are no actionable takeaways for this insight." />}
           </View>
+
+          {insight.recommendedAction ? (
+            <>
+              <SectionHeader title="Next step" />
+              <Surface variant="subtle">
+                <ListRow title={insight.recommendedAction} />
+              </Surface>
+            </>
+          ) : null}
 
           {shouldShowOperationalDetail(settings.dataVisibility) ? (
             <>

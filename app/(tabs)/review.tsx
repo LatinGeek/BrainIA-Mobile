@@ -59,15 +59,14 @@ export default function ReviewScreen() {
     ? friendlyNameDraft.value
     : selected?.normalizedValue ?? selected?.alias ?? '';
   const grouped = useMemo(() => groupReviews(reviews), [reviews]);
+  const financialCategoryKind = selected?.financialKind === 'income' ? 'income' : 'expense';
   const categoryOptions = useMemo(
     () =>
       uniqueStrings([
-        ...(financialCategories?.expense ?? []),
-        ...(financialCategories?.income ?? []),
-        ...reviews.map((item) => item.categoryPath.join(' / ')),
+        ...(financialCategories?.[financialCategoryKind] ?? []),
         ...customCategories,
       ]),
-    [customCategories, financialCategories, reviews]
+    [customCategories, financialCategories, financialCategoryKind]
   );
   const selectedCategoryLabel = categoryPath.trim() || 'Choose a category';
   const selectedEntityQuery = friendlyName.trim();
@@ -299,7 +298,7 @@ export default function ReviewScreen() {
                 </Surface>
                 <Pressable onPress={() => setCategorySheetOpen(true)}>
                   <Surface variant="raised" style={{ gap: 6 }}>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Category</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{financialCategoryKind === 'income' ? 'Income category' : 'Expense category'}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                       <Text style={[theme.typography.bodyStrong, { color: categoryPath ? theme.colors.textPrimary : theme.colors.textSecondary, flex: 1 }]}>
                         {selectedCategoryLabel}
@@ -307,7 +306,7 @@ export default function ReviewScreen() {
                       <Feather name="chevron-down" size={18} color={theme.colors.textMuted} />
                     </View>
                     <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                      Choose an existing category or create a new one.
+                      {financialCategoryKind === 'income' ? 'This is income-linked activity, so choose an income category.' : 'Choose an existing expense category or create a new one.'}
                     </Text>
                   </Surface>
                 </Pressable>
@@ -336,7 +335,7 @@ export default function ReviewScreen() {
 
       {statusMessage ? <EmptyState title="Review updated" description={statusMessage} primaryActionLabel="Dismiss" onPrimaryAction={() => setStatusMessage(null)} /> : null}
 
-      <BottomSheet visible={categorySheetOpen} title="Category" onClose={() => setCategorySheetOpen(false)}>
+      <BottomSheet visible={categorySheetOpen} title={financialCategoryKind === 'income' ? 'Income category' : 'Expense category'} onClose={() => setCategorySheetOpen(false)}>
         <CategoryPicker
           categories={categoryOptions}
           selectedCategory={categoryPath}
