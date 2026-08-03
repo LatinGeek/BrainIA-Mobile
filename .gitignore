@@ -47,6 +47,8 @@ yarn-error.*
 /android/.gradle/
 /android/build/
 /android/app/build/
+/android/app/build.*/
+/android/app/.cxx*/
 /android/.cxx/
 /android/local.properties
 
