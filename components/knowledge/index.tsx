@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import { DigestCard, DigestSummaryCard, InsightCard, InsightArticleCard } from '@/components/cards';
@@ -18,26 +18,34 @@ export type DailyBriefItem = {
 
 export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(344, Math.max(248, width - 64));
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
-        <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Daily brief</Text>
+        <View>
+          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Highlights</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>The few things worth your attention.</Text>
+        </View>
         <View style={{ borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent, paddingHorizontal: 10, paddingVertical: 5 }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.onAccent }]}>Priority scan</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.onAccent }]}>{Math.min(items.length, 8)} new</Text>
         </View>
       </View>
-      {items.slice(0, 4).map((item) => (
-        <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={cleanDisplayText(item.title)} onPress={item.onActionPress}>
-          <Panel tone="accent" style={{ gap: theme.spacing.sm, borderLeftWidth: 3, borderColor: theme.colors.accent }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(item.title)}</Text>
+      <ScrollView horizontal directionalLockEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + theme.spacing.sm} snapToAlignment="start" contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }} accessibilityLabel="Swipe through highlights">
+      {items.slice(0, 8).map((item) => (
+        <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={cleanDisplayText(item.title)} onPress={item.onActionPress} style={{ width: cardWidth }}>
+          <Panel tone="accent" style={{ minHeight: 138, justifyContent: 'space-between', gap: theme.spacing.md, borderLeftWidth: 3, borderColor: theme.colors.accent }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+              <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(item.title)}</Text>
               <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
             </View>
             {item.summary ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(item.summary)}</Text> : null}
+            <Text style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Open detail</Text>
           </Panel>
         </Pressable>
       ))}
+      </ScrollView>
     </View>
   );
 }

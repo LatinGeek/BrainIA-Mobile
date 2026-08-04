@@ -3,11 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import {
-  DigestCard,
-  InsightCard,
-  TodayFinanceSnapshot,
-} from '@/components/cards';
+import { TodayFinanceSnapshot } from '@/components/cards';
 import { DailyBrief } from '@/components/knowledge';
 import { AppScreen, Section, TopBar } from '@/components/layout';
 import { Button, Panel, StatusBadge } from '@/components/primitives';
@@ -116,16 +112,7 @@ export default function HomeScreen() {
         <>
           {briefItems.length ? <DailyBrief items={briefItems} /> : null}
 
-          <Section title="Knowledge highlights" subtitle="Readable conclusions and recent summaries." actionLabel="Search" onActionPress={() => router.push('/search')}>
-            {primaryInsight ? (
-              <InsightCard insight={primaryInsight} onPress={() => router.push(`/insight/${primaryInsight.id}`)} />
-            ) : (
-              <EmptyState title="No insight yet" description="Insights will appear here once BrainIA finds useful patterns." />
-            )}
-            {primaryDigest ? <DigestCard digest={primaryDigest} onPress={() => router.push(`/digest/${primaryDigest.id}`)} /> : null}
-          </Section>
-
-          <Section title="Finance snapshot" subtitle="Enough context to decide whether to open Money." actionLabel="Open Money" onActionPress={() => router.push('/financials')}>
+          <Section title="Finance" actionLabel="Open Money" onActionPress={() => router.push('/financials')}>
             <TodayFinanceSnapshot
               income={formatCurrency(income, summaryCurrency)}
               expenses={formatCurrency(monthlySpend, summaryCurrency)}
@@ -134,19 +121,6 @@ export default function HomeScreen() {
               topCategoryAmount={topCategory ? formatCurrency(topCategory.total, summaryCurrency) : undefined}
               onPress={() => router.push('/financials')}
             />
-            <Panel tone="finance" style={{ gap: theme.spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.spacing.md }}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-                    {topCategory ? formatCategoryLabel(topCategory.label) : 'No category trend yet'}
-                  </Text>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                    {topCategory ? `${topCategory.count} transaction${topCategory.count === 1 ? '' : 's'} in this group.` : 'Transactions will be grouped once finance data arrives.'}
-                  </Text>
-                </View>
-                <StatusBadge label={topCategory ? formatCurrency(topCategory.total, summaryCurrency) : 'Waiting'} />
-              </View>
-            </Panel>
           </Section>
 
           {pendingReviews?.length ? <Section title="Needs review" subtitle="Small decisions that improve future search and finance." actionLabel="Review" onActionPress={() => router.push('/review')}>

@@ -14,7 +14,7 @@ import Animated, {
 import {
   InsightCard,
 } from '@/components/cards';
-import { MonthlyCashFlowBar, SpendingRadial, type MonthlyCashFlowPoint } from '@/components/charts';
+import { MonthlyCashFlowBar, MonthlyCashFlowLine, SpendingRadial, type MonthlyCashFlowPoint } from '@/components/charts';
 import { TransactionRow } from '@/components/finance';
 import { AccountIcon } from '@/components/finance/AccountIcon';
 import { AppScreen, Section, TopBar } from '@/components/layout';
@@ -43,6 +43,7 @@ const periods = [
 
 type FinanceView = (typeof views)[number]['value'];
 type FinancePeriod = (typeof periods)[number]['value'];
+type TrendChartMode = 'line' | 'bars';
 
 const displayCurrencies = [
   { value: 'UYU', label: 'UYU' },
@@ -341,6 +342,7 @@ export default function FinancialsScreen() {
   const { client, settings, theme } = useAppState();
   const [view, setView] = useState<FinanceView>('overview');
   const [period, setPeriod] = useState<FinancePeriod>('month');
+  const [trendChartMode, setTrendChartMode] = useState<TrendChartMode>('line');
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>('UYU');
   const [accountEditorOpen, setAccountEditorOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<FinancialAccount | null>(null);
@@ -412,6 +414,7 @@ export default function FinancialsScreen() {
   });
   const radialSegments = categoryGroups.length
     ? categoryGroups.map((group) => ({
+        id: group.label,
         label: formatCategoryLabel(group.label),
         value: group.total * periodMultiplier,
       }))
@@ -551,6 +554,15 @@ export default function FinancialsScreen() {
                 segments={radialSegments}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
+                drilldown={{
+                  getItems: (segment) => categoryGroups.find((group) => group.label === segment.id)?.items
+                    .slice()
+                    .sort((left, right) => new Date(right.observedAt ?? 0).getTime() - new Date(left.observedAt ?? 0).getTime()) ?? [],
+                  renderItem: (item) => {
+                    const transaction = expenses.find((candidate) => candidate.id === item.id);
+                    return transaction ? <TransactionRow transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} /> : null;
+                  },
+                }}
               />
               <Section title="At a glance" subtitle={period === 'year' ? 'Projected annual picture from current cycle data.' : `The biggest signals for ${cycleLabel}.`}>
                 <ListRow title={topCategory ? formatCategoryLabel(topCategory.label) : 'No category yet'} subtitle="Top spending group" description={topCategory ? `${topCategory.count} transactions` : 'Grouped categories will appear after sync.'} />
@@ -561,22 +573,30 @@ export default function FinancialsScreen() {
 
           {view === 'trends' ? (
             <Section title="Trends" subtitle="Recent movement by transaction sequence.">
-              <MonthlyCashFlowBar
+              <SegmentedControl value={trendChartMode} onChange={(value) => setTrendChartMode(value as TrendChartMode)} options={[{ value: 'line', label: 'Line' }, { value: 'bars', label: 'Bars' }]} />
+              {trendChartMode === 'line' ? <MonthlyCashFlowLine
                 points={monthlyCashFlow}
                 subtitle="Income versus spending across the last six financial cycles."
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
-              />
+              /> : <MonthlyCashFlowBar points={monthlyCashFlow} subtitle="Income versus spending across the last six financial cycles." formatValue={(value) => formatCurrency(value, displayCurrency)} headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />} />}
               <SpendingRadial
                 title="Money movement"
                 subtitle={period === 'year' ? 'Projected merchant share' : `Merchant share · ${cycleLabel}`}
                 amount={formatCurrency(periodSpend, displayCurrency)}
-                segments={merchantGroups.map((group) => ({ label: group.label, value: group.total * periodMultiplier }))}
+                segments={merchantGroups.map((group) => ({ id: group.label, label: group.label, value: group.total * periodMultiplier }))}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 itemNoun="merchant"
                 percentageNoun="spend"
                 emptyLabel="No merchants"
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
+                drilldown={{
+                  getItems: (segment) => expenses.filter((transaction) => (transaction.displayMerchantLabel ?? transaction.merchantLabel) === segment.id),
+                  renderItem: (item) => {
+                    const transaction = expenses.find((candidate) => candidate.id === item.id);
+                    return transaction ? <TransactionRow transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} /> : null;
+                  },
+                }}
               />
             </Section>
           ) : null}

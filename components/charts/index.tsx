@@ -1,11 +1,14 @@
-import Svg, { Circle } from 'react-native-svg';
-import { Pressable, Text, View, StyleSheet, useWindowDimensions } from 'react-native';
+import Svg, { Circle, Line, Polyline } from 'react-native-svg';
+import { Pressable, ScrollView, Text, View, StyleSheet, useWindowDimensions } from 'react-native';
 import { type ReactNode, useEffect, useState } from 'react';
 import Animated, {
   Easing,
   FadeIn,
+  FadeInDown,
   FadeInUp,
+  FadeInRight,
   FadeOut,
+  FadeOutLeft,
   useAnimatedProps,
   useSharedValue,
   withDelay,
@@ -22,6 +25,7 @@ type RadialSegment = {
   value: number;
   displayValue?: number;
   color?: string;
+  id?: string;
 };
 
 function formatChartPercentage(value: number, total: number) {
@@ -31,6 +35,7 @@ function formatChartPercentage(value: number, total: number) {
 }
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const MIN_INTERACTIVE_RADIAL_SLICE_LENGTH = 2;
 
 function AnimatedRadialSlice({
   center,
@@ -43,6 +48,8 @@ function AnimatedRadialSlice({
   index,
   isSelected,
   isDimmed,
+  isInteractive,
+  onPress,
 }: {
   center: number;
   radius: number;
@@ -54,6 +61,8 @@ function AnimatedRadialSlice({
   index: number;
   isSelected: boolean;
   isDimmed: boolean;
+  isInteractive: boolean;
+  onPress?: () => void;
 }) {
   const reveal = useSharedValue(0);
   const selection = useSharedValue(isSelected ? 1 : 0);
@@ -90,6 +99,8 @@ function AnimatedRadialSlice({
       strokeDasharray={`${sliceLength} ${Math.max(0, circumference - sliceLength)}`}
       transform={`rotate(-90 ${center} ${center})`}
       animatedProps={animatedProps}
+      pointerEvents={isInteractive ? 'auto' : 'none'}
+      onPress={isInteractive ? onPress : undefined}
     />
   );
 }
@@ -294,6 +305,70 @@ export function MonthlyCashFlowBar({
   );
 }
 
+export function MonthlyCashFlowLine({
+  title = 'Income and expenses',
+  subtitle,
+  points,
+  formatValue,
+  headerAction,
+}: {
+  title?: string;
+  subtitle?: string;
+  points: MonthlyCashFlowPoint[];
+  formatValue: (value: number) => string;
+  headerAction?: ReactNode;
+}) {
+  const theme = useTheme();
+  const { width: viewportWidth } = useWindowDimensions();
+  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, points.length - 1));
+  const selected = points[selectedIndex] ?? points.at(-1);
+  const width = Math.max(244, Math.min(440, viewportWidth - 72));
+  const height = 174;
+  const padding = { top: 20, right: 10, bottom: 28, left: 10 };
+  const maximum = points.reduce((largest, point) => Math.max(largest, point.income, point.spending), 1);
+  const x = (index: number) => padding.left + (index / Math.max(1, points.length - 1)) * (width - padding.left - padding.right);
+  const y = (value: number) => padding.top + (1 - value / maximum) * (height - padding.top - padding.bottom);
+  const incomeLine = points.map((point, index) => `${x(index)},${y(point.income)}`).join(' ');
+  const expenseLine = points.map((point, index) => `${x(index)},${y(point.spending)}`).join(' ');
+
+  return (
+    <Surface variant="raised" style={{ borderColor: theme.depth.glow, gap: theme.spacing.md, overflow: 'hidden' }}>
+      <View style={[styles.radialGlow, { backgroundColor: theme.colors.accent + '0D' }]} />
+      <View style={styles.rowBetween}>
+        <View style={{ flex: 1 }}>
+          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
+          {subtitle ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted, marginTop: 4 }]}>{cleanDisplayText(subtitle)}</Text> : null}
+        </View>
+        {headerAction}
+      </View>
+      {selected ? <Animated.View key={selected.periodLabel} entering={FadeIn.duration(180)} style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[theme.typography.caption, { color: theme.status.income }]}>● Income</Text>
+          <Text style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.income)}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[theme.typography.caption, { color: theme.status.expense }]}>● Expenses</Text>
+          <Text style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.spending)}</Text>
+        </View>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{selected.periodLabel}</Text>
+      </Animated.View> : null}
+      <View style={{ alignItems: 'center' }}>
+        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+          {[0.25, 0.5, 0.75].map((fraction) => <Line key={fraction} x1={padding.left} x2={width - padding.right} y1={padding.top + fraction * (height - padding.top - padding.bottom)} y2={padding.top + fraction * (height - padding.top - padding.bottom)} stroke={theme.colors.border + '99'} strokeWidth={1} />)}
+          <Polyline points={incomeLine} fill="none" stroke={theme.status.income} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+          <Polyline points={expenseLine} fill="none" stroke={theme.status.expense} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+          {points.map((point, index) => <Circle key={`${point.periodLabel}-income`} cx={x(index)} cy={y(point.income)} r={selectedIndex === index ? 5 : 3.5} fill={theme.status.income} />)}
+          {points.map((point, index) => <Circle key={`${point.periodLabel}-expense`} cx={x(index)} cy={y(point.spending)} r={selectedIndex === index ? 5 : 3.5} fill={theme.status.expense} />)}
+        </Svg>
+        <View style={{ width, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: padding.left }}>
+          {points.map((point, index) => <Pressable key={`${point.periodLabel}-label`} accessibilityRole="button" accessibilityState={{ selected: selectedIndex === index }} accessibilityLabel={`Show ${point.periodLabel}`} onPress={() => setSelectedIndex(index)}><Text style={[theme.typography.caption, { color: selectedIndex === index ? theme.colors.accentStrong : theme.colors.textMuted, fontWeight: selectedIndex === index ? '700' : '500' }]}>{point.label}</Text></Pressable>)}
+        </View>
+      </View>
+      <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tap a month to compare income and expenses.</Text>
+    </Surface>
+  );
+}
+
 export function SpendingRadial({
   title,
   subtitle,
@@ -305,6 +380,9 @@ export function SpendingRadial({
   percentageNoun = 'spend',
   emptyLabel = 'No spend',
   headerAction,
+  onSegmentPress,
+  drilldown,
+  renderDetail,
 }: {
   title: string;
   subtitle?: string;
@@ -316,10 +394,15 @@ export function SpendingRadial({
   percentageNoun?: string;
   emptyLabel?: string;
   headerAction?: ReactNode;
+  onSegmentPress?: (segment: RadialSegment | null) => void;
+  drilldown?: { getItems: (segment: RadialSegment) => { id: string }[]; renderItem: (item: { id: string }, index: number) => ReactNode; pageSize?: number };
+  renderDetail?: (segment: RadialSegment, onBack: () => void) => ReactNode;
 }) {
   const theme = useTheme();
   const { width: viewportWidth } = useWindowDimensions();
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [drilldownWidth, setDrilldownWidth] = useState(0);
+  const [drilldownPage, setDrilldownPage] = useState(0);
   const size = Math.round(Math.min(300, Math.max(224, viewportWidth - 76)));
   const center = size / 2;
   const strokeWidth = Math.max(24, Math.min(32, size * 0.105));
@@ -338,9 +421,25 @@ export function SpendingRadial({
   const selected = radialSegments.find((segment) => segment.label === selectedLabel);
   const centerAmount = selected ? formatValue(selected.displayValue ?? selected.value) : amount;
   const centerLabel = selected ? cleanDisplayText(selected.label) : totalLabel;
+  const clearSelection = () => {
+    setSelectedLabel(null);
+    setDrilldownPage(0);
+    onSegmentPress?.(null);
+  };
+  const selectSegment = (segment: RadialSegment) => {
+    const nextSelected = selectedLabel === segment.label ? null : segment.label;
+    setSelectedLabel(nextSelected);
+    setDrilldownPage(0);
+    onSegmentPress?.(nextSelected ? segment : null);
+  };
 
   return (
     <Surface variant="raised" style={{ borderColor: theme.depth.glow, gap: theme.spacing.md, overflow: 'hidden' }}>
+      {selected && renderDetail && !drilldown ? (
+        <Animated.View key={`detail-${selected.label}`} entering={FadeInRight.duration(220)} exiting={FadeOutLeft.duration(150)} style={{ gap: theme.spacing.sm }}>
+          {renderDetail(selected, clearSelection)}
+        </Animated.View>
+      ) : <>
       <View style={[styles.radialGlow, { backgroundColor: theme.colors.accent + '12' }]} />
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
@@ -359,7 +458,7 @@ export function SpendingRadial({
           accessibilityRole={selected ? 'button' : undefined}
           accessibilityLabel={selected ? `Clear ${selected.label} selection` : `${title} radial chart`}
           disabled={!selected}
-          onPress={() => setSelectedLabel(null)}
+          onPress={clearSelection}
           style={{ width: size, height: size }}
         >
           <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -374,6 +473,7 @@ export function SpendingRadial({
             />
             {radialSegments.map((segment, index) => {
               const slice = Math.max(0, (segment.value / chartTotal) * circumference);
+              const isInteractive = slice >= MIN_INTERACTIVE_RADIAL_SLICE_LENGTH;
               const isSelected = selectedLabel === segment.label;
               return (
                 <AnimatedRadialSlice
@@ -388,6 +488,8 @@ export function SpendingRadial({
                   index={index}
                   isSelected={isSelected}
                   isDimmed={Boolean(selectedLabel && !isSelected)}
+                  isInteractive={isInteractive}
+                  onPress={() => selectSegment(segment)}
                 />
               );
             })}
@@ -437,7 +539,25 @@ export function SpendingRadial({
           </View>
         </Pressable>
       </View>
-      <View style={{ gap: 6 }}>
+      {selected && drilldown ? <Animated.View key={`list-${selected.label}`} entering={FadeInDown.duration(220)} style={{ gap: theme.spacing.sm }}>
+        <Pressable onPress={clearSelection} accessibilityRole="button" accessibilityLabel={`Back to all ${title}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12, backgroundColor: selected.color + '16' }}>
+          <Text style={[theme.typography.bodyStrong, { color: selected.color }]}>←</Text>
+          <View style={{ width: 9, height: 9, borderRadius: 99, backgroundColor: selected.color }} />
+          <View style={{ flex: 1 }}>
+            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{selected.label}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${drilldown.getItems(selected).length} transactions`}</Text>
+          </View>
+          <Text style={[theme.typography.bodyStrong, { color: selected.color }]}>{formatValue(selected.displayValue ?? selected.value)}</Text>
+        </Pressable>
+        <View onLayout={(event) => setDrilldownWidth(event.nativeEvent.layout.width)}>
+          {drilldownWidth ? <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(event) => setDrilldownPage(Math.round(event.nativeEvent.contentOffset.x / drilldownWidth))}>
+            {Array.from({ length: Math.ceil(drilldown.getItems(selected).length / (drilldown.pageSize ?? 5)) }, (_, page) => <View key={page} style={{ width: drilldownWidth }}>{drilldown.getItems(selected).slice(page * (drilldown.pageSize ?? 5), (page + 1) * (drilldown.pageSize ?? 5)).map((item, index) => <Animated.View key={item.id} entering={FadeInDown.delay(index * 45).duration(220)}>{drilldown.renderItem(item, index)}</Animated.View>)}</View>)}
+          </ScrollView> : null}
+        </View>
+        {drilldown.getItems(selected).length > (drilldown.pageSize ?? 5) ? <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }} accessibilityLabel={`Page ${drilldownPage + 1} of ${Math.ceil(drilldown.getItems(selected).length / (drilldown.pageSize ?? 5))}`}>
+          {Array.from({ length: Math.ceil(drilldown.getItems(selected).length / (drilldown.pageSize ?? 5)) }, (_, index) => <View key={index} style={{ width: index === drilldownPage ? 16 : 6, height: 6, borderRadius: 99, backgroundColor: index === drilldownPage ? theme.colors.accent : theme.colors.border }} />)}
+        </View> : null}
+      </Animated.View> : <View style={{ gap: 6 }}>
         {radialSegments.map((segment) => {
           const isSelected = selectedLabel === segment.label;
           return (
@@ -445,7 +565,7 @@ export function SpendingRadial({
               key={`${segment.label}-legend`}
               accessibilityRole="button"
               accessibilityLabel={`${segment.label}, ${formatValue(segment.displayValue ?? segment.value)}, ${formatChartPercentage(segment.value, chartTotal)} of ${percentageNoun}`}
-              onPress={() => setSelectedLabel(isSelected ? null : segment.label)}
+              onPress={() => selectSegment(segment)}
               style={({ pressed }) => [
                 styles.categoryRow,
                 {
@@ -466,7 +586,9 @@ export function SpendingRadial({
             </Pressable>
           );
         })}
-      </View>
+      </View>}
+      {(drilldown || onSegmentPress) ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{selected && drilldown ? 'Swipe to browse transactions.' : 'Tap a category to view its transactions.'}</Text> : null}
+      </>}
     </Surface>
   );
 }

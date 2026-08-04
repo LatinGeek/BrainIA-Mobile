@@ -38,6 +38,7 @@ export default function TransactionDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [badgeExplanationOpen, setBadgeExplanationOpen] = useState(false);
+  const [titleEditorOpen, setTitleEditorOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [mergeCandidates, setMergeCandidates] = useState<Awaited<ReturnType<typeof client.listTransactions>>>([]);
   const [merging, setMerging] = useState(false);
@@ -159,7 +160,7 @@ export default function TransactionDetailScreen() {
   }
 
   async function saveAlias() {
-    if (!transaction?.merchantEntityId || !alias.trim()) return;
+    if (!transaction?.merchantEntityId || !alias.trim()) return false;
     setAliasSaving(true);
     setAliasMessage(null);
     try {
@@ -167,11 +168,23 @@ export default function TransactionDetailScreen() {
       setAlias('');
       setAliasMessage('Alias saved. It will be used as this merchant’s display name.');
       await refresh();
+      return true;
     } catch (error) {
       setAliasMessage(error instanceof Error ? error.message : 'Could not save this alias.');
+      return false;
     } finally {
       setAliasSaving(false);
     }
+  }
+
+  function openTitleEditor() {
+    setAlias(displayMerchantLabel ?? transaction?.merchantLabel ?? '');
+    setAliasMessage(null);
+    setTitleEditorOpen(true);
+  }
+
+  async function saveTitle() {
+    if (await saveAlias()) setTitleEditorOpen(false);
   }
 
   async function openManageTransaction() {
@@ -303,17 +316,14 @@ export default function TransactionDetailScreen() {
 
           {transaction.merchantEntityId ? (
             <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
-              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Merchant name</Text>
-              <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Set the name you want BrainIA to use across Money, search, and future activity.</Text>
-              <Input label="Alias" value={alias} onChangeText={setAlias} placeholder={displayMerchantLabel ?? 'Add an alias'} />
-              {alias.trim() && aliasSuggestions.length ? (
-                <View style={{ gap: 6 }}>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Existing aliases</Text>
-                  {aliasSuggestions.map((candidate) => <ListRow key={candidate} title={candidate} subtitle="Use this name" onPress={() => setAlias(candidate)} />)}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Transaction title</Text>
+                  <Text numberOfLines={1} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{displayMerchantLabel ?? transaction.merchantLabel}</Text>
                 </View>
-              ) : null}
-              <Button label="Save alias" onPress={saveAlias} disabled={!alias.trim() || aliasSaving} loading={aliasSaving} variant="secondary" />
-              {aliasMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{aliasMessage}</Text> : null}
+                <Button label="Edit title" onPress={openTitleEditor} variant="secondary" size="sm" />
+              </View>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>BrainIA will use this title for future transactions from the same merchant.</Text>
             </Surface>
           ) : null}
 
@@ -401,6 +411,24 @@ export default function TransactionDetailScreen() {
             <Button label="Cancel" onPress={() => setEditorOpen(false)} variant="secondary" disabled={saving} />
           </View>
           {saveError ? <Text style={{ color: theme.colors.danger }}>{saveError}</Text> : null}
+        </View>
+      </BottomSheet>
+
+      <BottomSheet visible={titleEditorOpen} title="Edit transaction title" onClose={() => !aliasSaving && setTitleEditorOpen(false)}>
+        <View style={{ gap: theme.spacing.md }}>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. It will also label future matching transactions when BrainIA can identify the same merchant.</Text>
+          <Input label="Title" value={alias} onChangeText={setAlias} placeholder={transaction?.merchantLabel ?? 'Transaction title'} autoFocus />
+          {alias.trim() && aliasSuggestions.length ? (
+            <View style={{ gap: 6 }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Previously used titles</Text>
+              {aliasSuggestions.map((candidate) => <ListRow key={candidate} title={candidate} subtitle="Use this title" onPress={() => setAlias(candidate)} />)}
+            </View>
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <Button label="Save title" onPress={saveTitle} disabled={!alias.trim() || aliasSaving} loading={aliasSaving} />
+            <Button label="Cancel" onPress={() => setTitleEditorOpen(false)} variant="secondary" disabled={aliasSaving} />
+          </View>
+          {aliasMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{aliasMessage}</Text> : null}
         </View>
       </BottomSheet>
 

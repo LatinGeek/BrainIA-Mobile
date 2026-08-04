@@ -211,18 +211,16 @@ export function TodayFinanceSnapshot({
 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Money this month. Net ${net}.`} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
-      <Surface variant="raised" style={{ borderColor: theme.colors.accent + '55', gap: theme.spacing.md, overflow: 'hidden' }}>
-        <View style={[styles.financeGlow, { backgroundColor: theme.colors.accent + '14' }]} />
+      <Surface variant="raised" style={{ borderColor: theme.colors.accent + '55', gap: theme.spacing.sm }}>
         <View style={styles.rowBetween}>
           <View>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Money this month</Text>
-            <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, marginTop: 4 }]}>A clear cash picture</Text>
+            <Text style={[theme.typography.numeral, { color: netIsPositive ? theme.colors.accent : theme.status.expense, marginTop: 3 }]}>{cleanDisplayText(net)}</Text>
           </View>
-          <Feather name="arrow-up-right" size={18} color={theme.colors.accentStrong} />
-        </View>
-        <View>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Net movement</Text>
-          <Text style={[theme.typography.numeral, { color: netIsPositive ? theme.colors.accent : theme.status.expense, marginTop: 3 }]}>{cleanDisplayText(net)}</Text>
+          <View style={{ alignItems: 'flex-end', gap: 3 }}>
+            <Feather name="arrow-up-right" size={18} color={theme.colors.accentStrong} />
+            {topCategory && topCategoryAmount ? <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textMuted, maxWidth: 132 }]}>{cleanDisplayText(topCategory)} · {cleanDisplayText(topCategoryAmount)}</Text> : null}
+          </View>
         </View>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <View style={[styles.financeMetric, { borderColor: theme.status.income + '33', backgroundColor: theme.status.income + '0d' }]}>
@@ -234,12 +232,6 @@ export function TodayFinanceSnapshot({
             <Text style={[theme.typography.bodyStrong, { color: theme.status.expense, marginTop: 3, fontVariant: ['tabular-nums'] }]}>{cleanDisplayText(expenses)}</Text>
           </View>
         </View>
-        {topCategory && topCategoryAmount ? (
-          <View style={[styles.rowBetween, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }]}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Largest area · {cleanDisplayText(topCategory)}</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{cleanDisplayText(topCategoryAmount)}</Text>
-          </View>
-        ) : null}
       </Surface>
     </Pressable>
   );
