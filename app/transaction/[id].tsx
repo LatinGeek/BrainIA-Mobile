@@ -1,14 +1,16 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import { FinancialSnapshotCard } from '@/components/cards';
 import { EvidenceRow } from '@/components/finance';
 import { AccountIcon } from '@/components/finance/AccountIcon';
 import { CategoryPicker } from '@/components/review';
 import { AppScreen, SectionHeader, TopBar } from '@/components/layout';
-import { BottomSheet, Button, FilterChip, Input, ListRow, Surface } from '@/components/primitives';
+import { BottomSheet, Button, FilterChip, IconButton, Input, ListRow, Surface } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
+import { MoneyAmount, ProvenanceMark } from '@/components/trust';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadTransactionBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -60,23 +62,11 @@ export default function TransactionDetailScreen() {
   );
   const { data: originEvent } = useAsyncResource(originLoader, [originLoader]);
   const originSource = originEvent?.source ?? evidenceItems[0]?.source ?? transaction?.primarySource;
-  const aliasLoader = useMemo(
-    () => async () => transaction?.merchantEntityId ? client.listEntityAliases(transaction.merchantEntityId) : [],
-    [client, transaction]
-  );
-  const { data: merchantAliases } = useAsyncResource(aliasLoader, [aliasLoader]);
-  const aliasSuggestionsLoader = useMemo(() => () => client.listEntityAliases(), [client]);
-  const { data: allAliases } = useAsyncResource(aliasSuggestionsLoader, [aliasSuggestionsLoader]);
   const displayMerchantLabel = transaction?.displayMerchantLabel
-    ?? merchantAliases?.find((alias) => alias.trim().toLocaleLowerCase() !== transaction?.merchantLabel.trim().toLocaleLowerCase())
     ?? transaction?.merchantLabel;
-  const [alias, setAlias] = useState('');
-  const [aliasSaving, setAliasSaving] = useState(false);
-  const [aliasMessage, setAliasMessage] = useState<string | null>(null);
-  const aliasSuggestions = (allAliases ?? [])
-    .filter((candidate) => candidate.trim().toLocaleLowerCase().includes(alias.trim().toLocaleLowerCase()))
-    .filter((candidate, index, values) => values.indexOf(candidate) === index)
-    .slice(0, 5);
+  const [title, setTitle] = useState('');
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleMessage, setTitleMessage] = useState<string | null>(null);
 
   const openEditor = useCallback(() => {
     if (!transaction) return;
@@ -159,33 +149,28 @@ export default function TransactionDetailScreen() {
     }
   }
 
-  async function saveAlias() {
-    if (!transaction?.merchantEntityId || !alias.trim()) return false;
-    setAliasSaving(true);
-    setAliasMessage(null);
+  async function saveTitle() {
+    if (!transaction || !title.trim()) return;
+    setTitleSaving(true);
+    setTitleMessage(null);
     try {
-      await client.createEntityAlias({ entityId: transaction.merchantEntityId, alias: alias.trim() });
-      setAlias('');
-      setAliasMessage('Alias saved. It will be used as this merchant’s display name.');
+      await client.updateTransactionContext(transaction.id, { title: title.trim() });
+      setTitleMessage('Transaction title saved.');
       await refresh();
-      return true;
+      setTitleEditorOpen(false);
     } catch (error) {
-      setAliasMessage(error instanceof Error ? error.message : 'Could not save this alias.');
-      return false;
+      setTitleMessage(error instanceof Error ? error.message : 'Could not save this transaction title.');
     } finally {
-      setAliasSaving(false);
+      setTitleSaving(false);
     }
   }
 
   function openTitleEditor() {
-    setAlias(displayMerchantLabel ?? transaction?.merchantLabel ?? '');
-    setAliasMessage(null);
+    setTitle(displayMerchantLabel ?? transaction?.merchantLabel ?? '');
+    setTitleMessage(null);
     setTitleEditorOpen(true);
   }
 
-  async function saveTitle() {
-    if (await saveAlias()) setTitleEditorOpen(false);
-  }
 
   async function openManageTransaction() {
     if (!transaction) return;
@@ -265,7 +250,12 @@ export default function TransactionDetailScreen() {
 
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar showBack title={displayMerchantLabel ?? 'Transaction'} subtitle="Money movement with the source context kept behind the summary." />
+      <TopBar
+        showBack
+        title={displayMerchantLabel ?? 'Transaction'}
+        subtitle="Money movement with the source context kept behind the summary."
+        secondaryAction={<IconButton icon={<Feather name="edit-2" size={18} color={theme.colors.textPrimary} />} label="Edit transaction title" onPress={openTitleEditor} />}
+      />
 
       {error ? <EmptyState title="Unable to load transaction" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
 
@@ -282,6 +272,7 @@ export default function TransactionDetailScreen() {
 
           <SectionHeader title="Origin" subtitle={transaction.excludedFromReports ? 'Created manually to reconcile an account balance.' : 'The captured record that created this transaction.'} />
           <Surface variant="raised" style={{ gap: theme.spacing.xs, borderColor: theme.colors.accent + '55' }}>
+            <ProvenanceMark origin={transaction.excludedFromReports ? 'user' : 'captured'} />
             <ListRow
               title={originEvent?.title ?? (transaction.excludedFromReports ? 'Manual balance adjustment' : formatSourceLabel(originSource))}
               subtitle={originEvent ? `${formatSourceLabel(originEvent.source)} · ${originEvent.kind}` : originSource ? `Captured via ${formatSourceLabel(originSource)}` : 'Source is still being linked'}
@@ -293,7 +284,7 @@ export default function TransactionDetailScreen() {
 
           <SectionHeader title="Transaction summary" />
           <View style={{ gap: 8 }}>
-            <ListRow title={formatCurrency(parseCurrency(transaction.amount), transaction.currency)} subtitle={transaction.excludedFromReports ? `Balance adjustment (${transaction.kind})` : transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Sent amount' : 'Expense'} description={transaction.observedAt} />
+            <ListRow title={formatCurrency(parseCurrency(transaction.amount), transaction.currency)} subtitle={transaction.excludedFromReports ? `Balance adjustment (${transaction.kind})` : transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Sent amount' : 'Expense'} description={transaction.observedAt} trailing={<MoneyAmount amount={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} compact />} />
             {transaction.kind === 'transfer' ? <>
               <ListRow title={maskAccount(transaction.account, settings.dataVisibility)} subtitle="From account" />
               {transaction.destinationAmount && transaction.destinationCurrency ? <ListRow title={formatCurrency(parseCurrency(transaction.destinationAmount), transaction.destinationCurrency)} subtitle="Received amount" /> : null}
@@ -313,19 +304,6 @@ export default function TransactionDetailScreen() {
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Consolidate duplicate records from another app, or hide this financial projection while keeping its original event.</Text>
             <Button label="Consolidate or hide" onPress={openManageTransaction} variant="secondary" />
           </Surface>
-
-          {transaction.merchantEntityId ? (
-            <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Transaction title</Text>
-                  <Text numberOfLines={1} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{displayMerchantLabel ?? transaction.merchantLabel}</Text>
-                </View>
-                <Button label="Edit title" onPress={openTitleEditor} variant="secondary" size="sm" />
-              </View>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>BrainIA will use this title for future transactions from the same merchant.</Text>
-            </Surface>
-          ) : null}
 
           <SectionHeader title="Explanation" />
           <Surface variant="subtle">
@@ -414,21 +392,15 @@ export default function TransactionDetailScreen() {
         </View>
       </BottomSheet>
 
-      <BottomSheet visible={titleEditorOpen} title="Edit transaction title" onClose={() => !aliasSaving && setTitleEditorOpen(false)}>
+      <BottomSheet visible={titleEditorOpen} title="Edit transaction title" onClose={() => !titleSaving && setTitleEditorOpen(false)}>
         <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. It will also label future matching transactions when BrainIA can identify the same merchant.</Text>
-          <Input label="Title" value={alias} onChangeText={setAlias} placeholder={transaction?.merchantLabel ?? 'Transaction title'} autoFocus />
-          {alias.trim() && aliasSuggestions.length ? (
-            <View style={{ gap: 6 }}>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Previously used titles</Text>
-              {aliasSuggestions.map((candidate) => <ListRow key={candidate} title={candidate} subtitle="Use this title" onPress={() => setAlias(candidate)} />)}
-            </View>
-          ) : null}
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. This changes only this transaction and keeps the original captured record unchanged.</Text>
+          <Input label="Title" value={title} onChangeText={setTitle} placeholder={transaction?.merchantLabel ?? 'Transaction title'} autoFocus />
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button label="Save title" onPress={saveTitle} disabled={!alias.trim() || aliasSaving} loading={aliasSaving} />
-            <Button label="Cancel" onPress={() => setTitleEditorOpen(false)} variant="secondary" disabled={aliasSaving} />
+            <Button label="Save title" onPress={saveTitle} disabled={!title.trim() || titleSaving} loading={titleSaving} />
+            <Button label="Cancel" onPress={() => setTitleEditorOpen(false)} variant="secondary" disabled={titleSaving} />
           </View>
-          {aliasMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{aliasMessage}</Text> : null}
+          {titleMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{titleMessage}</Text> : null}
         </View>
       </BottomSheet>
 

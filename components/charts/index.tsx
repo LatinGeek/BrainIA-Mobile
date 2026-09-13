@@ -187,8 +187,7 @@ export function ChartCard({ title, subtitle, values, labels }: { title: string; 
   const total = entries.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <Surface variant="raised" style={{ borderColor: theme.depth.glow }}>
-      <View style={[styles.signal, { backgroundColor: theme.colors.accent }]} />
+    <Surface variant="raised" style={{ borderColor: theme.colors.border }}>
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
@@ -239,8 +238,7 @@ export function MonthlyCashFlowBar({
   const maximum = points.reduce((largest, point) => Math.max(largest, point.income, point.spending), 1);
 
   return (
-    <Surface variant="raised" style={{ borderColor: theme.depth.glow, gap: theme.spacing.md, overflow: 'hidden' }}>
-      <View style={[styles.radialGlow, { backgroundColor: theme.colors.accent + '0D' }]} />
+    <Surface variant="raised" style={{ borderColor: theme.colors.border, gap: theme.spacing.md, overflow: 'hidden' }}>
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
@@ -332,8 +330,7 @@ export function MonthlyCashFlowLine({
   const expenseLine = points.map((point, index) => `${x(index)},${y(point.spending)}`).join(' ');
 
   return (
-    <Surface variant="raised" style={{ borderColor: theme.depth.glow, gap: theme.spacing.md, overflow: 'hidden' }}>
-      <View style={[styles.radialGlow, { backgroundColor: theme.colors.accent + '0D' }]} />
+    <Surface variant="raised" style={{ borderColor: theme.colors.border, gap: theme.spacing.md, overflow: 'hidden' }}>
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
@@ -410,7 +407,7 @@ export function SpendingRadial({
   const circumference = 2 * Math.PI * radius;
   const centerDiameter = Math.max(126, radius * 2 - strokeWidth - 10);
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0);
-  const palette = [theme.colors.accent, '#56C7F2', '#A78BFA', '#F4A261', '#F4C542', theme.status.income];
+  const palette = theme.colors.chart;
   const sourceSegments = total > 0 ? segments.filter((segment) => segment.value > 0).sort((a, b) => b.value - a.value) : [{ label: emptyLabel, value: 1, color: theme.colors.surfaceSubtle }];
   const chartTotal = sourceSegments.reduce((sum, segment) => sum + segment.value, 0) || 1;
   const radialSegments = sourceSegments.reduce<(RadialSegment & { offset: number; color: string })[]>((acc, segment, index) => {
@@ -434,13 +431,12 @@ export function SpendingRadial({
   };
 
   return (
-    <Surface variant="raised" style={{ borderColor: theme.depth.glow, gap: theme.spacing.md, overflow: 'hidden' }}>
+    <Surface variant="raised" style={{ borderColor: theme.colors.border, gap: theme.spacing.md, overflow: 'hidden' }}>
       {selected && renderDetail && !drilldown ? (
         <Animated.View key={`detail-${selected.label}`} entering={FadeInRight.duration(220)} exiting={FadeOutLeft.duration(150)} style={{ gap: theme.spacing.sm }}>
           {renderDetail(selected, clearSelection)}
         </Animated.View>
       ) : <>
-      <View style={[styles.radialGlow, { backgroundColor: theme.colors.accent + '12' }]} />
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>

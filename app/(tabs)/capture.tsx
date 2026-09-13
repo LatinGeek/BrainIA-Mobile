@@ -316,40 +316,40 @@ export default function CaptureScreen() {
 
   const kindCopy = useMemo(() => {
     return kind === 'wallet'
-      ? 'Record money in, money out, or a transfer between your accounts.'
-      : 'Save a thought, reminder, or useful detail before it slips away.';
+      ? 'Registrá un ingreso, gasto o transferencia sin completar campos que no necesitás.'
+      : 'Guardá una idea, recordatorio o detalle útil antes de que se pierda.';
   }, [kind]);
 
   async function submit() {
     const parsedSourceAmount = Number(amount.replace(',', '.'));
     const parsedDestinationAmount = Number(destinationAmount.replace(',', '.'));
     if (kind === 'wallet' && (!Number.isFinite(parsedSourceAmount) || parsedSourceAmount <= 0)) {
-      setResult({ ok: false, message: 'Add an amount before saving this transaction.' });
+      setResult({ ok: false, message: 'Ingresá un monto antes de guardar el movimiento.' });
       return;
     }
 
     if (kind === 'wallet' && transactionType === 'transfer' && !accountId) {
-      setResult({ ok: false, message: 'Choose the account the transfer is coming from.' });
+      setResult({ ok: false, message: 'Elegí la cuenta desde la que sale la transferencia.' });
       return;
     }
 
     if (kind === 'wallet' && transactionType === 'transfer' && !destinationAccountId) {
-      setResult({ ok: false, message: 'Choose the account receiving the transfer.' });
+      setResult({ ok: false, message: 'Elegí la cuenta que recibe la transferencia.' });
       return;
     }
 
     if (kind === 'wallet' && transactionType === 'transfer' && accountId === destinationAccountId) {
-      setResult({ ok: false, message: 'A transfer must use two different accounts.' });
+      setResult({ ok: false, message: 'Una transferencia debe usar dos cuentas distintas.' });
       return;
     }
 
     if (kind === 'wallet' && transactionType === 'transfer' && (!Number.isFinite(parsedDestinationAmount) || parsedDestinationAmount <= 0)) {
-      setResult({ ok: false, message: 'Add the amount received by the destination account.' });
+      setResult({ ok: false, message: 'Ingresá el monto que recibe la cuenta de destino.' });
       return;
     }
 
     if (kind === 'note' && !body.trim()) {
-      setResult({ ok: false, message: 'Add a note before capturing.' });
+      setResult({ ok: false, message: 'Escribí una nota antes de capturar.' });
       return;
     }
 
@@ -383,7 +383,7 @@ export default function CaptureScreen() {
 
       await client.capture(kind, payload);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setResult({ ok: true, message: 'Saved to BrainIA.' });
+      setResult({ ok: true, message: 'Guardado en BrainIA.' });
       setBody('');
       setTitle('');
       setAmount('');
@@ -395,27 +395,31 @@ export default function CaptureScreen() {
       setCategory('');
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setResult({ ok: false, message: error instanceof Error ? error.message : 'Unable to capture this right now.' });
+      setResult({ ok: false, message: error instanceof Error ? error.message : 'No se pudo guardar ahora. Revisá tu conexión e intentá de nuevo.' });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <AppScreen>
+    <AppScreen
+      stickyFooter={kind === 'wallet' ? (
+        <Button label={busy ? 'Guardando...' : `Guardar ${transactionType === 'expense' ? 'gasto' : transactionType === 'income' ? 'ingreso' : 'transferencia'}`} onPress={submit} loading={busy} size="lg" />
+      ) : undefined}
+    >
       <TopBar
-        title="Capture"
-        subtitle="Turn a passing thought or money movement into something useful."
-        secondaryAction={<StatusBadge label={busy ? 'Saving' : 'Ready'} tone={busy ? 'warning' : 'positive'} />}
+        title="Capturar"
+        subtitle="Convertí una idea o movimiento en información útil."
+        secondaryAction={<StatusBadge label={busy ? 'Guardando' : 'Listo'} tone={busy ? 'warning' : 'positive'} />}
       />
 
-      <Section title="Capture mode" subtitle="Choose a quick note or open the focused money flow.">
+      <Section title="¿Qué querés capturar?" subtitle="Elegí una nota rápida o un movimiento de dinero.">
         <SegmentedControl
           value={kind}
           onChange={changeCaptureKind}
           options={captureKinds.map((item) => ({
             value: item.value,
-            label: item.label,
+              label: item.value === 'note' ? 'Nota' : 'Dinero',
             icon: <Feather name={item.icon as never} size={15} color={kind === item.value ? theme.colors.textPrimary : theme.colors.textSecondary} />,
           }))}
         />
@@ -442,7 +446,7 @@ export default function CaptureScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Add transaction</Text>
+              <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Nuevo movimiento</Text>
               <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{kindCopy}</Text>
             </View>
           </View>
@@ -459,14 +463,14 @@ export default function CaptureScreen() {
               void Haptics.selectionAsync();
             }}
             options={[
-              { value: 'expense', label: 'Expense', icon: <Feather name="arrow-up-right" size={16} color={transactionType === 'expense' ? theme.colors.onAccent : theme.status.expense} /> },
-              { value: 'income', label: 'Income', icon: <Feather name="arrow-down-left" size={16} color={transactionType === 'income' ? theme.colors.onAccent : theme.status.income} /> },
-              { value: 'transfer', label: 'Transfer', icon: <Feather name="repeat" size={16} color={transactionType === 'transfer' ? theme.colors.onAccent : theme.colors.accentStrong} /> },
+              { value: 'expense', label: 'Gasto', icon: <Feather name="arrow-up-right" size={16} color={transactionType === 'expense' ? theme.colors.onAccent : theme.status.expense} /> },
+              { value: 'income', label: 'Ingreso', icon: <Feather name="arrow-down-left" size={16} color={transactionType === 'income' ? theme.colors.onAccent : theme.status.income} /> },
+              { value: 'transfer', label: 'Transferir', icon: <Feather name="repeat" size={16} color={transactionType === 'transfer' ? theme.colors.onAccent : theme.colors.accentStrong} /> },
             ]}
           />
 
           <Input
-            label={transactionType === 'transfer' ? `From amount${selectedAccount?.currency ? ` (${selectedAccount.currency})` : ''}` : 'Amount'}
+            label={transactionType === 'transfer' ? `Monto de origen${selectedAccount?.currency ? ` (${selectedAccount.currency})` : ''}` : 'Monto'}
             value={amount}
             onChangeText={(value) => {
               setAmount(value);
@@ -480,39 +484,51 @@ export default function CaptureScreen() {
             style={[theme.typography.numeral, { minHeight: 64, fontSize: 28 }]}
           />
           <ListRow
-            title={selectedAccount?.name ?? `Select a ${currency} account`}
-            subtitle={transactionType === 'income' ? 'To account' : 'From account'}
-            description={selectedAccount ? `${selectedAccount.type} · ${selectedAccount.currency}` : 'Choose an existing account from your portfolio.'}
+            title={selectedAccount?.name ?? `Elegir cuenta en ${currency}`}
+            subtitle={transactionType === 'income' ? 'Cuenta destino' : 'Cuenta de origen'}
+            description={selectedAccount ? `${selectedAccount.type} · ${selectedAccount.currency}` : 'Opcional para ingresos y gastos; requerida para transferencias.'}
             leading={<AccountIcon color={selectedAccount?.color} />}
             trailing={<Feather name="chevron-right" size={18} color={theme.colors.textMuted} />}
             onPress={() => setAccountSelectorTarget('source')}
           />
           {transactionType === 'transfer' ? (
             <ListRow
-              title={selectedDestinationAccount?.name ?? 'Select a destination account'}
-              subtitle="To account"
-              description={selectedDestinationAccount ? `${selectedDestinationAccount.type} · ${selectedDestinationAccount.currency}` : 'UYU and USD accounts are available.'}
+              title={selectedDestinationAccount?.name ?? 'Elegir cuenta destino'}
+              subtitle="Cuenta destino"
+              description={selectedDestinationAccount ? `${selectedDestinationAccount.type} · ${selectedDestinationAccount.currency}` : 'Hay cuentas UYU y USD disponibles.'}
               leading={<AccountIcon color={selectedDestinationAccount?.color} />}
               trailing={<Feather name="chevron-right" size={18} color={theme.colors.textMuted} />}
               onPress={() => setAccountSelectorTarget('destination')}
             />
           ) : (
-            <>
+            <DisclosureSection title="Agregar contexto" subtitle="Categoría, comercio y notas son opcionales.">
               <ListRow
-                title={category || `Select an ${transactionType} category`}
-                subtitle="Category"
-                description="Categories are managed centrally by BrainIA."
+                title={category || `Elegir categoría de ${transactionType === 'income' ? 'ingreso' : 'gasto'}`}
+                subtitle="Categoría"
+                description="Podés crear una nueva sin salir de este movimiento."
                 leading={<Feather name="tag" size={20} color={theme.colors.accentStrong} />}
                 trailing={<Feather name="chevron-right" size={18} color={theme.colors.textMuted} />}
                 onPress={() => setCategorySelectorOpen(true)}
               />
               <Input
-                label={transactionType === 'income' ? 'From' : 'Merchant or payee'}
+                label={transactionType === 'income' ? 'De quién viene' : 'Comercio o destinatario'}
                 value={merchant}
                 onChangeText={setMerchant}
-                placeholder={transactionType === 'income' ? 'Salary, client, refund' : 'Groceries, rent, pharmacy'}
+                placeholder={transactionType === 'income' ? 'Sueldo, cliente, reembolso' : 'Supermercado, alquiler, farmacia'}
               />
-            </>
+              <Input label="Descripción" value={title} onChangeText={setTitle} placeholder="¿Para qué fue?" returnKeyType="next" />
+              <Input label="Nota" value={body} onChangeText={setBody} placeholder="Detalles opcionales" multiline />
+              <SegmentedControl
+                value={currency}
+                onChange={(nextCurrency) => {
+                  setCurrency(nextCurrency);
+                  setAccountId(null);
+                  setDestinationAccountId(null);
+                  void Haptics.selectionAsync();
+                }}
+                options={[{ value: 'UYU', label: 'UYU' }, { value: 'USD', label: 'USD' }]}
+              />
+            </DisclosureSection>
           )}
           {transactionType === 'transfer' ? (
             <View style={{ gap: theme.spacing.sm }}>
@@ -532,30 +548,6 @@ export default function CaptureScreen() {
               ) : null}
             </View>
           ) : null}
-          <Input label="Description" value={title} onChangeText={setTitle} placeholder="What was this for?" />
-          <Input label="Note" value={body} onChangeText={setBody} placeholder="Optional details" multiline />
-
-          {transactionType !== 'transfer' ? <DisclosureSection title="More details" subtitle="Add a currency only when it helps.">
-            <SegmentedControl
-              value={currency}
-              onChange={(nextCurrency) => {
-                setCurrency(nextCurrency);
-                setAccountId(null);
-                setDestinationAccountId(null);
-                void Haptics.selectionAsync();
-              }}
-              options={[
-                { value: 'UYU', label: 'UYU' },
-                { value: 'USD', label: 'USD' },
-              ]}
-            />
-          </DisclosureSection> : null}
-
-          <Button
-            label={busy ? 'Saving...' : `Save ${transactionType}`}
-            onPress={submit}
-            loading={busy}
-          />
         </CommandPanel>
         </Animated.View>
       ) : (
@@ -669,18 +661,29 @@ export default function CaptureScreen() {
         }} /> : null}
       </BottomSheet>
 
-      <BottomSheet visible={categorySelectorOpen} title={`${transactionType === 'income' ? 'Income' : 'Expense'} category`} onClose={() => setCategorySelectorOpen(false)}>
-        {categoryOptions.length ? (
-          <CategoryPicker
-            categories={categoryOptions}
-            selectedCategory={category}
-            onSelect={(value) => {
-              setCategory(value);
-              setCategorySelectorOpen(false);
-              void Haptics.selectionAsync();
-            }}
-          />
-        ) : <EmptyState title="Categories unavailable" description="Connect to BrainIA and try again to load the current category set." />}
+      <BottomSheet visible={categorySelectorOpen} title={`Categoría de ${transactionType === 'income' ? 'ingreso' : 'gasto'}`} onClose={() => setCategorySelectorOpen(false)}>
+        <CategoryPicker
+          categories={categoryOptions}
+          selectedCategory={category}
+          onSelect={(value) => {
+            setCategory(value);
+            setCategorySelectorOpen(false);
+            void Haptics.selectionAsync();
+          }}
+          onCreate={(value) => {
+            const categoryKind = transactionType === 'income' ? 'income' : 'expense';
+            setCategory(value);
+            setCategories((current) => ({
+              ...current,
+              [categoryKind]: Array.from(new Set([...current[categoryKind], value])),
+            }));
+            setCategorySelectorOpen(false);
+            void Haptics.selectionAsync();
+            void client.createFinancialCategory({ kind: categoryKind, name: value }).catch(() => {
+              setResult({ ok: false, message: 'La categoría quedó seleccionada para este movimiento, pero no se pudo guardar para próximos usos.' });
+            });
+          }}
+        />
       </BottomSheet>
     </AppScreen>
   );

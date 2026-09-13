@@ -83,6 +83,12 @@ export type SupportedCurrency = 'UYU' | 'USD';
  */
 export const UYU_PER_USD = 40;
 
+export const FIXED_FX_LABEL = `${UYU_PER_USD.toFixed(4)} UYU/USD · fixed app reference`;
+
+export function formatConvertedCurrency(value: number, currency: SupportedCurrency) {
+  return `≈ ${formatCurrency(value, currency)} converted at ${UYU_PER_USD.toFixed(4)} UYU/USD`;
+}
+
 export function convertCurrency(value: number, fromCurrency: string, toCurrency: SupportedCurrency) {
   const source = fromCurrency.trim().toUpperCase();
   if (source === toCurrency) return value;

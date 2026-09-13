@@ -5,28 +5,28 @@
     "semantic_hash": ""
   },
   "app/(tabs)/_layout.tsx": {
-    "mtime": 1784131348.9124775,
-    "ast_hash": "70627f08379b8d7e4c0987f76c570177",
+    "mtime": 1788395465.7866235,
+    "ast_hash": "4ca450308149b23fb49d2125fc8f4c68",
     "semantic_hash": ""
   },
   "app/(tabs)/capture.tsx": {
-    "mtime": 1785604823.7990108,
-    "ast_hash": "391c152d39bd469a03c7b9ea2f686cd1",
+    "mtime": 1788395546.0020308,
+    "ast_hash": "7291355ecaa2dbf0d4b85284d3b78be1",
     "semantic_hash": ""
   },
   "app/(tabs)/financials.tsx": {
-    "mtime": 1785559525.1797407,
-    "ast_hash": "687f80e62016fe405b4c81ec40190abd",
+    "mtime": 1787961725.7510633,
+    "ast_hash": "bcff6c37983d77aff8adf71c5071cc32",
     "semantic_hash": ""
   },
   "app/(tabs)/index.tsx": {
-    "mtime": 1785497078.5342026,
-    "ast_hash": "e2b85837284b0824f67bfed5eab66417",
+    "mtime": 1786283231.8201363,
+    "ast_hash": "2759d26d509afc038f22b3240e517fe6",
     "semantic_hash": ""
   },
   "app/(tabs)/review.tsx": {
-    "mtime": 1785599268.205558,
-    "ast_hash": "fc23dc8b17a16c67907c53eda6756b8a",
+    "mtime": 1788401816.489055,
+    "ast_hash": "974f24c0018f5cf08b295df33aa25e6c",
     "semantic_hash": ""
   },
   "app/(tabs)/search.tsx": {
@@ -45,13 +45,13 @@
     "semantic_hash": ""
   },
   "app/_layout.tsx": {
-    "mtime": 1784069080.9714077,
-    "ast_hash": "6a015845b64a901affee86e6c39d76ff",
+    "mtime": 1785844233.6861095,
+    "ast_hash": "1b510a155f0bf9a2660ea54d44a20396",
     "semantic_hash": ""
   },
   "app/digest/[id].tsx": {
-    "mtime": 1784068242.0057645,
-    "ast_hash": "d8a1722fd4ba3fdf4eeaef32289acfc8",
+    "mtime": 1785844549.153128,
+    "ast_hash": "b77695f5b4c258f76ebe6003bf5321b1",
     "semantic_hash": ""
   },
   "app/entity/[id].tsx": {
@@ -60,8 +60,8 @@
     "semantic_hash": ""
   },
   "app/insight/[id].tsx": {
-    "mtime": 1784068240.574373,
-    "ast_hash": "6c085fd560111f4a24e9614b2d5149aa",
+    "mtime": 1788401923.007069,
+    "ast_hash": "dc25830b9999ec478d8366bba749e077",
     "semantic_hash": ""
   },
   "app/modal.tsx": {
@@ -70,13 +70,13 @@
     "semantic_hash": ""
   },
   "app/settings.tsx": {
-    "mtime": 1785552465.7801743,
-    "ast_hash": "3e27d2c66695a837ce1c99df920eaef6",
+    "mtime": 1785844346.911416,
+    "ast_hash": "24538d33428edd319f3a560e6f300b0e",
     "semantic_hash": ""
   },
   "app/transaction/[id].tsx": {
-    "mtime": 1785612355.5961165,
-    "ast_hash": "3d8fe740850ac9df8fce9a362bae4e60",
+    "mtime": 1786037193.3477793,
+    "ast_hash": "b9601804982363c6caaf34855aa2389d",
     "semantic_hash": ""
   },
   "babel.config.js": {
@@ -85,18 +85,18 @@
     "semantic_hash": ""
   },
   "components/cards/index.tsx": {
-    "mtime": 1784152425.9962504,
-    "ast_hash": "0ea22f064fb3d49c850ee4ec193ba88e",
+    "mtime": 1786283145.5452127,
+    "ast_hash": "077b6f82cb77d6f5e00197b79182c8b5",
     "semantic_hash": ""
   },
   "components/charts/index.tsx": {
-    "mtime": 1785552397.6974444,
-    "ast_hash": "8c9ee973b334b78306d583f0f4cf9104",
+    "mtime": 1785844776.956485,
+    "ast_hash": "5c503f5a7ec941982d049675725f0cb1",
     "semantic_hash": ""
   },
   "components/finance/index.tsx": {
-    "mtime": 1785604634.0655985,
-    "ast_hash": "7d6819ee5cb25bb2fb165396751e2a2d",
+    "mtime": 1785844508.2715933,
+    "ast_hash": "c4001ef9a7a1d3e9c68f555e2e9ffb17",
     "semantic_hash": ""
   },
   "components/forms/index.tsx": {
@@ -105,23 +105,23 @@
     "semantic_hash": ""
   },
   "components/knowledge/index.tsx": {
-    "mtime": 1784136909.7391405,
-    "ast_hash": "8ec59d4186343adfa61bf609c8b8f1a1",
+    "mtime": 1785844697.7395532,
+    "ast_hash": "c071391e216a186e5d768a0131eb0a39",
     "semantic_hash": ""
   },
   "components/layout/index.tsx": {
-    "mtime": 1784071002.6022348,
-    "ast_hash": "5343a9904ab9ad5e9354382e4e69b56f",
+    "mtime": 1788395465.7851102,
+    "ast_hash": "b4e13e4aef664a0ca29f8170583a83e1",
     "semantic_hash": ""
   },
   "components/primitives/index.tsx": {
-    "mtime": 1785558134.1685596,
-    "ast_hash": "c269d9794037cfbdcdaf5a73627fa313",
+    "mtime": 1785844407.2942002,
+    "ast_hash": "4757a5ee229f66331e089268e0884808",
     "semantic_hash": ""
   },
   "components/review/index.tsx": {
-    "mtime": 1785504025.0524075,
-    "ast_hash": "9e3e17f63a9c2a4daa02a4c12170dde3",
+    "mtime": 1788397930.3847566,
+    "ast_hash": "1c91ec712960228c860b4a58051ba65a",
     "semantic_hash": ""
   },
   "components/states/index.tsx": {
@@ -135,13 +135,13 @@
     "semantic_hash": ""
   },
   "lib/api.ts": {
-    "mtime": 1785679506.981307,
-    "ast_hash": "3087e17cb419cf83efca2e5968976dbf",
+    "mtime": 1788403020.4292123,
+    "ast_hash": "9ba5e3046b069f9d80e31ba694fe3301",
     "semantic_hash": ""
   },
   "lib/app-state.tsx": {
-    "mtime": 1785446694.3068562,
-    "ast_hash": "69fd9473b618dea2125b9866fd10d63c",
+    "mtime": 1785844346.9024956,
+    "ast_hash": "dceee905a672e92b5c20b83b80a0f602",
     "semantic_hash": ""
   },
   "lib/cache.ts": {
@@ -155,13 +155,13 @@
     "semantic_hash": ""
   },
   "lib/domain.ts": {
-    "mtime": 1785679506.9797964,
-    "ast_hash": "b060ad4a1efc468cb69c42ed41a980bf",
+    "mtime": 1788401532.7306347,
+    "ast_hash": "ba99df7c19988d79199a077ce198a828",
     "semantic_hash": ""
   },
   "lib/format.ts": {
-    "mtime": 1784560369.0966833,
-    "ast_hash": "8aefc51d77014c37f3008f5bc72a24e6",
+    "mtime": 1785844346.912927,
+    "ast_hash": "d7790a4b47f51ba68810220291ea0edb",
     "semantic_hash": ""
   },
   "lib/grouping.ts": {
@@ -190,13 +190,13 @@
     "semantic_hash": ""
   },
   "lib/themes.ts": {
-    "mtime": 1784070871.8471978,
-    "ast_hash": "db8e0c2a796b9c1a83478e2486792fbb",
+    "mtime": 1785844233.6820889,
+    "ast_hash": "fa93631a84460483e169653314669283",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1785599268.206565,
-    "ast_hash": "8aff95b9b7a1f6edd4a76c5f68fa04ec",
+    "mtime": 1785844741.963351,
+    "ast_hash": "1517ce208671eaa81cda0200dae39e1e",
     "semantic_hash": ""
   },
   "scripts/share-apk.mjs": {
@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "scripts/ux-smoke.mjs": {
-    "mtime": 1785601297.4464195,
-    "ast_hash": "b26b6b98a421a41e0e1518b0ae7d60cc",
+    "mtime": 1785845588.7766619,
+    "ast_hash": "8f1b09e0be02bd9dee4173efbd825741",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "docs/ux-rebuild-implementation-audit.md": {
-    "mtime": 1784051541.0181339,
-    "ast_hash": "1b2632962eb0b2a6d84079878cc4140b",
+    "mtime": 1785844808.8651438,
+    "ast_hash": "7ae8371141643bbbc4e8e6fb0e17e480",
     "semantic_hash": ""
   },
   "docs/ux-rebuild-proposal.md": {
@@ -850,8 +850,8 @@
     "semantic_hash": ""
   },
   "app/event/[id].tsx": {
-    "mtime": 1785679528.3196387,
-    "ast_hash": "58fea06f20227dc62ae586138df4b54f",
+    "mtime": 1785844565.2839572,
+    "ast_hash": "e960beff412b1f4f479387e43f67b7c0",
     "semantic_hash": ""
   },
   "app/email/[id].tsx": {
@@ -860,8 +860,8 @@
     "semantic_hash": ""
   },
   "components/knowledge/GraphExplorer.tsx": {
-    "mtime": 1785678921.3684275,
-    "ast_hash": "43d7a347fc2f5b9a291048b3c3c69f4b",
+    "mtime": 1785844783.2843795,
+    "ast_hash": "6cc0e3219011b3c7d626114fbd1befda",
     "semantic_hash": ""
   },
   "components/knowledge/GraphForceCanvas.tsx": {
@@ -1854,731 +1854,6 @@
     "ast_hash": "de7f32d9a98a615971ea03fca56b2374",
     "semantic_hash": ""
   },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/cache-v2-a5320a182934be39b5c7.json": {
-    "mtime": 1784747655.8341022,
-    "ast_hash": "8f5a1b740ead892d08a0c2097f8f0ab4",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-7cd0093f878ac0c8fae7.json": {
-    "mtime": 1784747655.8507414,
-    "ast_hash": "8f253daa7a342485aff31e84e0e29ef5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-4a1bbf5b7d46aae5c4c0.json": {
-    "mtime": 1784747656.041165,
-    "ast_hash": "c3bfc8c69c1b17eacd6f23aa80465afb",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json": {
-    "mtime": 1784747655.98179,
-    "ast_hash": "9f40cd23d42f6f64a253672a38c7ce57",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-rngesturehandler_codegen_autolinked_build-Debug-490f491f1d002174d239.json": {
-    "mtime": 1784747656.028603,
-    "ast_hash": "3b2d66ded0f2cd51e3f8fe5f4693bb77",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-rnreanimated_autolinked_build-Debug-9d8f6b3122c39ec09c5b.json": {
-    "mtime": 1784747655.9842954,
-    "ast_hash": "413509dbd969e99b1b4681fa2571b5e5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-rnscreens_autolinked_build-Debug-acd870e86a7c0f8ea019.json": {
-    "mtime": 1784747656.0044467,
-    "ast_hash": "559957044ba6b5e141adff880745de59",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-rnsvg_autolinked_build-Debug-6c57e2d27be5f4bba725.json": {
-    "mtime": 1784747656.0144951,
-    "ast_hash": "d09f40064f2dc194f75d53ae59d4d73f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-rnworklets_autolinked_build-Debug-2f0b0fa6ffc9d7d7c6a5.json": {
-    "mtime": 1784747656.017012,
-    "ast_hash": "243291ed08f540885dac4da60d3ac877",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/directory-safeareacontext_autolinked_build-Debug-4cbd6cb28207b7747baa.json": {
-    "mtime": 1784747655.9948742,
-    "ast_hash": "e29a862ffb22e5b786fc24b41a23069b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/index-2026-07-22T19-14-16-0057.json": {
-    "mtime": 1784747656.0563507,
-    "ast_hash": "ad9b1cdd76e5d24dd964dc0b1a6f1fd4",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-appmodules-Debug-4765766ea60a85ad1cc6.json": {
-    "mtime": 1784747655.86678,
-    "ast_hash": "34b0d9bf5dab3b577eae0cfc15fae9b3",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-Debug-4c0ed16f2a229dc4d2fd.json": {
-    "mtime": 1784747655.8833783,
-    "ast_hash": "bc00d4f504c10efc57135774a9befac5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnreanimated-Debug-19ca5fdbd00018dc794e.json": {
-    "mtime": 1784747655.8974802,
-    "ast_hash": "232e0c4ad8b5a96841e97b4a159e1e7f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnscreens-Debug-77bfbfa1ac1e983484a4.json": {
-    "mtime": 1784747655.9151113,
-    "ast_hash": "d5694190f58658d25b1a73413f1569ea",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnsvg-Debug-e150bc52a002eabdb540.json": {
-    "mtime": 1784747655.9347515,
-    "ast_hash": "c1b254535f320102f2a541254852e81d",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnworklets-Debug-18afeba1eda23cabf9ed.json": {
-    "mtime": 1784747655.950839,
-    "ast_hash": "567ddd2109468ecaf9fc3f3f431f6a1a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_safeareacontext-Debug-a799185d06759534306f.json": {
-    "mtime": 1784747655.9666917,
-    "ast_hash": "3e86fd8b04345a16fa7f195eb781e42c",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp": {
-    "mtime": 1784747654.032069,
-    "ast_hash": "493a7cc5e29a3cf2b0d95a50ee58d987",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c": {
-    "mtime": 1784747653.5281844,
-    "ast_hash": "245b894a1d9b5e1b569506b0cfe5d36b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp": {
-    "mtime": 1784747655.054706,
-    "ast_hash": "bbf8a05ecab16853fd9ad99b367175f8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp": {
-    "mtime": 1784747655.0572195,
-    "ast_hash": "6155bf9e179fd0f9c2529e16119d24d8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/android_gradle_build.json": {
-    "mtime": 1784747656.0900578,
-    "ast_hash": "90eb2be7d5c7ae1c4c058ea8b8a01003",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/android_gradle_build_mini.json": {
-    "mtime": 1784747656.136954,
-    "ast_hash": "2924002a7755dd3553e7d63b3f4fcbf8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/compile_commands.json": {
-    "mtime": 1784747655.7802773,
-    "ast_hash": "c581d7d2845ed5f96c964ded949183bd",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/prefab_config.json": {
-    "mtime": 1785688157.914,
-    "ast_hash": "a7e052ab5b44c3d088a5d3b0085b6997",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/cache-v2-3d3c2ed9b159a2651fd2.json": {
-    "mtime": 1784747724.1100535,
-    "ast_hash": "2ace687cb226758f13135f549ea88b16",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/cmakeFiles-v1-83e284efaae9cdf43810.json": {
-    "mtime": 1784747724.126114,
-    "ast_hash": "3db39460a1b92627bcd156c18bed1623",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/codemodel-v2-0b9ca8a21bdca479bb92.json": {
-    "mtime": 1784747724.2639403,
-    "ast_hash": "a4dacf6c435dd60295b386be9266ac30",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json": {
-    "mtime": 1784747724.2483375,
-    "ast_hash": "9f40cd23d42f6f64a253672a38c7ce57",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-rngesturehandler_codegen_autolinked_build-Debug-490f491f1d002174d239.json": {
-    "mtime": 1784747724.2619402,
-    "ast_hash": "3b2d66ded0f2cd51e3f8fe5f4693bb77",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-rnreanimated_autolinked_build-Debug-9d8f6b3122c39ec09c5b.json": {
-    "mtime": 1784747724.2508543,
-    "ast_hash": "413509dbd969e99b1b4681fa2571b5e5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-rnscreens_autolinked_build-Debug-acd870e86a7c0f8ea019.json": {
-    "mtime": 1784747724.254385,
-    "ast_hash": "559957044ba6b5e141adff880745de59",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-rnsvg_autolinked_build-Debug-6c57e2d27be5f4bba725.json": {
-    "mtime": 1784747724.2574062,
-    "ast_hash": "d09f40064f2dc194f75d53ae59d4d73f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-rnworklets_autolinked_build-Debug-2f0b0fa6ffc9d7d7c6a5.json": {
-    "mtime": 1784747724.2594266,
-    "ast_hash": "243291ed08f540885dac4da60d3ac877",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/directory-safeareacontext_autolinked_build-Debug-4cbd6cb28207b7747baa.json": {
-    "mtime": 1784747724.252872,
-    "ast_hash": "e29a862ffb22e5b786fc24b41a23069b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/index-2026-07-22T19-15-24-0279.json": {
-    "mtime": 1784747724.2786517,
-    "ast_hash": "1d587896fc8460ae55a4621b2c88a732",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-appmodules-Debug-bddac0c74547a182f30b.json": {
-    "mtime": 1784747724.1401892,
-    "ast_hash": "17116bbe16e98f38ee86c73d7e3b076e",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-Debug-8d154d43d49a4417b75f.json": {
-    "mtime": 1784747724.1542492,
-    "ast_hash": "5ed37da7fb74b84a498025a53ee187e3",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnreanimated-Debug-dfe2b3a7df97fd622467.json": {
-    "mtime": 1784747724.1678913,
-    "ast_hash": "bc76d18ffbeb4ceb813c9d09ac63a6f5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnscreens-Debug-72c4ebf65101be825335.json": {
-    "mtime": 1784747724.1834254,
-    "ast_hash": "12065e816145fe195b40de3f2cc0e6cf",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnsvg-Debug-f18eef5e6fcef42edf86.json": {
-    "mtime": 1784747724.2010188,
-    "ast_hash": "f493fea9f613823b29dc9e16bab19122",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnworklets-Debug-4f5251c806be6af4efee.json": {
-    "mtime": 1784747724.2166185,
-    "ast_hash": "07f5d50bf3f028f0df336274ece74212",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_safeareacontext-Debug-fd0db1ee38b538720166.json": {
-    "mtime": 1784747724.2342367,
-    "ast_hash": "82026cc2b09227216bdaebfe88baaaed",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp": {
-    "mtime": 1784747722.5010822,
-    "ast_hash": "493a7cc5e29a3cf2b0d95a50ee58d987",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c": {
-    "mtime": 1784747722.2303162,
-    "ast_hash": "245b894a1d9b5e1b569506b0cfe5d36b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp": {
-    "mtime": 1784747723.5105326,
-    "ast_hash": "bbf8a05ecab16853fd9ad99b367175f8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp": {
-    "mtime": 1784747723.513036,
-    "ast_hash": "6155bf9e179fd0f9c2529e16119d24d8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/android_gradle_build.json": {
-    "mtime": 1784747724.3103635,
-    "ast_hash": "3e9b0bab3038ac13656820cff8a3d34e",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/android_gradle_build_mini.json": {
-    "mtime": 1784747724.3666813,
-    "ast_hash": "69a4e99745495d7c4f24a5e169138805",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/compile_commands.json": {
-    "mtime": 1784747724.0668163,
-    "ast_hash": "cd4b1af96b7c71e7851cc12a9daf7cc4",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/prefab_config.json": {
-    "mtime": 1785688157.914,
-    "ast_hash": "a7e052ab5b44c3d088a5d3b0085b6997",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/cache-v2-e110d79090fc3efaacea.json": {
-    "mtime": 1784747786.6022966,
-    "ast_hash": "e42e8fc981bacf2242622c1e92e88c86",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/cmakeFiles-v1-9d90aac0017805b2e1fe.json": {
-    "mtime": 1784747786.616417,
-    "ast_hash": "0c1d962de06521e02de1d80f8cbeb49b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/codemodel-v2-c41001d4702a843508f4.json": {
-    "mtime": 1784747786.72541,
-    "ast_hash": "40d990153b072b2c30d0169c8fdddcb5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json": {
-    "mtime": 1784747786.7093012,
-    "ast_hash": "9f40cd23d42f6f64a253672a38c7ce57",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-rngesturehandler_codegen_autolinked_build-Debug-490f491f1d002174d239.json": {
-    "mtime": 1784747786.7228913,
-    "ast_hash": "3b2d66ded0f2cd51e3f8fe5f4693bb77",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-rnreanimated_autolinked_build-Debug-9d8f6b3122c39ec09c5b.json": {
-    "mtime": 1784747786.7118206,
-    "ast_hash": "413509dbd969e99b1b4681fa2571b5e5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-rnscreens_autolinked_build-Debug-acd870e86a7c0f8ea019.json": {
-    "mtime": 1784747786.7163563,
-    "ast_hash": "559957044ba6b5e141adff880745de59",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-rnsvg_autolinked_build-Debug-6c57e2d27be5f4bba725.json": {
-    "mtime": 1784747786.7183695,
-    "ast_hash": "d09f40064f2dc194f75d53ae59d4d73f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-rnworklets_autolinked_build-Debug-2f0b0fa6ffc9d7d7c6a5.json": {
-    "mtime": 1784747786.7203805,
-    "ast_hash": "243291ed08f540885dac4da60d3ac877",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/directory-safeareacontext_autolinked_build-Debug-4cbd6cb28207b7747baa.json": {
-    "mtime": 1784747786.7143338,
-    "ast_hash": "e29a862ffb22e5b786fc24b41a23069b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/index-2026-07-22T19-16-26-0739.json": {
-    "mtime": 1784747786.739482,
-    "ast_hash": "56c0306c2c66d1394dad474c9ab6395a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-appmodules-Debug-89757587e04e54d74718.json": {
-    "mtime": 1784747786.6299827,
-    "ast_hash": "c731b95d8452ccf78c82ecf6fe269775",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-Debug-6502d7689074486a5f2a.json": {
-    "mtime": 1784747786.645568,
-    "ast_hash": "03f3f606feca8b19bf5e92b837718609",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_rnreanimated-Debug-19ca5fdbd00018dc794e.json": {
-    "mtime": 1784747786.6611414,
-    "ast_hash": "232e0c4ad8b5a96841e97b4a159e1e7f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_rnscreens-Debug-d8301840621cebeece4c.json": {
-    "mtime": 1784747786.664157,
-    "ast_hash": "6fcfbd3a573312b8d4c1444f8f8a3fcd",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_rnsvg-Debug-349f88401ba5f1c0efa9.json": {
-    "mtime": 1784747786.6791854,
-    "ast_hash": "cc83ba3d4cb5cf34a04f73675c971d15",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_rnworklets-Debug-18afeba1eda23cabf9ed.json": {
-    "mtime": 1784747786.6932225,
-    "ast_hash": "567ddd2109468ecaf9fc3f3f431f6a1a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/.cmake/api/v1/reply/target-react_codegen_safeareacontext-Debug-d4cda1ab40ec590545bf.json": {
-    "mtime": 1784747786.6962469,
-    "ast_hash": "2d3f93efb92b2d18356a2ad5f55e07ba",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp": {
-    "mtime": 1784747785.191899,
-    "ast_hash": "493a7cc5e29a3cf2b0d95a50ee58d987",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c": {
-    "mtime": 1784747784.937008,
-    "ast_hash": "245b894a1d9b5e1b569506b0cfe5d36b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp": {
-    "mtime": 1784747786.0248852,
-    "ast_hash": "bbf8a05ecab16853fd9ad99b367175f8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp": {
-    "mtime": 1784747786.0268912,
-    "ast_hash": "6155bf9e179fd0f9c2529e16119d24d8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/android_gradle_build.json": {
-    "mtime": 1784747786.7717,
-    "ast_hash": "ca92499d1a54383697d900321ded4bf1",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/android_gradle_build_mini.json": {
-    "mtime": 1784747786.8177814,
-    "ast_hash": "2d74c7b750f8fb5966e2ba3ab3fa26ed",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/compile_commands.json": {
-    "mtime": 1784747786.5601017,
-    "ast_hash": "63665b91753c37d745f5b08678f94119",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/prefab_config.json": {
-    "mtime": 1785688157.915,
-    "ast_hash": "a7e052ab5b44c3d088a5d3b0085b6997",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/cache-v2-781e4a9b0185d8a85f00.json": {
-    "mtime": 1784747846.4895828,
-    "ast_hash": "1e379eebff2cae8e3e845459739d27bc",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/cmakeFiles-v1-6536efeb2de9f446c00f.json": {
-    "mtime": 1784747846.5051632,
-    "ast_hash": "6c7aff124e39454d68fb61069f8641f5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/codemodel-v2-2ce9d683696e60b2861a.json": {
-    "mtime": 1784747846.6103604,
-    "ast_hash": "a07cf425dad07457320de06f7dd33e8b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json": {
-    "mtime": 1784747846.5957923,
-    "ast_hash": "9f40cd23d42f6f64a253672a38c7ce57",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-rngesturehandler_codegen_autolinked_build-Debug-490f491f1d002174d239.json": {
-    "mtime": 1784747846.6088572,
-    "ast_hash": "3b2d66ded0f2cd51e3f8fe5f4693bb77",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-rnreanimated_autolinked_build-Debug-9d8f6b3122c39ec09c5b.json": {
-    "mtime": 1784747846.5978062,
-    "ast_hash": "413509dbd969e99b1b4681fa2571b5e5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-rnscreens_autolinked_build-Debug-acd870e86a7c0f8ea019.json": {
-    "mtime": 1784747846.6018195,
-    "ast_hash": "559957044ba6b5e141adff880745de59",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-rnsvg_autolinked_build-Debug-6c57e2d27be5f4bba725.json": {
-    "mtime": 1784747846.6043332,
-    "ast_hash": "d09f40064f2dc194f75d53ae59d4d73f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-rnworklets_autolinked_build-Debug-2f0b0fa6ffc9d7d7c6a5.json": {
-    "mtime": 1784747846.6068494,
-    "ast_hash": "243291ed08f540885dac4da60d3ac877",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/directory-safeareacontext_autolinked_build-Debug-4cbd6cb28207b7747baa.json": {
-    "mtime": 1784747846.6003072,
-    "ast_hash": "e29a862ffb22e5b786fc24b41a23069b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/index-2026-07-22T19-17-26-0625.json": {
-    "mtime": 1784747846.624962,
-    "ast_hash": "2801a3fee03e86692b3a6da6f3c93662",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-appmodules-Debug-b637eb9cef9e131e00ae.json": {
-    "mtime": 1784747846.5192175,
-    "ast_hash": "c39304d0ec5954adff7ee04a62cf8047",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-Debug-f7f0da915436962dcff0.json": {
-    "mtime": 1784747846.5338435,
-    "ast_hash": "b2494acd8dc1fd24f3d1abc1932fe84e",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_rnreanimated-Debug-19ca5fdbd00018dc794e.json": {
-    "mtime": 1784747846.5473979,
-    "ast_hash": "232e0c4ad8b5a96841e97b4a159e1e7f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_rnscreens-Debug-29f665f81924e289384e.json": {
-    "mtime": 1784747846.5504234,
-    "ast_hash": "0df7963c5255e82eab046a5754925515",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_rnsvg-Debug-ce6bb454dbd1ac3a4e77.json": {
-    "mtime": 1784747846.5645375,
-    "ast_hash": "d76f7cc5ad08f3852ee1e1795b6ad491",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_rnworklets-Debug-18afeba1eda23cabf9ed.json": {
-    "mtime": 1784747846.5791569,
-    "ast_hash": "567ddd2109468ecaf9fc3f3f431f6a1a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/.cmake/api/v1/reply/target-react_codegen_safeareacontext-Debug-520e1e5c453ed7191c64.json": {
-    "mtime": 1784747846.583187,
-    "ast_hash": "f2111fa5588d00fcddb1409c3a7f8afe",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp": {
-    "mtime": 1784747845.0749686,
-    "ast_hash": "493a7cc5e29a3cf2b0d95a50ee58d987",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c": {
-    "mtime": 1784747844.8379445,
-    "ast_hash": "245b894a1d9b5e1b569506b0cfe5d36b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp": {
-    "mtime": 1784747845.9069457,
-    "ast_hash": "bbf8a05ecab16853fd9ad99b367175f8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp": {
-    "mtime": 1784747845.9089568,
-    "ast_hash": "6155bf9e179fd0f9c2529e16119d24d8",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/android_gradle_build.json": {
-    "mtime": 1784747846.6535547,
-    "ast_hash": "5d974f12e860198981d977d3207bea88",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/android_gradle_build_mini.json": {
-    "mtime": 1784747846.6960971,
-    "ast_hash": "9c33b857b588814fb680b2f373bed35a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/compile_commands.json": {
-    "mtime": 1784747846.4430273,
-    "ast_hash": "9c34a9d4260ab2c7e80bdefe7deaf7c5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/prefab_config.json": {
-    "mtime": 1785688157.915,
-    "ast_hash": "a7e052ab5b44c3d088a5d3b0085b6997",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/tools/debug/arm64-v8a/compile_commands.json": {
-    "mtime": 1784747655.7802773,
-    "ast_hash": "c581d7d2845ed5f96c964ded949183bd",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/tools/debug/armeabi-v7a/compile_commands.json": {
-    "mtime": 1784747724.0668163,
-    "ast_hash": "cd4b1af96b7c71e7851cc12a9daf7cc4",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/tools/debug/x86/compile_commands.json": {
-    "mtime": 1784747786.5601017,
-    "ast_hash": "63665b91753c37d745f5b08678f94119",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/tools/debug/x86_64/compile_commands.json": {
-    "mtime": 1784747846.4430273,
-    "ast_hash": "9c34a9d4260ab2c7e80bdefe7deaf7c5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeCache.txt": {
-    "mtime": 1784747655.6037889,
-    "ast_hash": "bf601cc15901f8df26070bc2c2e6cd10",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747655.776247,
-    "ast_hash": "c9fb5966ad28b22602c585d199062167",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeCache.txt": {
-    "mtime": 1784747655.0829153,
-    "ast_hash": "b9e1b9bb66f72f1d30083775bb0bd52f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747655.0934305,
-    "ast_hash": "124cad8d655e9684cd00d9b670211369",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/src/CMakeLists.txt": {
-    "mtime": 1784747655.0521843,
-    "ast_hash": "4da62ef32315d0f698473abc5d91ca05",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/additional_project_files.txt": {
-    "mtime": 1784747656.0874927,
-    "ast_hash": "8867134431e510a3e81e32152fbe207c",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/build_file_index.txt": {
-    "mtime": 1784747656.13947,
-    "ast_hash": "68fc06deaf19f144e7203aeb54a01b25",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/metadata_generation_command.txt": {
-    "mtime": 1784747656.1379561,
-    "ast_hash": "7827109d7625aeeb73f476f0b06de366",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/arm64-v8a/symbol_folder_index.txt": {
-    "mtime": 1784747656.13947,
-    "ast_hash": "4736c8c8073976a546887bf82f2c52b4",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeCache.txt": {
-    "mtime": 1784747723.9242916,
-    "ast_hash": "a2963362afc0a514260c976f7e678459",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747724.0627885,
-    "ast_hash": "aa0a30b70c242d80afe61875ed8598c1",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeCache.txt": {
-    "mtime": 1784747723.5371778,
-    "ast_hash": "bf70a0e2d29fb83b13f228262230785d",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747723.5467122,
-    "ast_hash": "57b76f39e312142463ac84e5aaf7c646",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/CMakeFiles/_CMakeLTOTest-CXX/src/CMakeLists.txt": {
-    "mtime": 1784747723.5080247,
-    "ast_hash": "4da62ef32315d0f698473abc5d91ca05",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/additional_project_files.txt": {
-    "mtime": 1784747724.3078468,
-    "ast_hash": "f7648aa76a27506903761a61181088ca",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/build_file_index.txt": {
-    "mtime": 1784747724.3681874,
-    "ast_hash": "68fc06deaf19f144e7203aeb54a01b25",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/metadata_generation_command.txt": {
-    "mtime": 1784747724.3671887,
-    "ast_hash": "1e5943ea5e5d01cbd142528946b7a383",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/armeabi-v7a/symbol_folder_index.txt": {
-    "mtime": 1784747724.3681874,
-    "ast_hash": "8d701beb0ba5fc3f17be9dad8781ab89",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/hash_key.txt": {
-    "mtime": 1784747656.1722572,
-    "ast_hash": "811cfb10e3de3c54281d340966ca3e63",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeCache.txt": {
-    "mtime": 1784747786.4104857,
-    "ast_hash": "8e5aaa612669873c6e819c05d91f78a3",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747786.556096,
-    "ast_hash": "adf97a01506e47c1fa662b66fca10cd3",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeCache.txt": {
-    "mtime": 1784747786.0511477,
-    "ast_hash": "2004da6a38180f85f824db5617fe5cb0",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747786.059705,
-    "ast_hash": "00d579e279fe2de8681b40cf2f2c67f7",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/CMakeFiles/_CMakeLTOTest-CXX/src/CMakeLists.txt": {
-    "mtime": 1784747786.0223677,
-    "ast_hash": "4da62ef32315d0f698473abc5d91ca05",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/additional_project_files.txt": {
-    "mtime": 1784747786.7681925,
-    "ast_hash": "762f2f3b72ad15b178a1b662675f6255",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/build_file_index.txt": {
-    "mtime": 1784747786.8197875,
-    "ast_hash": "68fc06deaf19f144e7203aeb54a01b25",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/metadata_generation_command.txt": {
-    "mtime": 1784747786.81828,
-    "ast_hash": "a741c0bb42f0e5fe734c51f008a39eb7",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86/symbol_folder_index.txt": {
-    "mtime": 1784747786.8192854,
-    "ast_hash": "cae79bb3d262e17c8da12e008b0fabb3",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeCache.txt": {
-    "mtime": 1784747846.2986698,
-    "ast_hash": "cdaf0b15bcac082e62daaf5bb52e1489",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747846.4395072,
-    "ast_hash": "99db505a900439d7fa378365a3c7254e",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeCache.txt": {
-    "mtime": 1784747845.9330719,
-    "ast_hash": "7c000a40b25a6848aaf67731d0d429c2",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/TargetDirectories.txt": {
-    "mtime": 1784747845.9423854,
-    "ast_hash": "ecf5d1366b194b002f8e074a94568c88",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/CMakeFiles/_CMakeLTOTest-CXX/src/CMakeLists.txt": {
-    "mtime": 1784747845.9044235,
-    "ast_hash": "4da62ef32315d0f698473abc5d91ca05",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/additional_project_files.txt": {
-    "mtime": 1784747846.6515386,
-    "ast_hash": "df4bfcab513f0fdde2f59c9b2dbc5dfc",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/build_file_index.txt": {
-    "mtime": 1784747846.6986125,
-    "ast_hash": "68fc06deaf19f144e7203aeb54a01b25",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/metadata_generation_command.txt": {
-    "mtime": 1784747846.6971009,
-    "ast_hash": "46062f940bf845cdd6d137b4a78b19a0",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/Debug/1qs5y6fx/x86_64/symbol_folder_index.txt": {
-    "mtime": 1784747846.6976073,
-    "ast_hash": "db0d13541f8a5991b2658bfa9703b36b",
-    "semantic_hash": ""
-  },
   "components/finance/AccountIcon.tsx": {
     "mtime": 1785496979.0313747,
     "ast_hash": "a85f73340769409df71bb543ee067fe9",
@@ -2590,13 +1865,13 @@
     "semantic_hash": ""
   },
   "android/app/src/main/java/com/brainia/mobile/notification/NotificationBridgeDiagnostics.kt": {
-    "mtime": 1785546442.724119,
-    "ast_hash": "96d73991a475c6c0e6d8c7c01190091b",
+    "mtime": 1785972266.4554236,
+    "ast_hash": "e964207698c0e926475c37208f79e135",
     "semantic_hash": ""
   },
   "scripts/agent-harness.mjs": {
-    "mtime": 1785612387.8765683,
-    "ast_hash": "c34a08a77586158cde45acfaf434a476",
+    "mtime": 1785721059.0297322,
+    "ast_hash": "9317679b1580d407e03ac8688bda19be",
     "semantic_hash": ""
   },
   "scripts/review-agent-smoke.mjs": {
@@ -2610,8 +1885,8 @@
     "semantic_hash": ""
   },
   "scripts/capture-agent-smoke.mjs": {
-    "mtime": 1785605286.0319655,
-    "ast_hash": "b99b2b0f1efb80edd8917c41df9ea671",
+    "mtime": 1785702614.1813576,
+    "ast_hash": "40c0d9eeac7e2c9452ab0f26334608d2",
     "semantic_hash": ""
   },
   "scripts/transaction-edit-agent-smoke.mjs": {
@@ -2619,184 +1894,19 @@
     "ast_hash": "b940f0d806c71a2915118ce52231231b",
     "semantic_hash": ""
   },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/cache-v2-e3074e51ef208f894e0a.json": {
-    "mtime": 1785688247.3197448,
-    "ast_hash": "ff1bfc727bf717bedd8f4a0c484f0985",
+  "components/trust/index.tsx": {
+    "mtime": 1785844565.282447,
+    "ast_hash": "886d0fe984198a9ad2896424372c8f3d",
     "semantic_hash": ""
   },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-e3513d8f57cb65781b6b.json": {
-    "mtime": 1785688247.3333545,
-    "ast_hash": "7552eb846f9fb7c1bd51568e984803c7",
+  "lib/financial-summary.ts": {
+    "mtime": 1786124190.5627954,
+    "ast_hash": "da5fea43d18e92d18b0db3a73f98f131",
     "semantic_hash": ""
   },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-3cc9ac1df44822217faa.json": {
-    "mtime": 1785688247.5144758,
-    "ast_hash": "67a41b9b114b9f2c60823c55d0ca24f9",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/index-2026-08-02T16-30-47-0527.json": {
-    "mtime": 1785688247.5270002,
-    "ast_hash": "4d1ba85ffa913851224b3afede5b4fee",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/target-appmodules-RelWithDebInfo-fea74dccd385009b2309.json": {
-    "mtime": 1785688247.352398,
-    "ast_hash": "f8cfb33e40f6493790fdfa5d555c8709",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-RelWithDebInfo-8af06fa3738488378c2c.json": {
-    "mtime": 1785688247.3670235,
-    "ast_hash": "0f0b9bc836c5a2b3e333d625c4e5ad0b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnscreens-RelWithDebInfo-a3e7d8396fb49b8f5ad2.json": {
-    "mtime": 1785688247.395262,
-    "ast_hash": "88d7d7aa82d8965952fee697dec49e5d",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_rnsvg-RelWithDebInfo-a740f57022bd52c8ef83.json": {
-    "mtime": 1785688247.4083388,
-    "ast_hash": "95fe06cb60b5302ea451db60934babab",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/arm64-v8a/.cmake/api/v1/reply/target-react_codegen_safeareacontext-RelWithDebInfo-076cb206bce9f73031f9.json": {
-    "mtime": 1785688247.4334478,
-    "ast_hash": "311a82f130df315045210a4f24d83352",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/cache-v2-978f7d3ea4566676f90e.json": {
-    "mtime": 1785688309.1179945,
-    "ast_hash": "0a5838dae7bad28136cf3f70de81e27b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/cmakeFiles-v1-2276db69ee11fc17eaff.json": {
-    "mtime": 1785688309.132548,
-    "ast_hash": "78a064b04bbfa92f34d3c66b65546689",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/codemodel-v2-5d42bb0201220b5f51b3.json": {
-    "mtime": 1785688309.2709184,
-    "ast_hash": "182f93e084ca4e4fc541e8f716469df2",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/index-2026-08-02T16-31-49-0282.json": {
-    "mtime": 1785688309.2824905,
-    "ast_hash": "b03e3d97c04876fd62d88e6bb244a211",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/target-appmodules-RelWithDebInfo-aa17a9df806efd3afef3.json": {
-    "mtime": 1785688309.1471307,
-    "ast_hash": "40f69b84a8b8a14192327e8652e74962",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-RelWithDebInfo-590f050ed8a0f69b8512.json": {
-    "mtime": 1785688309.1606822,
-    "ast_hash": "484a6698df8e31096979cce9318a60f5",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnscreens-RelWithDebInfo-0b24b5ba18971b700178.json": {
-    "mtime": 1785688309.1873229,
-    "ast_hash": "11c5a62e0b63178f934a4423348bda46",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_rnsvg-RelWithDebInfo-96f3deb71338d3e7937e.json": {
-    "mtime": 1785688309.1999002,
-    "ast_hash": "73ede913150edbb63fb81befb575d9ba",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/armeabi-v7a/.cmake/api/v1/reply/target-react_codegen_safeareacontext-RelWithDebInfo-86f69a67456920bab27d.json": {
-    "mtime": 1785688309.2251787,
-    "ast_hash": "419f8dc356e84691b6525cdf3eb6382f",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/cache-v2-bf2a18d5739240622e7a.json": {
-    "mtime": 1785688361.773312,
-    "ast_hash": "72902f8e86ade7713e3bc64735a7e6cb",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/cmakeFiles-v1-5d24f0b5b65bd669ce0d.json": {
-    "mtime": 1785688361.7868948,
-    "ast_hash": "88c77596180b8590ef061cfbfd1a0d05",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/codemodel-v2-6e40110a412d84fadb29.json": {
-    "mtime": 1785688361.8991635,
-    "ast_hash": "2c473cc0e0f6132be03d63933efd347b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/index-2026-08-02T16-32-41-0915.json": {
-    "mtime": 1785688361.9152076,
-    "ast_hash": "40e81eec40418f560b3d2adafe7d00ed",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/target-appmodules-RelWithDebInfo-2d633920b95d32ab21a3.json": {
-    "mtime": 1785688361.8006945,
-    "ast_hash": "bfa97dbd22243df05d2b3f9f87baa34b",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-RelWithDebInfo-99772ec3a1874a495732.json": {
-    "mtime": 1785688361.813552,
-    "ast_hash": "93f0b737dd86db94b28ce70227efb194",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/target-react_codegen_rnscreens-RelWithDebInfo-bee167331d315be26dd3.json": {
-    "mtime": 1785688361.829547,
-    "ast_hash": "916b16d6b37254f70d9b0e81e3124e01",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/target-react_codegen_rnsvg-RelWithDebInfo-d5705a6afc2e9d458c44.json": {
-    "mtime": 1785688361.8420346,
-    "ast_hash": "25ca042616b5dc3310db8f2cfeb7d073",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86/.cmake/api/v1/reply/target-react_codegen_safeareacontext-RelWithDebInfo-8bc155ec55b62b79730e.json": {
-    "mtime": 1785688361.8680212,
-    "ast_hash": "a06734cae30f44d60354cfe9b115c1c1",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/cache-v2-5e36bbc0973a0ae5cec5.json": {
-    "mtime": 1785688411.8813543,
-    "ast_hash": "cb0d1cdf8b0a40c30d42726364d10dae",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/cmakeFiles-v1-8e238d289cd65f997586.json": {
-    "mtime": 1785688411.8954911,
-    "ast_hash": "08d7e1233646d041a22731b0d3f4283a",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/codemodel-v2-5f275d78e16e7ac583a2.json": {
-    "mtime": 1785688411.9952257,
-    "ast_hash": "43e9cea864a6c4f08b499d5ac09b4069",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/index-2026-08-02T16-33-32-0009.json": {
-    "mtime": 1785688412.0087848,
-    "ast_hash": "6e63b6cccbb3c26da252e8884e012992",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/target-appmodules-RelWithDebInfo-effb02b15fc24a1f362d.json": {
-    "mtime": 1785688411.9095771,
-    "ast_hash": "49ea8fd71ccc7b3b878a56298e5a20df",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/target-react_codegen_rngesturehandler_codegen-RelWithDebInfo-ada702a63446df13b98b.json": {
-    "mtime": 1785688411.9216597,
-    "ast_hash": "4e68ea2ce659db2d15d6aa9d18c29ef9",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/target-react_codegen_rnscreens-RelWithDebInfo-75cfb0077aac46358b8e.json": {
-    "mtime": 1785688411.9382637,
-    "ast_hash": "6a2f64c4612cf4d9b0b65f0011292e10",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/target-react_codegen_rnsvg-RelWithDebInfo-5559c050803e59b471be.json": {
-    "mtime": 1785688411.9508398,
-    "ast_hash": "8c09a21f221d16cbb630d735bdb787cd",
-    "semantic_hash": ""
-  },
-  "android/app/.cxx/RelWithDebInfo/424z3333/x86_64/.cmake/api/v1/reply/target-react_codegen_safeareacontext-RelWithDebInfo-d715362734d9a9ce352d.json": {
-    "mtime": 1785688411.966973,
-    "ast_hash": "e491f289e1ff3443455d7ff61cf0bd0a",
+  "scripts/account-delete-agent-smoke.mjs": {
+    "mtime": 1785721112.9161823,
+    "ast_hash": "bf3fd8493df9e28feb91cc6c734b65b8",
     "semantic_hash": ""
   }
 }

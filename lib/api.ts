@@ -3,6 +3,7 @@ import {
   BriefCard,
   DigestSummary,
   EntityDetail,
+  EntityRole, EntitySemanticProfile, EntityTag,
   ExploreGraph,
   EntitySuggestion,
   FinancialAccount,
@@ -27,7 +28,7 @@ type ClientConfig = {
 };
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -229,6 +230,7 @@ const demoInsights: InsightSummary[] = [
     title: 'Food delivery is the biggest flexible spend',
     summary: 'Food delivery is outpacing other discretionary categories this period.',
     takeaways: ['Review recurring delivery merchants', 'Compare with groceries before next digest'],
+    confidence: 0.88,
     timestamp: 'Today',
     relatedCount: 4,
   },
@@ -237,6 +239,8 @@ const demoInsights: InsightSummary[] = [
     title: 'Spotify appears as a recurring charge',
     summary: 'Spotify has repeated enough to treat it as a recurring subscription.',
     takeaways: ['Keep it under Subscriptions', 'Search merchant history for earlier charges'],
+    confidence: 0.79,
+    supportingReferences: [{ id: 'entity_spotify', label: 'Spotify', description: 'merchant', route: '/entity/entity_spotify', kind: 'entity' }],
     timestamp: 'This week',
     relatedCount: 2,
   },
@@ -343,6 +347,25 @@ const demoReviews: ReviewItem[] = [
     normalizedValue: 'Food delivery',
     status: 'pending',
   },
+];
+
+// Keep the local Review preview representative of the real curation flow. These
+// labels mirror the governed taxonomy returned by the API, including the business
+// types that matter when an entity is a merchant rather than an expense category.
+const demoEntityTags: EntityTag[] = [
+  { key: 'entrepreneurship', label: 'Emprendimiento', description: 'Negocios y actividades comerciales.', parentKey: null, level: 0, kind: 'family' },
+  { key: 'entrepreneurship.businesses', label: 'Negocios', description: 'Empresas, comercios y locales.', parentKey: 'entrepreneurship', level: 1, kind: 'domain' },
+  { key: 'entrepreneurship.businesses.food', label: 'Local de comida', description: 'Restaurantes, cafeterías y comida preparada.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'entrepreneurship.businesses.hardware', label: 'Ferretería', description: 'Herramientas, materiales y mejoras del hogar.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'entrepreneurship.businesses.electronics', label: 'Tienda de electrónica', description: 'Tecnología, dispositivos y accesorios.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'entrepreneurship.businesses.pharmacy', label: 'Farmacia', description: 'Medicamentos, salud y cuidado personal.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'entrepreneurship.businesses.fuel', label: 'Gasolinera', description: 'Combustible y servicios para vehículos.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'entrepreneurship.businesses.grocery', label: 'Supermercado', description: 'Alimentos y compras de consumo diario.', parentKey: 'entrepreneurship.businesses', level: 2, kind: 'subtype' },
+  { key: 'finances', label: 'Finanzas', description: 'Herramientas y servicios financieros.', parentKey: null, level: 0, kind: 'family' },
+  { key: 'finances.payment_methods', label: 'Métodos de pago', description: 'Formas de pagar y cobrar.', parentKey: 'finances', level: 1, kind: 'domain' },
+  { key: 'finances.payment_methods.digital_wallets', label: 'Billetera digital', description: 'Apps y servicios de pagos digitales.', parentKey: 'finances.payment_methods', level: 2, kind: 'subtype' },
+  { key: 'technology', label: 'Tecnología', description: 'Productos, plataformas y servicios digitales.', parentKey: null, level: 0, kind: 'family' },
+  { key: 'technology.apps', label: 'Aplicaciones', description: 'Software y servicios de aplicación.', parentKey: 'technology', level: 1, kind: 'domain' },
 ];
 
 function demoEntity(id: string): EntityDetail {
@@ -453,6 +476,23 @@ function normalizeInsight(item: unknown, index = 0): InsightSummary {
     })).filter((card) => card.title && card.summary),
     3,
   );
+  const supportingEntities = asArray<Record<string, any>>(record.supportingEntities ?? response.supportingEntities);
+  const supportingRelations = asArray<Record<string, any>>(record.supportingRelations ?? response.supportingRelations);
+  const supportingReferences = [
+    ...supportingEntities.map((entity) => ({
+      id: asString(entity.id),
+      label: asString(entity.value ?? entity.label),
+      description: asString(entity.type) || undefined,
+      route: asString(entity.id) ? `/entity/${asString(entity.id)}` : undefined,
+      kind: 'entity' as const,
+    })),
+    ...supportingRelations.map((relation) => ({
+      id: asString(relation.id),
+      label: asString(relation.label ?? relation.relationType),
+      description: asString(relation.description) || undefined,
+      kind: 'relation' as const,
+    })),
+  ].filter((reference) => reference.id && reference.label);
 
   return {
     id: asString(record.id, `insight_${index + 1}`),
@@ -467,6 +507,7 @@ function normalizeInsight(item: unknown, index = 0): InsightSummary {
     model: asString(record.model) || undefined,
     timestamp: asString(record.createdAt ?? record.timestamp) || undefined,
     relatedCount: asNumber(record.relatedCount ?? record.supportingCount, 0) || undefined,
+    supportingReferences: supportingReferences.length ? supportingReferences : undefined,
   };
 }
 
@@ -822,11 +863,15 @@ export type BrainIAClient = {
   getTransaction: (id: string) => Promise<TransactionDetail>;
   listFinancialAccounts: () => Promise<FinancialAccount[]>;
   listFinancialCategories: () => Promise<FinancialCategories>;
+  listEntityTags: () => Promise<EntityTag[]>;
+  getEntitySemanticProfile: (entityId: string) => Promise<EntitySemanticProfile | null>;
+  saveEntitySemanticProfile: (entityId: string, input: Omit<EntitySemanticProfile, 'entityId' | 'updatedAt' | 'relations'> & { relations: Array<{ relationType: EntitySemanticProfile['relations'][number]['relationType']; targetEntityId: string }> }) => Promise<EntitySemanticProfile>;
+  createFinancialCategory: (input: { kind: 'expense' | 'income'; name: string }) => Promise<{ kind: 'expense' | 'income'; name: string }>;
   createFinancialAccount: (input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
   updateFinancialAccount: (id: string, input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
   deleteFinancialAccount: (id: string) => Promise<{ deleted: boolean; detachedTransactions: number }>;
   createBalanceAdjustment: (accountId: string, input: { targetBalance: number; note?: string }) => Promise<TransactionDetail>;
-  updateTransactionContext: (id: string, input: { category?: string | null; accountId?: string | null; destinationAccountId?: string | null; destinationAmount?: number | null; destinationCurrency?: 'UYU' | 'USD' | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
+    updateTransactionContext: (id: string, input: { title?: string; category?: string | null; accountId?: string | null; destinationAccountId?: string | null; destinationAmount?: number | null; destinationCurrency?: 'UYU' | 'USD' | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
   mergeTransactions: (canonicalId: string, duplicateId: string) => Promise<TransactionDetail>;
   deleteTransaction: (id: string) => Promise<void>;
   listEntityAliases: (entityId?: string) => Promise<string[]>;
@@ -836,6 +881,7 @@ export type BrainIAClient = {
   getEntity: (id: string) => Promise<EntityDetail>;
   getEntityGraph: (id: string, depth?: number) => Promise<{ rootEntity: EntityDetail; nodes: EntityLink[]; relations: GraphRelation[] }>;
   inspectInsight: (idOrQuery: { id?: string; q?: string }) => Promise<InsightSummary>;
+  recordKnowledgeFeedback: (input: { action: 'accept' | 'reject'; targetType: 'insight'; targetId: string }) => Promise<{ ok: boolean }>;
   capture: (kind: 'note' | 'email' | 'notification' | 'wallet' | 'event', payload: Record<string, unknown>) => Promise<{ ok: boolean }>;
   mergeEntity: (payload: { aliasEntityId: string; canonicalEntityId: string; reason: string; confidence: number }) => Promise<{ ok: boolean }>;
   findEntityMatches: (query: string) => Promise<EntitySuggestion[]>;
@@ -1033,6 +1079,74 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
         income: asArray<unknown>(categories.income).map((value) => asString(value)).filter(Boolean),
       };
     },
+    async listEntityTags() {
+      if (getLocalPreviewState() === 'edge') {
+        return demoEntityTags;
+      }
+      const json = await requestWithFallback(baseUrl, '/api/v1/semantic/taxonomy', { categories: [] }, { headers });
+      const categories = isRecord(json) ? asArray<unknown>(json.categories) : [];
+      return categories.map((item) => {
+        const category = isRecord(item) ? item : {};
+        return {
+          key: asString(category.key),
+          label: asString(category.label),
+          description: asString(category.description),
+          parentKey: asString(category.parentKey) || null,
+          level: asNumber(category.level, 0),
+          kind: asString(category.kind, 'family') as EntityTag['kind'],
+        };
+      }).filter((category) => category.key && category.label);
+    },
+    async getEntitySemanticProfile(entityId) {
+      try {
+        const json = await safeFetchJson(baseUrl, `/api/v1/entities/${encodeURIComponent(entityId)}/profile`, { headers });
+        const profile = isRecord(json) ? json : {};
+        return {
+          entityId: asString(profile.entityId),
+          taxonomyKeys: asArray<unknown>(profile.taxonomyKeys).map((value) => asString(value)).filter(Boolean),
+          roles: asArray<unknown>(profile.roles).map((value) => asString(value) as EntityRole).filter(Boolean),
+          notes: asString(profile.notes) || null,
+          relations: asArray<unknown>(profile.relations).map((value) => {
+            const relation = isRecord(value) ? value : {};
+            return {
+              relationType: asString(relation.relationType, 'related_to') as EntitySemanticProfile['relations'][number]['relationType'],
+              targetEntityId: asString(relation.targetEntityId),
+              targetLabel: asString(relation.targetLabel),
+            };
+          }).filter((relation) => relation.targetEntityId),
+          updatedAt: asString(profile.updatedAt) || null,
+        };
+      } catch {
+        return null;
+      }
+    },
+    async saveEntitySemanticProfile(entityId, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/entities/${encodeURIComponent(entityId)}/profile`, { method: 'PUT', body: input, headers });
+      const profile = isRecord(json) ? json : {};
+      return {
+        entityId: asString(profile.entityId, entityId),
+        taxonomyKeys: asArray<unknown>(profile.taxonomyKeys).map((value) => asString(value)).filter(Boolean),
+        roles: asArray<unknown>(profile.roles).map((value) => asString(value) as EntityRole).filter(Boolean),
+        notes: asString(profile.notes) || null,
+        relations: asArray<unknown>(profile.relations).map((value) => {
+          const relation = isRecord(value) ? value : {};
+          return { relationType: asString(relation.relationType, 'related_to') as EntitySemanticProfile['relations'][number]['relationType'], targetEntityId: asString(relation.targetEntityId), targetLabel: asString(relation.targetLabel) };
+        }).filter((relation) => relation.targetEntityId),
+        updatedAt: asString(profile.updatedAt) || null,
+      };
+    },
+    async createFinancialCategory(input) {
+      const json = await safeFetchJson(baseUrl, '/api/v1/financial/categories', { method: 'POST', body: input, headers });
+      const category: Record<string, unknown> = isRecord(json) && isRecord(json.category)
+        ? json.category
+        : isRecord(json)
+          ? json
+          : {};
+      return {
+        kind: asString(category.kind, input.kind) as 'expense' | 'income',
+        name: asString(category.name, input.name),
+      };
+    },
     async createFinancialAccount(input) {
       const json = await safeFetchJson(baseUrl, '/api/v1/financial/accounts', { method: 'POST', body: input, headers });
       return normalizeFinancialAccount(json, input);
@@ -1183,6 +1297,10 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       if (idOrQuery.q) params.set('q', idOrQuery.q);
       const json = await requestWithFallback(baseUrl, `/api/v1/insights?${params.toString()}`, {}, { headers });
       return normalizeInsight(json);
+    },
+    async recordKnowledgeFeedback(input) {
+      await safeFetchJson(baseUrl, '/api/v1/knowledge/feedback', { method: 'POST', body: input, headers });
+      return { ok: true };
     },
     async capture(kind, payload) {
       const route =
@@ -1458,8 +1576,10 @@ export async function loadFinancialBundle(client: BrainIAClient, financialPeriod
   };
 }
 
-const FINANCIAL_SUMMARY_LIMIT = 100;
-const FINANCIAL_TREND_LIMIT = 100;
+// Financial cycles can contain more than 100 records. Fetching only the most
+// recent transactions silently drops earlier income and spending from reports.
+const FINANCIAL_SUMMARY_LIMIT = 1000;
+const FINANCIAL_TREND_LIMIT = 1000;
 
 export function currentFinancialPeriodRange(financialPeriodStartDay = 1, now = new Date()) {
   const startDay = Number.isInteger(financialPeriodStartDay)
@@ -1673,8 +1793,15 @@ export async function loadInsightBundle(client: BrainIAClient, idOrQuery: { id?:
         model: undefined,
         timestamp: undefined,
         relatedCount: undefined,
+        supportingReferences: undefined,
       },
       source: 'empty' as const,
+    };
+  }
+  if (previewState === 'edge') {
+    return {
+      insight: demoInsights.find((insight) => insight.id === idOrQuery.id) ?? demoInsights[0],
+      source: 'cache' as const,
     };
   }
 

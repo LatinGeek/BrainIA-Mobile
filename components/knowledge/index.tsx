@@ -3,8 +3,10 @@ import { Feather } from '@expo/vector-icons';
 
 import { DigestCard, DigestSummaryCard, InsightCard, InsightArticleCard } from '@/components/cards';
 import { Button, ListRow, Panel, Surface } from '@/components/primitives';
+import { ProvenanceMark } from '@/components/trust';
 import { useTheme } from '@/lib/app-state';
 import { EntityDetail, EntityLink } from '@/lib/domain';
+import type { ProvenanceOrigin } from '@/lib/domain';
 import { cleanDisplayText } from '@/lib/format';
 
 export { DigestCard, DigestSummaryCard, InsightCard, InsightArticleCard };
@@ -13,6 +15,7 @@ export type DailyBriefItem = {
   id: string;
   title: string;
   summary?: string;
+  origin?: ProvenanceOrigin;
   onActionPress: () => void;
 };
 
@@ -28,14 +31,13 @@ export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Highlights</Text>
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>The few things worth your attention.</Text>
         </View>
-        <View style={{ borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent, paddingHorizontal: 10, paddingVertical: 5 }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.onAccent }]}>{Math.min(items.length, 8)} new</Text>
-        </View>
+        <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>{Math.min(items.length, 8).toString().padStart(2, '0')}</Text>
       </View>
       <ScrollView horizontal directionalLockEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + theme.spacing.sm} snapToAlignment="start" contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }} accessibilityLabel="Swipe through highlights">
       {items.slice(0, 8).map((item) => (
         <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={cleanDisplayText(item.title)} onPress={item.onActionPress} style={{ width: cardWidth }}>
           <Panel tone="accent" style={{ minHeight: 138, justifyContent: 'space-between', gap: theme.spacing.md, borderLeftWidth: 3, borderColor: theme.colors.accent }}>
+            <ProvenanceMark origin={item.origin ?? 'model'} />
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
               <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(item.title)}</Text>
               <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
@@ -46,6 +48,7 @@ export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
         </Pressable>
       ))}
       </ScrollView>
+      <View style={{ flexDirection: 'row', gap: 5 }}>{items.slice(0, 8).map((item, index) => <View key={item.id} style={{ width: index === 0 ? 18 : 5, height: 3, borderRadius: 2, backgroundColor: index === 0 ? theme.colors.accent : theme.colors.border }} />)}</View>
     </View>
   );
 }

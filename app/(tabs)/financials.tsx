@@ -20,8 +20,10 @@ import { AccountIcon } from '@/components/finance/AccountIcon';
 import { AppScreen, Section, TopBar } from '@/components/layout';
 import { AnimatedPressable, BottomSheet, Button, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
+import { FxStamp } from '@/components/trust';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
+import { hasFinancialCurrencyConversion, summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { useAsyncResource } from '@/lib/hooks';
 import { convertCurrency, formatCategoryLabel, formatCurrency, parseCurrency, SupportedCurrency } from '@/lib/format';
 import type { TransactionGroup } from '@/lib/grouping';
@@ -44,11 +46,22 @@ const periods = [
 type FinanceView = (typeof views)[number]['value'];
 type FinancePeriod = (typeof periods)[number]['value'];
 type TrendChartMode = 'line' | 'bars';
+type TransactionKindFilter = 'all' | 'expense' | 'income' | 'transfer';
+type TransactionSort = 'recent' | 'oldest' | 'highest' | 'lowest';
 
 const displayCurrencies = [
   { value: 'UYU', label: 'UYU' },
   { value: 'USD', label: 'USD' },
 ] as const;
+
+const TRANSACTION_CYCLE_LIMIT = 1000;
+
+const transactionSortLabels: Record<TransactionSort, string> = {
+  recent: 'Recent',
+  oldest: 'Oldest',
+  highest: 'Highest',
+  lowest: 'Lowest',
+};
 
 function CompactFinanceSwitch<T extends string>({
   value,
@@ -127,6 +140,14 @@ function financialPeriodLabel(range: { from: string; to: string }) {
   return `${format(from)} – ${format(through)}`;
 }
 
+function financialPeriodRangeAtOffset(financialPeriodStartDay: number, cycleOffset: number) {
+  const current = currentFinancialPeriodRange(financialPeriodStartDay);
+  const from = new Date(current.from);
+  from.setMonth(from.getMonth() - Math.max(0, cycleOffset));
+  const nextBoundary = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate());
+  return { from: from.toISOString(), to: new Date(nextBoundary.getTime() - 1).toISOString() };
+}
+
 function buildMonthlyCashFlow(
   transactions: TransactionSummary[],
   financialPeriodStartDay: number,
@@ -139,7 +160,9 @@ function buildMonthlyCashFlow(
     const next = new Date(start.getFullYear(), start.getMonth() + 1, financialPeriodStartDay);
     const end = new Date(next.getTime() - 1);
     return {
-      label: start.toLocaleDateString(undefined, { month: 'short' }),
+      // A cycle that starts on the 28th carries the following month's cash flow
+      // (for example, 28 Aug–27 Sept is shown as "Sept").
+      label: end.toLocaleDateString(undefined, { month: 'short' }),
       periodLabel: financialPeriodLabel({ from: start.toISOString(), to: end.toISOString() }),
       income: 0,
       spending: 0,
@@ -236,7 +259,7 @@ function AccountListItem({
         <AnimatedPressable
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          accessibilityLabel={`${account.name}, ${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
+          accessibilityLabel={`${account.name}, ${nativeCurrency !== displayCurrency ? 'approximately ' : ''}${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
           onPress={onToggle}
           scaleTo={0.993}
           style={{
@@ -283,7 +306,7 @@ function AccountListItem({
                 },
               ]}
             >
-              {formatCurrency(convertedBalance, displayCurrency)}
+              {nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}
             </Text>
             {nativeCurrency !== displayCurrency ? (
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
@@ -310,7 +333,7 @@ function AccountListItem({
               </View>
               <View style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: `${accountColor}12`, gap: 3 }}>
                 <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Portfolio value</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{formatCurrency(convertedBalance, displayCurrency)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -356,6 +379,12 @@ export default function FinancialsScreen() {
   const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [transactionCycleOffset, setTransactionCycleOffset] = useState(0);
+  const [transactionKindFilter, setTransactionKindFilter] = useState<TransactionKindFilter>('all');
+  const [transactionSort, setTransactionSort] = useState<TransactionSort>('recent');
+  const [transactionFiltersOpen, setTransactionFiltersOpen] = useState(false);
+  const [historicalTransactions, setHistoricalTransactions] = useState<TransactionSummary[]>([]);
+  const [historicalTransactionsLoading, setHistoricalTransactionsLoading] = useState(false);
   const loader = useMemo(
     () => () => loadFinancialBundle(client, settings.financialPeriodStartDay),
     [client, settings.financialPeriodStartDay],
@@ -369,8 +398,50 @@ export default function FinancialsScreen() {
     [settings.financialPeriodStartDay],
   );
   const cycleLabel = financialPeriodLabel(financialPeriodRange);
+  const selectedTransactionCycleRange = useMemo(
+    () => financialPeriodRangeAtOffset(settings.financialPeriodStartDay, transactionCycleOffset),
+    [settings.financialPeriodStartDay, transactionCycleOffset],
+  );
+  const selectedTransactionCycleLabel = financialPeriodLabel(selectedTransactionCycleRange);
+  const selectedTransactionCycleMonth = new Date(selectedTransactionCycleRange.to).toLocaleDateString(undefined, { month: 'short' });
+
+  useEffect(() => {
+    if (transactionCycleOffset === 0) {
+      return;
+    }
+
+    let active = true;
+    void client.listTransactions(TRANSACTION_CYCLE_LIMIT, selectedTransactionCycleRange)
+      .then((items) => {
+        if (active) setHistoricalTransactions(items);
+      })
+      .catch(() => {
+        if (active) setHistoricalTransactions([]);
+      })
+      .finally(() => {
+        if (active) setHistoricalTransactionsLoading(false);
+      });
+    return () => { active = false; };
+  }, [client, selectedTransactionCycleRange, transactionCycleOffset]);
 
   const transactions = data?.transactions ?? [];
+  const selectedCycleTransactions = transactionCycleOffset === 0 ? transactions : historicalTransactions;
+  const selectedCycleTransactionsLoading = transactionCycleOffset > 0 && historicalTransactionsLoading;
+  const filteredCycleTransactions = useMemo(() => {
+    const filtered = transactionKindFilter === 'all'
+      ? selectedCycleTransactions
+      : selectedCycleTransactions.filter((transaction) => transaction.kind === transactionKindFilter);
+    return filtered.slice().sort((left, right) => {
+      const leftDate = new Date(left.observedAt ?? 0).getTime();
+      const rightDate = new Date(right.observedAt ?? 0).getTime();
+      if (transactionSort === 'recent') return rightDate - leftDate;
+      if (transactionSort === 'oldest') return leftDate - rightDate;
+      const amountDifference = displayAmount(left, displayCurrency) - displayAmount(right, displayCurrency);
+      return transactionSort === 'highest'
+        ? amountDifference === 0 ? rightDate - leftDate : -amountDifference
+        : amountDifference === 0 ? rightDate - leftDate : amountDifference;
+    });
+  }, [displayCurrency, selectedCycleTransactions, transactionKindFilter, transactionSort]);
   const accounts = data?.accounts ?? [];
   const insights = data?.insights ?? [];
   const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => [
@@ -380,9 +451,9 @@ export default function FinancialsScreen() {
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
   const expenses = reportTransactions.filter((transaction) => transaction.kind === 'expense');
   const categoryGroups = groupTransactionsInCurrency(expenses, 'category', displayCurrency);
-  const income = reportTransactions.filter((transaction) => transaction.kind === 'income');
-  const monthlySpend = expenses.reduce((total, transaction) => total + displayAmount(transaction, displayCurrency), 0);
-  const totalIncome = income.reduce((total, transaction) => total + displayAmount(transaction, displayCurrency), 0);
+  const financialSummary = summarizeFinancialTransactions(transactions, displayCurrency);
+  const monthlySpend = financialSummary.expenses;
+  const totalIncome = financialSummary.income;
   const netMovement = totalIncome - monthlySpend;
   const periodMultiplier = period === 'year' ? 12 : 1;
   const periodSpend = monthlySpend * periodMultiplier;
@@ -403,6 +474,10 @@ export default function FinancialsScreen() {
     (total, account) => total + convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency),
     0,
   );
+  const hasCurrencyConversion = hasFinancialCurrencyConversion(transactions, displayCurrency)
+    || accounts.some((account) => (account.currency ?? 'UYU') !== displayCurrency);
+  const displayTotal = (value: number) => `${hasCurrencyConversion ? '≈ ' : ''}${formatCurrency(value, displayCurrency)}`;
+  const displaySummaryTotal = (value: number) => formatCurrency(value, displayCurrency);
   const portfolioSegments = accounts.map((account) => {
     const convertedBalance = convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency);
     return {
@@ -529,6 +604,7 @@ export default function FinancialsScreen() {
       {data ? (
         <>
           <SegmentedControl scrollable value={view} onChange={setView} options={views.map((item) => ({ ...item, count: item.value === 'transactions' ? transactions.length : undefined }))} />
+          {hasCurrencyConversion ? <FxStamp /> : null}
 
           {view === 'overview' ? (
             <>
@@ -539,18 +615,18 @@ export default function FinancialsScreen() {
                     <CompactPeriodSwitch value={period} onChange={setPeriod} />
                   </View>
                   <Text style={[theme.typography.numeral, { color: periodNet >= 0 ? theme.colors.accent : theme.status.expense }]}>
-                    {formatCurrency(periodNet, displayCurrency)}
+                    {displaySummaryTotal(periodNet)}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                  <MoneyTile label="Income" value={formatCurrency(periodIncome, displayCurrency)} tone="positive" compact />
-                  <MoneyTile label="Expenses" value={formatCurrency(periodSpend, displayCurrency)} tone="danger" compact />
+                  <MoneyTile label="Income" value={displaySummaryTotal(periodIncome)} tone="positive" compact />
+                  <MoneyTile label="Expenses" value={displaySummaryTotal(periodSpend)} tone="danger" compact />
                 </View>
               </Panel>
               <SpendingRadial
                 title="Expense mix"
                 subtitle={period === 'year' ? 'Projected category share' : `Category share · ${cycleLabel}`}
-                amount={formatCurrency(periodSpend, displayCurrency)}
+                amount={displayTotal(periodSpend)}
                 segments={radialSegments}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
@@ -583,7 +659,7 @@ export default function FinancialsScreen() {
               <SpendingRadial
                 title="Money movement"
                 subtitle={period === 'year' ? 'Projected merchant share' : `Merchant share · ${cycleLabel}`}
-                amount={formatCurrency(periodSpend, displayCurrency)}
+                amount={displayTotal(periodSpend)}
                 segments={merchantGroups.map((group) => ({ id: group.label, label: group.label, value: group.total * periodMultiplier }))}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 itemNoun="merchant"
@@ -606,7 +682,7 @@ export default function FinancialsScreen() {
               <SpendingRadial
                 title="Portfolio overview"
                 subtitle="Net portfolio value split across your accounts. Negative balances count toward account share by magnitude."
-                amount={formatCurrency(totalAccountBalance, displayCurrency)}
+                amount={displayTotal(totalAccountBalance)}
                 segments={portfolioSegments}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 totalLabel="Total portfolio"
@@ -618,7 +694,7 @@ export default function FinancialsScreen() {
               <Panel tone="finance" style={{ gap: theme.spacing.md }}>
                 <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Total available in {displayCurrency}</Text>
                 <Text style={[theme.typography.numeral, { color: totalAccountBalance >= 0 ? theme.colors.accent : theme.status.expense }]}>
-                  {formatCurrency(totalAccountBalance, displayCurrency)}
+                  {displayTotal(totalAccountBalance)}
                 </Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Balances include transfers and balance adjustments. Adjustments never affect Money reports.</Text>
                 <Button label="Create account" onPress={openCreateAccount} icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} />
@@ -640,13 +716,56 @@ export default function FinancialsScreen() {
           ) : null}
 
           {view === 'transactions' ? (
-            <Section title="Transactions" subtitle="Grouped financial records with source evidence in detail." count={transactions.length}>
-              {transactions.length ? (
-                transactions.map((transaction) => (
+            <Section title="Transactions" subtitle={`Financial records · ${selectedTransactionCycleLabel}`} count={filteredCycleTransactions.length}>
+              <Panel tone="finance" style={{ padding: theme.spacing.xs }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Show previous financial cycle"
+                    onPress={() => {
+                      setHistoricalTransactionsLoading(true);
+                      setTransactionCycleOffset((offset) => offset + 1);
+                    }}
+                    style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Feather name="chevron-left" size={18} color={theme.colors.textPrimary} />
+                  </Pressable>
+                  <View style={{ minWidth: 42, alignItems: 'center' }}>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, fontWeight: '700' }]}>{selectedTransactionCycleMonth}</Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Show next financial cycle"
+                    accessibilityState={{ disabled: transactionCycleOffset === 0 }}
+                    disabled={transactionCycleOffset === 0}
+                    onPress={() => {
+                      setHistoricalTransactionsLoading(transactionCycleOffset > 1);
+                      setTransactionCycleOffset((offset) => Math.max(0, offset - 1));
+                    }}
+                    style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.4 : 1 }}
+                  >
+                    <Feather name="chevron-right" size={18} color={theme.colors.textPrimary} />
+                  </Pressable>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter and sort transactions. Current sort: ${transactionSortLabels[transactionSort]}`}
+                    onPress={() => setTransactionFiltersOpen(true)}
+                    style={{ height: 34, paddingHorizontal: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: theme.radius.md, backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.accentStrong + '66' }}
+                  >
+                    <Feather name="sliders" size={14} color={theme.colors.accentStrong} />
+                    <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, fontWeight: '700' }]}>{transactionSortLabels[transactionSort]}</Text>
+                  </Pressable>
+                </View>
+              </Panel>
+              {selectedCycleTransactionsLoading ? <LoadingSkeleton variant="list" count={3} /> : null}
+              {!selectedCycleTransactionsLoading && filteredCycleTransactions.length ? (
+                filteredCycleTransactions.map((transaction) => (
                   <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
                 ))
               ) : (
-                <EmptyState title="No transactions" description="Wallet, receipt, and bank notification records will appear here." />
+                <EmptyState title="No matching transactions" description="Try another financial cycle or adjust the type filter." />
               )}
             </Section>
           ) : null}
@@ -708,6 +827,38 @@ export default function FinancialsScreen() {
             <Button label="Sync balance" onPress={saveAdjustment} loading={saving} />
           </>
         ) : null}
+      </BottomSheet>
+
+      <BottomSheet visible={transactionFiltersOpen} title="Filter transactions" onClose={() => setTransactionFiltersOpen(false)}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Type</Text>
+          <SegmentedControl
+            scrollable
+            value={transactionKindFilter}
+            onChange={setTransactionKindFilter}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'expense', label: 'Expenses' },
+              { value: 'income', label: 'Income' },
+              { value: 'transfer', label: 'Transfers' },
+            ]}
+          />
+        </View>
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Sort</Text>
+          <SegmentedControl
+            scrollable
+            value={transactionSort}
+            onChange={setTransactionSort}
+            options={[
+              { value: 'recent', label: 'Recent' },
+              { value: 'oldest', label: 'Oldest' },
+              { value: 'highest', label: 'Highest amount' },
+              { value: 'lowest', label: 'Lowest amount' },
+            ]}
+          />
+        </View>
+        <Button label="Done" onPress={() => setTransactionFiltersOpen(false)} />
       </BottomSheet>
     </AppScreen>
   );

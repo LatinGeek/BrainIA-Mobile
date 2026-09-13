@@ -1,4 +1,14 @@
-export type ThemeId = 'editorial-minimal' | 'intelligence-console' | 'warm-knowledge';
+export type ThemeId = 'intelligence-console';
+
+export type ProvenanceOrigin = 'model' | 'captured' | 'user' | 'pending';
+
+export type SupportingReference = {
+  id: string;
+  label: string;
+  description?: string;
+  route?: string;
+  kind: 'entity' | 'relation' | 'event' | 'transaction';
+};
 
 export type SummaryMetric = {
   label: string;
@@ -26,6 +36,7 @@ export type InsightSummary = {
   model?: string;
   timestamp?: string;
   relatedCount?: number;
+  supportingReferences?: SupportingReference[];
 };
 
 export type DigestSummary = {
@@ -238,6 +249,30 @@ export type FinancialAccount = {
 export type FinancialCategories = {
   expense: string[];
   income: string[];
+};
+
+export type EntityTag = {
+  key: string;
+  label: string;
+  description: string;
+  parentKey?: string | null;
+  level: number;
+  kind: 'domain' | 'family' | 'class' | 'subtype';
+};
+
+export type EntityRole = 'merchant' | 'business' | 'payment_method' | 'organization' | 'app' | 'provider' | 'account';
+
+export type EntitySemanticProfile = {
+  entityId: string;
+  taxonomyKeys: string[];
+  roles: EntityRole[];
+  notes?: string | null;
+  relations: Array<{
+    relationType: 'part_of' | 'uses_service' | 'produced_by_app' | 'controls' | 'related_to';
+    targetEntityId: string;
+    targetLabel: string;
+  }>;
+  updatedAt?: string | null;
 };
 
 export type AppSettings = {

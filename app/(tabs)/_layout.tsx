@@ -32,16 +32,16 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: theme.colors.onAccent,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
           backgroundColor: theme.colors.background,
           borderTopColor: theme.depth.hairline,
           borderTopWidth: 1,
-          height: 64 + insets.bottom,
-          paddingTop: 10,
-          paddingBottom: 10 + insets.bottom,
+          height: 72 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: 6 + insets.bottom,
           ...makeShadow({
             color: theme.isDark ? '#000000' : '#101820',
             opacity: theme.isDark ? 0.6 : 0.08,
@@ -58,35 +58,35 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Hoy',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="home" focused={focused} color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Search',
+          title: 'Explorar',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="search" focused={focused} color={color} />,
         }}
       />
       <Tabs.Screen
         name="capture"
         options={{
-          title: 'Capture',
+          title: 'Capturar',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="plus-circle" focused={focused} color={color} />,
         }}
       />
       <Tabs.Screen
         name="financials"
         options={{
-          title: 'Money',
+          title: 'Dinero',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="credit-card" focused={focused} color={color} />,
         }}
       />
       <Tabs.Screen
         name="review"
         options={{
-          title: 'Review',
+          title: 'Revisar',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="shield" focused={focused} color={color} />,
         }}
       />

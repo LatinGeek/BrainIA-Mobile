@@ -1,10 +1,5 @@
-import { Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
-import { IBMPlexMono_600SemiBold } from '@expo-google-fonts/ibm-plex-mono';
 import { Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
-import { Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
-import { Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
-import { Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -48,20 +43,10 @@ function BootstrapScreen() {
 function RootNavigator() {
   const { hydrated, theme } = useAppState();
   const [fontsLoaded, fontsError] = useFonts({
-    Poppins_700Bold,
-    Poppins_800ExtraBold,
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
     JetBrainsMono_600SemiBold,
-    Sora_700Bold,
-    Sora_800ExtraBold,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
-    IBMPlexMono_600SemiBold,
-    Fraunces_600SemiBold,
-    Fraunces_700Bold,
   });
   const typographyReady = fontsLoaded || Boolean(fontsError);
 

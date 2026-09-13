@@ -2,9 +2,9 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 
-import { DigestCard } from '@/components/cards';
 import { AppScreen, SectionHeader, TopBar } from '@/components/layout';
 import { ListRow, Surface } from '@/components/primitives';
+import { GeneratedTextBlock } from '@/components/trust';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { useBrainIAClient } from '@/lib/app-state';
 import { loadDigestBundle } from '@/lib/api';
@@ -28,7 +28,7 @@ export default function DigestDetailScreen() {
         <LoadingSkeleton variant="detail" count={2} />
       ) : digest ? (
         <>
-          <DigestCard digest={digest} />
+          <GeneratedTextBlock title="Model digest" body={digest.summary} />
           {digest.highlights?.length ? (
             <>
               <SectionHeader title="Highlights" />

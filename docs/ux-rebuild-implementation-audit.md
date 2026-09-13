@@ -1,6 +1,19 @@
 # UX Rebuild Implementation Audit
 
-Current status: in progress, not fully complete.
+Current status: redesigned mobile implementation complete; native-device validation remains a release check.
+
+## 2026 Trust-Ledger Redesign
+
+The current implementation applies the two artifact specifications as a single dark-only system:
+
+- flat ledger rows replace nested transaction and evidence cards;
+- indigo is reserved for interaction, while cyan identifies generated interpretation;
+- `ProvenanceMark`, `ConfidenceTier`, `GeneratedTextBlock`, and `EvidenceTrail` make machine output visibly different from captured facts and user decisions;
+- unsupported citations, source spans, and conflict pairs are omitted instead of inferred;
+- Insight evidence trails render only backend-returned supporting entities and relations;
+- Money keeps original transaction currencies, prefixes mixed-currency aggregates with `≈`, and shows `40.0000 UYU/USD · fixed app reference` whenever conversion is present;
+- review approval now distinguishes **Apply once** from **Create rule**;
+- Settings no longer exposes appearance modes because the product now has one dark visual system.
 
 This audit maps `docs/ux-rebuild-proposal.md` to current implementation evidence. It exists so completion is based on inspected state rather than intent.
 

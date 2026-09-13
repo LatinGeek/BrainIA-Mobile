@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode } from 'react';
-import { Pressable, RefreshControl, ScrollView, ScrollViewProps, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, ScrollViewProps, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/primitives';
@@ -13,6 +13,7 @@ export function AppScreen({
   scrollable = true,
   contentStyle,
   footer,
+  stickyFooter,
   refreshing = false,
   onRefresh,
 }: {
@@ -20,6 +21,7 @@ export function AppScreen({
   scrollable?: boolean;
   contentStyle?: ScrollViewProps['contentContainerStyle'];
   footer?: ReactNode;
+  stickyFooter?: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
 }) {
@@ -28,6 +30,7 @@ export function AppScreen({
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {scrollable ? (
         <ScrollView
           style={styles.flex}
@@ -36,11 +39,14 @@ export function AppScreen({
             styles.scrollContent,
             {
               paddingTop: theme.spacing.lg,
-              paddingBottom: theme.spacing.xxxl + insets.bottom,
+              paddingBottom: (stickyFooter ? theme.spacing.xl : theme.spacing.xxxl) + insets.bottom,
             },
             contentStyle,
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {children}
           {footer}
@@ -51,6 +57,8 @@ export function AppScreen({
           {footer}
         </View>
       )}
+      {stickyFooter ? <View style={[styles.stickyFooter, { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border, paddingBottom: Math.max(theme.spacing.sm, insets.bottom) }]}>{stickyFooter}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -105,7 +113,7 @@ export function TopBar({
         <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
           <View style={[styles.brandRow, { marginBottom: 6 }]}>
             <View style={[styles.brandDot, { backgroundColor: theme.colors.accent }]} />
-            <Text style={[theme.typography.overline, { color: theme.colors.accentStrong }]}>BrainIA Console</Text>
+            <Text style={[theme.typography.overline, { color: theme.colors.accentStrong }]}>BrainIA Ledger</Text>
           </View>
           <Text style={[theme.typography.display, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
           {subtitle ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: 4 }]}>{cleanDisplayText(subtitle)}</Text> : null}
@@ -206,6 +214,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     gap: 16,
+  },
+  stickyFooter: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   row: {
     flexDirection: 'row',

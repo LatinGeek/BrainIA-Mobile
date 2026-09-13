@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 
 import { AppScreen, SectionHeader, TopBar } from '@/components/layout';
 import { Button, ListRow, Surface } from '@/components/primitives';
+import { GeneratedTextBlock, ProvenanceMark } from '@/components/trust';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
@@ -45,13 +46,15 @@ export default function EventDetailScreen() {
       {!loading && !error && !event ? <EmptyState title="Source event unavailable" description="This linked event may have been removed or is not included in the current activity feed." /> : null}
       {event ? (
         <>
-          <SectionHeader title="Captured event" />
+          <SectionHeader title="Interpretation" />
           <Surface variant="raised" style={{ gap: theme.spacing.md }}>
             {event.description ? (
-              <View style={{ gap: 4 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>BrainIA interpretation</Text>
-                <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>{event.description}</Text>
-              </View>
+              <GeneratedTextBlock
+                title={event.interpretationSource ? `Interpreted by ${event.interpretationSource}` : 'Machine interpretation'}
+                body={event.description}
+                confidence={event.confidence}
+                origin={event.interpretationSource === 'user' ? 'user' : 'model'}
+              />
             ) : (
               <View style={{ gap: 4 }}>
                 <Text style={[theme.typography.bodyStrong, { color: theme.colors.warning }]}>Interpretation not available yet</Text>
@@ -73,6 +76,7 @@ export default function EventDetailScreen() {
           </Surface>
           <SectionHeader title="Original content" />
           <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
+            <ProvenanceMark origin="captured" label="Original source" />
             {event.rawTitle ? <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{event.rawTitle}</Text> : null}
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{event.body ?? 'No source body is available for this event.'}</Text>
           </Surface>

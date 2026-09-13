@@ -94,7 +94,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
           : 'Zoom out to see the full map. Repeated events are grouped beneath one meaning; open a concept to inspect its individual evidence.'}
       </Text>
 
-      <View style={{ height: 332, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: '#090F1D' }}>
+      <View style={{ height: 332, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
         <GraphForceCanvas
           nodes={visualGraph.nodes}
           relations={visualGraph.relations}

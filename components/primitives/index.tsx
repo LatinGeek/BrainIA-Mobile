@@ -114,9 +114,9 @@ export function Panel({
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }) {
   const theme = useTheme();
-  const glow =
+  const toneColor =
     tone === 'accent'
-      ? theme.depth.glow
+      ? theme.colors.accent
       : tone === 'finance'
         ? `${theme.status.income}24`
         : tone === 'review'
@@ -131,8 +131,8 @@ export function Panel({
       padding={padding}
       style={[
         {
-          borderColor: glow,
-          borderWidth: 1,
+          borderColor: tone === 'neutral' ? theme.colors.border : `${toneColor}66`,
+          borderLeftWidth: tone === 'neutral' ? StyleSheet.hairlineWidth : 2,
         },
         style,
       ]}
@@ -208,7 +208,7 @@ export function Button({
           paddingVertical: paddings[size].vertical,
           paddingHorizontal: paddings[size].horizontal,
           borderRadius: theme.radius.md,
-          minHeight: size === 'lg' ? 48 : size === 'md' ? 44 : 36,
+          minHeight: size === 'lg' ? 48 : size === 'md' ? 44 : 40,
         },
       ]}
     >
@@ -561,12 +561,17 @@ export function ListRow({
   );
 
   if (!onPress) {
-    return <Surface variant="subtle" padding="sm">{content}</Surface>;
+    return <View style={[styles.flatListRow, { borderBottomColor: theme.colors.border }]}>{content}</View>;
   }
 
   return (
-    <AnimatedPressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
-      <Surface variant="raised" padding="sm">{content}</Surface>
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={[styles.flatListRow, { borderBottomColor: theme.colors.border }]}
+    >
+      {content}
     </AnimatedPressable>
   );
 }
@@ -780,5 +785,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  flatListRow: {
+    minHeight: 58,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

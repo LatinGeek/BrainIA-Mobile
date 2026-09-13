@@ -12,15 +12,10 @@ import { EmptyState } from '@/components/states';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { clearAllJsonCache } from '@/lib/cache';
 import { clearDiagnostics, readDiagnostics } from '@/lib/diagnostics';
-import { AppSettings, ThemeId } from '@/lib/domain';
+import { AppSettings } from '@/lib/domain';
+import { UYU_PER_USD } from '@/lib/format';
 import { useAsyncResource } from '@/lib/hooks';
 import { flushNotificationBridgeDiagnostics, getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, reconcileActiveNotifications, setCaptureAppPackages } from '@/lib/notification-bridge';
-
-const themeModes = [
-  { value: 'editorial-minimal', label: 'Editorial' },
-  { value: 'intelligence-console', label: 'Console' },
-  { value: 'warm-knowledge', label: 'Warm' },
-] as const;
 
 const dashboardModes = [
   { value: 'balanced', label: 'Balanced' },
@@ -61,7 +56,6 @@ export default function SettingsScreen() {
     setDigestNotifications,
     setFinancialPeriodStartDay,
     setReviewNotifications,
-    setThemeId,
     refreshSettings,
     resetSettings,
   } = useAppState();
@@ -171,10 +165,6 @@ export default function SettingsScreen() {
         secondaryAction={<StatusBadge label={data?.ok ? 'Connected' : loading ? 'Checking' : 'Saved'} tone={data?.ok ? 'positive' : 'neutral'} />}
       />
 
-      <Section title="Appearance" subtitle="Choose the visual language without changing the app structure.">
-        <SegmentedControl value={settings.themeId} onChange={(value) => setThemeId(value as ThemeId)} options={themeModes} />
-      </Section>
-
       <Section title="Language" subtitle="Current default is English; source content can remain bilingual.">
         <Surface variant="subtle">
           <ListRow title="App language" subtitle="English" description="Spanish and system language selection are planned." />
@@ -182,6 +172,11 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="Finance" subtitle="Set your monthly cycle and choose how prominently Money appears on Today.">
+        <ListRow
+          title={`${UYU_PER_USD.toFixed(4)} UYU/USD`}
+          subtitle="Fixed app reference rate"
+          description="Converted totals are estimates. Captured transaction amounts always keep their original currency."
+        />
         <Surface variant="subtle">
           <ListRow
             title={`${ordinalDay(settings.financialPeriodStartDay)} of each month`}

@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Surface } from '@/components/primitives';
+import { ConfidenceTier, ProvenanceMark } from '@/components/trust';
 import { useTheme } from '@/lib/app-state';
 import { DigestSummary, InsightSummary, SummaryMetric } from '@/lib/domain';
 import { cleanDisplayText } from '@/lib/format';
@@ -38,20 +39,17 @@ export function InsightCard({ insight, onPress }: { insight: InsightSummary; onP
 
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? insight.title : undefined} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
-      <Surface variant="raised" style={{ borderColor: theme.status.insight + '44' }}>
-        <View style={[styles.cardSignal, { backgroundColor: theme.status.insight }]} />
+      <Surface variant="raised" style={{ gap: theme.spacing.sm, borderLeftWidth: 2, borderLeftColor: theme.colors.model }}>
+        <View style={styles.rowBetween}>
+          <ProvenanceMark origin="model" label="Insight" />
+          <ConfidenceTier confidence={insight.confidence} />
+        </View>
         <View style={styles.rowBetween}>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, flex: 1 }]}>{title}</Text>
           <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
         </View>
-        {!repeatsTitle ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{summary}</Text> : null}
-        <View style={[styles.rowWrap, { marginTop: theme.spacing.md }]}>
-          {takeaways.slice(0, 3).map((takeaway) => (
-            <View key={takeaway} style={[styles.pill, { backgroundColor: theme.colors.surfaceSubtle }]}>
-              <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(takeaway)}</Text>
-            </View>
-          ))}
-        </View>
+        {!repeatsTitle ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{summary}</Text> : null}
+        {takeaways[0] ? <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{takeaways[0]}</Text> : null}
       </Surface>
     </Pressable>
   );
@@ -64,8 +62,8 @@ export function DigestCard({ digest, onPress }: { digest: DigestSummary; onPress
 
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? digest.title : undefined} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
-      <Surface variant="raised" style={{ borderColor: theme.depth.glow }}>
-        <View style={[styles.cardSignal, { backgroundColor: theme.colors.textMuted }]} />
+      <Surface variant="raised" style={{ gap: theme.spacing.sm, borderLeftWidth: 2, borderLeftColor: theme.colors.model }}>
+        <ProvenanceMark origin="model" label="Digest" />
         <View style={styles.rowBetween}>
           <View style={{ flex: 1 }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(digest.windowLabel)}</Text>
@@ -73,16 +71,8 @@ export function DigestCard({ digest, onPress }: { digest: DigestSummary; onPress
           </View>
           <Feather name="calendar" size={16} color={theme.colors.accentStrong} />
         </View>
-        <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: theme.spacing.sm }]}>{cleanDisplayText(digest.summary)}</Text>
-        <View style={[styles.rowWrap, { marginTop: theme.spacing.md }]}>
-          {digest.metrics?.slice(0, 3).map((metric) => (
-            <View key={metric.label} style={[styles.pill, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                {cleanDisplayText(metric.label)}: {cleanDisplayText(metric.value)}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(digest.summary)}</Text>
+        {digest.metrics?.length ? <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>{digest.metrics.slice(0, 3).map((metric) => `${cleanDisplayText(metric.label)} ${cleanDisplayText(metric.value)}`).join('  ·  ')}</Text> : null}
       </Surface>
     </Pressable>
   );
@@ -144,21 +134,12 @@ export function FinancialSnapshotCard({
             : theme.colors.accent;
   const content = (
     <Surface variant="raised" style={{ borderColor: theme.colors.accent + '44', gap: theme.spacing.md }}>
-      <View style={[styles.cardSignal, { backgroundColor: theme.colors.accent }]} />
       <View style={styles.rowBetween}>
         <View style={{ flex: 1 }}>
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(periodLabel)}</Text>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, marginTop: 4, fontSize: 22, lineHeight: 28 }]}>{cleanDisplayText(title)}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Signal. Show explanation"
-          onPress={onBadgePress}
-          disabled={!onBadgePress}
-          style={[styles.pill, { backgroundColor: theme.colors.accent, opacity: onBadgePress ? 1 : 1 }]}
-        >
-          <Text style={[theme.typography.caption, { color: theme.colors.onAccent }]}>Signal</Text>
-        </Pressable>
+        {onBadgePress ? <Pressable accessibilityRole="button" accessibilityLabel="Show calculation explanation" onPress={onBadgePress}><Feather name="info" size={18} color={theme.colors.textMuted} /></Pressable> : null}
       </View>
       {amount ? (
         <Text style={[theme.typography.numeral, { color: amountColor }]}>
@@ -195,15 +176,11 @@ export function TodayFinanceSnapshot({
   income,
   expenses,
   net,
-  topCategory,
-  topCategoryAmount,
   onPress,
 }: {
   income: string;
   expenses: string;
   net: string;
-  topCategory?: string;
-  topCategoryAmount?: string;
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -214,13 +191,10 @@ export function TodayFinanceSnapshot({
       <Surface variant="raised" style={{ borderColor: theme.colors.accent + '55', gap: theme.spacing.sm }}>
         <View style={styles.rowBetween}>
           <View>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Money this month</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Money this cycle</Text>
             <Text style={[theme.typography.numeral, { color: netIsPositive ? theme.colors.accent : theme.status.expense, marginTop: 3 }]}>{cleanDisplayText(net)}</Text>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: 3 }}>
-            <Feather name="arrow-up-right" size={18} color={theme.colors.accentStrong} />
-            {topCategory && topCategoryAmount ? <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textMuted, maxWidth: 132 }]}>{cleanDisplayText(topCategory)} · {cleanDisplayText(topCategoryAmount)}</Text> : null}
-          </View>
+          <Feather name="arrow-up-right" size={18} color={theme.colors.accentStrong} />
         </View>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <View style={[styles.financeMetric, { borderColor: theme.status.income + '33', backgroundColor: theme.status.income + '0d' }]}>

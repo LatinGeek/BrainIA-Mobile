@@ -2,13 +2,12 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 import { Platform } from 'react-native';
 
 import { readStoredValue, writeStoredValue } from './storage';
-import { AppSettings, ThemeId } from './domain';
+import { AppSettings } from './domain';
 import { createBrainIAClient, BrainIAClient } from './api';
 import { themeRegistry, ThemeTokens } from './themes';
 import { syncNotificationBridgeConfig } from './notification-bridge';
 
 const STORAGE_PREFIX = 'brainia_mobile';
-const KEY_THEME = `${STORAGE_PREFIX}.theme`;
 const KEY_BASE_URL = `${STORAGE_PREFIX}.baseUrl`;
 const KEY_API_KEY = `${STORAGE_PREFIX}.apiKey`;
 const KEY_CLIENT_ID = `${STORAGE_PREFIX}.clientId`;
@@ -37,7 +36,6 @@ type AppStateValue = {
   settings: AppSettings;
   theme: ThemeTokens;
   client: BrainIAClient;
-  setThemeId: (themeId: ThemeId) => void;
   setBaseUrl: (baseUrl: string) => void;
   setApiKey: (apiKey: string) => void;
   setClientId: (clientId: string) => void;
@@ -60,8 +58,7 @@ function normalizeFinancialPeriodStartDay(value: string | number | null | undefi
 }
 
 async function loadSettings(): Promise<AppSettings> {
-  const [themeId, baseUrl, apiKey, clientId, storedFinancialPeriodStartDay] = await Promise.all([
-    readStoredValue(KEY_THEME),
+  const [baseUrl, apiKey, clientId, storedFinancialPeriodStartDay] = await Promise.all([
     readStoredValue(KEY_BASE_URL),
     readStoredValue(KEY_API_KEY),
     readStoredValue(KEY_CLIENT_ID),
@@ -75,7 +72,7 @@ async function loadSettings(): Promise<AppSettings> {
   ]);
 
   return {
-    themeId: (themeId as ThemeId) || defaultSettings.themeId,
+    themeId: 'intelligence-console',
     baseUrl: baseUrl?.trim() || defaultSettings.baseUrl,
     apiKey: apiKey || defaultSettings.apiKey,
     clientId: clientId || defaultSettings.clientId,
@@ -117,7 +114,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void writeStoredValue(KEY_THEME, settings.themeId);
     void writeStoredValue(KEY_BASE_URL, settings.baseUrl);
     void writeStoredValue(KEY_API_KEY, settings.apiKey);
     void writeStoredValue(KEY_CLIENT_ID, settings.clientId);
@@ -154,9 +150,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => ({
       hydrated,
       settings,
-      theme: themeRegistry[settings.themeId],
+      theme: themeRegistry['intelligence-console'],
       client,
-      setThemeId: (themeId) => setSettings((current) => ({ ...current, themeId })),
       setBaseUrl: (baseUrl) => setSettings((current) => ({ ...current, baseUrl })),
       setApiKey: (apiKey) => setSettings((current) => ({ ...current, apiKey })),
       setClientId: (clientId) => setSettings((current) => ({ ...current, clientId })),
@@ -171,7 +166,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setReviewNotifications: (reviewNotifications) => setSettings((current) => ({ ...current, reviewNotifications })),
       resetSettings: async () => {
         await Promise.all([
-          writeStoredValue(KEY_THEME, defaultSettings.themeId),
           writeStoredValue(KEY_BASE_URL, defaultSettings.baseUrl),
           writeStoredValue(KEY_API_KEY, defaultSettings.apiKey),
           writeStoredValue(KEY_CLIENT_ID, defaultSettings.clientId),

@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { TodayFinanceSnapshot } from '@/components/cards';
+import { TransactionRow } from '@/components/finance';
 import { DailyBrief } from '@/components/knowledge';
 import { AppScreen, Section, TopBar } from '@/components/layout';
 import { Button, Panel, StatusBadge } from '@/components/primitives';
@@ -11,14 +12,9 @@ import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatCategoryInsight, formatCategoryLabel, formatCurrency, formatDate, isUncategorizedLabel, joinDisplayParts, parseCurrency } from '@/lib/format';
+import { formatCategoryInsight, formatCurrency, formatDate, isUncategorizedLabel, type SupportedCurrency } from '@/lib/format';
+import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
-
-function sumByKind(transactions: { amount: string; kind: string }[], kind: 'income' | 'expense') {
-  return transactions.reduce((total, transaction) => {
-    return transaction.kind === kind ? total + parseCurrency(transaction.amount) : total;
-  }, 0);
-}
 
 export default function HomeScreen() {
   const { client, settings, theme } = useAppState();
@@ -36,12 +32,11 @@ export default function HomeScreen() {
 
   const transactions = data?.transactions ?? [];
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
-  const summaryCurrency = reportTransactions[0]?.currency === 'USD' ? 'USD' : 'UYU';
+  const summaryCurrency: SupportedCurrency = 'UYU';
   const summaryTransactions = reportTransactions.filter((transaction) => transaction.currency === summaryCurrency);
+  const financialSummary = summarizeFinancialTransactions(transactions, summaryCurrency);
   const insights = data?.insights ?? [];
   const digests = data?.digests ?? [];
-  const monthlySpend = sumByKind(summaryTransactions, 'expense');
-  const income = sumByKind(summaryTransactions, 'income');
   const categoryGroups = groupTransactionsByField(summaryTransactions, 'category');
   const topCategory = categoryGroups[0];
   const topTransaction = transactions[0];
@@ -53,24 +48,28 @@ export default function HomeScreen() {
       id: 'review-pending',
       title: `${pendingReviews.length} data decision${pendingReviews.length === 1 ? '' : 's'} need review`,
       summary: 'Reviewing them can improve future search and graph connections.',
+      origin: 'pending' as const,
       onActionPress: () => router.push('/review'),
     } : undefined,
     ...(primaryInsight?.cards?.length ? primaryInsight.cards.map((card, index) => ({
       id: `insight:${primaryInsight.id}:${index}`,
       title: card.title,
       summary: card.summary,
+      origin: 'model' as const,
       onActionPress: () => router.push(`/insight/${primaryInsight.id}`),
-    })) : (primaryInsight ? [{ id: `insight:${primaryInsight.id}`, title: primaryInsight.title, summary: primaryInsight.summary, onActionPress: () => router.push(`/insight/${primaryInsight.id}`) }] : [])),
+    })) : (primaryInsight ? [{ id: `insight:${primaryInsight.id}`, title: primaryInsight.title, summary: primaryInsight.summary, origin: 'model' as const, onActionPress: () => router.push(`/insight/${primaryInsight.id}`) }] : [])),
     ...(primaryDigest?.cards?.length ? primaryDigest.cards.map((card, index) => ({
       id: `digest:${primaryDigest.id}:${index}`,
       title: card.title,
       summary: card.summary,
+      origin: 'model' as const,
       onActionPress: () => router.push(`/digest/${primaryDigest.id}`),
-    })) : (primaryDigest ? [{ id: `digest:${primaryDigest.id}`, title: primaryDigest.title, summary: primaryDigest.summary, onActionPress: () => router.push(`/digest/${primaryDigest.id}`) }] : [])),
+    })) : (primaryDigest ? [{ id: `digest:${primaryDigest.id}`, title: primaryDigest.title, summary: primaryDigest.summary, origin: 'model' as const, onActionPress: () => router.push(`/digest/${primaryDigest.id}`) }] : [])),
     topCategory ? {
       id: `category:${topCategory.label}`,
       title: 'Largest spending area',
       summary: formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, summaryCurrency)),
+      origin: 'captured' as const,
       onActionPress: () => {
         const transactionNeedingReview = topCategory.items[0];
         if (isUncategorizedLabel(topCategory.label) && transactionNeedingReview) {
@@ -114,11 +113,9 @@ export default function HomeScreen() {
 
           <Section title="Finance" actionLabel="Open Money" onActionPress={() => router.push('/financials')}>
             <TodayFinanceSnapshot
-              income={formatCurrency(income, summaryCurrency)}
-              expenses={formatCurrency(monthlySpend, summaryCurrency)}
-              net={formatCurrency(income - monthlySpend, summaryCurrency)}
-              topCategory={topCategory ? formatCategoryLabel(topCategory.label) : undefined}
-              topCategoryAmount={topCategory ? formatCurrency(topCategory.total, summaryCurrency) : undefined}
+              income={formatCurrency(financialSummary.income, summaryCurrency)}
+              expenses={formatCurrency(financialSummary.expenses, summaryCurrency)}
+              net={formatCurrency(financialSummary.income - financialSummary.expenses, summaryCurrency)}
               onPress={() => router.push('/financials')}
             />
           </Section>
@@ -140,18 +137,7 @@ export default function HomeScreen() {
 
           <Section title="Recent activity" subtitle="Your latest money movement, with a clear path back to its evidence." actionLabel="Search all" onActionPress={() => router.push('/search')}>
             {topTransaction ? (
-              transactions.slice(0, 3).map((transaction) => (
-                <Pressable key={transaction.id} accessibilityRole="button" accessibilityLabel={`Open ${transaction.displayMerchantLabel ?? transaction.merchantLabel}`} onPress={() => router.push(`/transaction/${transaction.id}`)}>
-                  <Panel tone="finance" style={{ gap: theme.spacing.sm }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-                      <View style={{ width: 10, height: 10, borderRadius: 99, backgroundColor: transaction.kind === 'income' ? theme.status.income : transaction.kind === 'transfer' ? theme.status.transfer : theme.status.expense }} />
-                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>{joinDisplayParts([transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Transfer' : 'Expense', transaction.kind === 'transfer' ? undefined : formatCategoryLabel(transaction.category), transaction.currency])}</Text>
-                      <Text style={[theme.typography.bodyStrong, { color: transaction.kind === 'income' ? theme.status.income : transaction.kind === 'transfer' ? theme.status.transfer : theme.status.expense }]}>{transaction.amount}</Text>
-                    </View>
-                    <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{transaction.displayMerchantLabel ?? transaction.merchantLabel}</Text>
-                  </Panel>
-                </Pressable>
-              ))
+              transactions.slice(0, 3).map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />)
             ) : (
               <EmptyState title="No recent activity" description="Captured notes, notifications, emails, and wallet events will show up here." />
             )}

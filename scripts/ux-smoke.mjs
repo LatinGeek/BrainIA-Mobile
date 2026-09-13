@@ -6,7 +6,7 @@ const viewport = { width: 390, height: 844 };
 const checks = [
   { path: '/', marker: 'Today', label: 'home' },
   { path: '/search', marker: 'Discover', label: 'search' },
-  { path: '/settings', marker: 'Appearance', label: 'settings' },
+  { path: '/settings', marker: 'Fixed app reference rate', label: 'settings' },
   { path: '/financials', marker: 'Money', label: 'financials' },
   { path: '/entity/entity_spotify', marker: 'Knowledge detail', label: 'entity' },
   { path: '/insight/insight_finance', marker: 'Readable conclusion', label: 'insight' },
@@ -57,6 +57,11 @@ async function checkProposalInteractions(page) {
   await page.getByText('Reprocess', { exact: true }).first().waitFor({ timeout: 120000 });
   await page.getByText('Resolved', { exact: true }).first().waitFor({ timeout: 120000 });
   console.log('REVIEW_LANES_OK');
+
+  await page.goto(`${baseUrl}/insight/insight_spotify?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByText('Model insight', { exact: false }).first().waitFor({ timeout: 120000 });
+  await page.getByText('Evidence trail', { exact: false }).first().waitFor({ timeout: 120000 });
+  console.log('TRUST_EVIDENCE_OK');
 }
 
 async function checkPreviewStates(page) {
@@ -105,7 +110,7 @@ try {
   }
 
   await checkProposalInteractions(page);
-  await checkReviewDraft(page, false);
+  await checkReviewDraft(page);
   await page.close();
   page = await createPage();
   await checkPreviewStates(page);

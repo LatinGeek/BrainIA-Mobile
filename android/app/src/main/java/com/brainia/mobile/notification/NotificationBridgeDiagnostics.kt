@@ -21,7 +21,9 @@ import java.util.UUID
 internal object NotificationBridgeDiagnostics {
   private const val TAG = "BrainIANotificationBridge"
   private const val MAX_QUEUED_LOGS = 150
+  private const val MAX_UPLOAD_BATCH_SIZE = 50
   private val lock = Any()
+  private val flushLock = Any()
 
   fun record(
     context: Context,
@@ -72,42 +74,48 @@ internal object NotificationBridgeDiagnostics {
     readQueue(prefs(context).getString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LOGS, null)).length()
   }
 
-  fun flush(context: Context): Boolean {
+  fun flush(context: Context): Boolean = synchronized(flushLock) {
     val preferences = prefs(context)
     val baseUrl = preferences.getString(NotificationBridgeConfig.KEY_BASE_URL, null).orEmpty().trim().trimEnd('/')
-    if (baseUrl.isEmpty()) return false
+    if (baseUrl.isEmpty()) return@synchronized false
     val snapshot = synchronized(lock) {
       readQueue(preferences.getString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LOGS, null)).let { JSONArray(it.toString()) }
     }
-    if (snapshot.length() == 0) return true
+    if (snapshot.length() == 0) return@synchronized true
 
-    val connection = URL("$baseUrl/api/v1/client-diagnostics").openConnection() as HttpURLConnection
-    return try {
-      connection.requestMethod = "POST"
-      connection.doInput = true
-      connection.doOutput = true
-      connection.connectTimeout = 10_000
-      connection.readTimeout = 10_000
-      connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-      connection.setRequestProperty("Accept", "application/json")
-      preferences.getString(NotificationBridgeConfig.KEY_API_KEY, null)?.trim()?.takeIf { it.isNotEmpty() }
-        ?.let { connection.setRequestProperty("x-brainia-api-key", it) }
-      preferences.getString(NotificationBridgeConfig.KEY_CLIENT_ID, null)?.trim()?.takeIf { it.isNotEmpty() }
-        ?.let { connection.setRequestProperty("x-brainia-client-id", it) }
-      connection.outputStream.use { output ->
-        output.write(JSONObject().put("logs", snapshot).toString().toByteArray(Charsets.UTF_8))
-      }
-      val status = connection.responseCode
-      if (status !in 200..299) {
-        val body = connection.errorStream?.use { stream ->
-          BufferedReader(InputStreamReader(stream)).use { reader -> reader.readText().take(240) }
+    for (batchStart in 0 until snapshot.length() step MAX_UPLOAD_BATCH_SIZE) {
+      val batch = JSONArray()
+      val batchEnd = minOf(batchStart + MAX_UPLOAD_BATCH_SIZE, snapshot.length())
+      for (index in batchStart until batchEnd) batch.put(snapshot.getJSONObject(index))
+
+      val connection = URL("$baseUrl/api/v1/client-diagnostics").openConnection() as HttpURLConnection
+      try {
+        connection.requestMethod = "POST"
+        connection.doInput = true
+        connection.doOutput = true
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 10_000
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        connection.setRequestProperty("Accept", "application/json")
+        preferences.getString(NotificationBridgeConfig.KEY_API_KEY, null)?.trim()?.takeIf { it.isNotEmpty() }
+          ?.let { connection.setRequestProperty("x-brainia-api-key", it) }
+        preferences.getString(NotificationBridgeConfig.KEY_CLIENT_ID, null)?.trim()?.takeIf { it.isNotEmpty() }
+          ?.let { connection.setRequestProperty("x-brainia-client-id", it) }
+        connection.outputStream.use { output ->
+          output.write(JSONObject().put("logs", batch).toString().toByteArray(Charsets.UTF_8))
         }
-        preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "Server rejected diagnostics ($status): ${body ?: "empty"}").apply()
-        false
-      } else {
+        val status = connection.responseCode
+        if (status !in 200..299) {
+          val body = connection.errorStream?.use { stream ->
+            BufferedReader(InputStreamReader(stream)).use { reader -> reader.readText().take(240) }
+          }
+          preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "Server rejected diagnostics ($status): ${body ?: "empty"}").apply()
+          return@synchronized false
+        }
+
         connection.inputStream?.close()
         val uploadedIds = buildSet {
-          for (index in 0 until snapshot.length()) add(snapshot.getJSONObject(index).getString("id"))
+          for (index in 0 until batch.length()) add(batch.getJSONObject(index).getString("id"))
         }
         synchronized(lock) {
           val current = readQueue(preferences.getString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LOGS, null))
@@ -122,14 +130,15 @@ internal object NotificationBridgeDiagnostics {
             .remove(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR)
             .apply()
         }
-        true
+      } catch (error: Exception) {
+        preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "${error.javaClass.simpleName}: ${error.message?.take(180) ?: "upload failed"}").apply()
+        return@synchronized false
+      } finally {
+        connection.disconnect()
       }
-    } catch (error: Exception) {
-      preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "${error.javaClass.simpleName}: ${error.message?.take(180) ?: "upload failed"}").apply()
-      false
-    } finally {
-      connection.disconnect()
     }
+
+    true
   }
 
   private fun prefs(context: Context) = context.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, Context.MODE_PRIVATE)
