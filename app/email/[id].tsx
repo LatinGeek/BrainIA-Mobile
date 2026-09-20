@@ -13,7 +13,10 @@ export default function EmailDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const client = useBrainIAClient();
   const theme = useTheme();
-  const loader = useMemo(() => async () => (await client.listEvents()).find((event) => event.id === id && event.kind === 'email'), [client, id]);
+  const loader = useMemo(() => async () => {
+    const event = await client.getEvent(id);
+    return event.kind === 'email' ? event : undefined;
+  }, [client, id]);
   const { data: email, loading, error, refresh } = useAsyncResource(loader, [loader]);
 
   return (

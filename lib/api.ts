@@ -853,6 +853,7 @@ export type BrainIAClient = {
   health: () => Promise<{ ok: boolean }>;
   metrics: () => Promise<SummaryMetric[]>;
   listEvents: (limit?: number) => Promise<EventSummary[]>;
+  getEvent: (id: string) => Promise<EventSummary>;
   listEntities: (limit?: number) => Promise<EntitySuggestion[]>;
   getExploreGraph: (limit?: number, options?: { includeEventEvidence?: boolean; includeIdentities?: boolean; projection?: 'network' | 'taxonomy'; root?: string; depth?: number }) => Promise<ExploreGraph>;
   listInsights: (limit?: number) => Promise<InsightSummary[]>;
@@ -916,6 +917,10 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       return events
         .sort((left, right) => Date.parse(right.receivedAt ?? '') - Date.parse(left.receivedAt ?? ''))
         .slice(0, limit);
+    },
+    async getEvent(id: string) {
+      const json = await requestWithFallback(baseUrl, `/api/v1/events/${encodeURIComponent(id)}`, {}, { headers });
+      return normalizeEvent(json, 0);
     },
     async listEntities(limit = 24) {
       const json = await requestWithFallback(baseUrl, '/api/v1/entities', [], { headers });

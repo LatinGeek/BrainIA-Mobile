@@ -57,7 +57,7 @@ export default function TransactionDetailScreen() {
       : [];
   const originEventId = evidenceItems.find((item) => item.rawEventId)?.rawEventId;
   const originLoader = useMemo(
-    () => async () => originEventId ? (await client.listEvents()).find((event) => event.id === originEventId) : undefined,
+    () => async () => originEventId ? client.getEvent(originEventId) : undefined,
     [client, originEventId]
   );
   const { data: originEvent } = useAsyncResource(originLoader, [originLoader]);

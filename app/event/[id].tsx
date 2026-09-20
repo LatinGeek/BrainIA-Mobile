@@ -16,7 +16,7 @@ export default function EventDetailScreen() {
   const theme = useTheme();
   const [reprocessing, setReprocessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const loader = useMemo(() => async () => (await client.listEvents()).find((event) => event.id === id), [client, id]);
+  const loader = useMemo(() => () => client.getEvent(id), [client, id]);
   const { data: event, loading, error, refresh } = useAsyncResource(loader, [loader]);
   const transactionsLoader = useMemo(() => () => client.listTransactions(100), [client]);
   const { data: transactions } = useAsyncResource(transactionsLoader, [transactionsLoader]);
