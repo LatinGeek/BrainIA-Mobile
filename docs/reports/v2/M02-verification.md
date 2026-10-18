@@ -146,4 +146,49 @@ No mobile runtime code writes to the backend repository. No out-of-bound **contr
 
 ## 9. Verdict
 
-**Accepted-with-conditions.** No plaintext v2 token leak, no empty-selection capture, no migration downgrade, and no broken credential lifecycle were found. M02 is acceptable on static, JVM, and isolated-probe evidence, subject to the conditions above. Device/connected instrumentation, signing custody, Play continuity, live v2, and the pre-existing harness/aggregate-Gradle failures remain blocked or open and are not fabricated as passes.
+**Accepted-with-conditions (updated 2026-10-18 after the M02-r3/M01-r2 follow-up; see addendum §10).** No plaintext v2 token leak, no empty-selection capture, no migration downgrade, and no broken credential lifecycle were found. M02 is acceptable on static, JVM, and isolated-probe evidence, subject to the conditions above. Device/connected instrumentation, signing custody, Play continuity, live v2, and the pre-existing harness/aggregate-Gradle failures remain blocked or open and are not fabricated as passes.
+
+## 10. Addendum — M02-r3/M01-r2 re-verification (HEAD `b4c8748`)
+
+Re-verified: 2026-10-18. Current HEAD is `b4c87486d4bd73aba2bfaf09fd5a078a9d79b38e`, parent `cd39363`; clean except untracked `untitled.md`. The implementer reports `M02-r3.md` and `M01-r2.md` describe the parent state; the follow-up changes are committed in `b4c8748`. This addendum is read-only and supersedes only the stale conditions it lists. No device, Play, signing-custody, or live-v2 acceptance is claimed.
+
+### 10.1 Commands (current tree)
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `npm run lint` | **0** | `expo lint`; no diagnostics. |
+| `npm run typecheck` | **0** | `tsc --noEmit`; no diagnostics. |
+| `npm run contracts:verify` | **0** | 912 sealed checks / 152 fixtures / 7 sequences; 221 mobile checks; approved manifest `666af99f…bfb55`; 15 sealed, 4 pinned extension, 111 `$defs`, 19 paths. |
+| `android/: .\gradlew.bat :app:testDebugUnitTest --rerun-tasks` | **0** | `BUILD SUCCESSFUL`; 21 tests, 0 failures/errors/skips. |
+| `npm run agent:harness` | **1** | Five suites pass; pre-existing transaction-edit 120 s timeout at `scripts/transaction-edit-agent-smoke.mjs:66`. Expo stopped; port 8090 closed. |
+| SDK `adb devices` | **0** | Zero devices. |
+| Temp storage probe | **0** | 36/36 checks, including epoch-ms string/number and invalid/past expiry. |
+| Temp offline probe | **0** | 10/10 checks. |
+
+### 10.2 Settings expiry and confirmations
+
+- `lib/storage.ts:240-253` accepts epoch milliseconds as a number **or** a digit-only string, ISO-8601 via `Date.parse`, and empty/omitted as no expiry. The probe confirmed both epoch forms produce the exact millisecond value; `not-a-date` and malformed ISO throw; past epoch strings throw; a rejected expiry leaves the existing token and metadata untouched. This closes prior condition §8 item 9.
+- `app/settings.tsx:200-211` routes rotation through a destructive `Alert` with a cancel action before `commitCredential`; revoke (`:213-218`) and logout (`:220-225`) use the same Cancel + destructive-action pattern. Enrollment still saves after the explicit sheet action, as documented. The confirmation styles are consistent. This closes prior condition §8 item 10.
+- **Low residual:** the revoke and logout `onPress` async IIFEs still have no `catch`; a storage failure would reject without a visible error. Rotation goes through `commitCredential`, which does catch and alert. This is pre-existing and not a lifecycle break, but it is inconsistent error handling.
+- Expiry strings are trimmed first; a whitespace-only `expiresAt` is treated as “no expiry” rather than invalid. The settings UI trims to `null` before calling storage, so the user-facing path is unaffected; this is a low-severity programmatic-input edge case.
+
+### 10.3 Stale `apiKey`/`clientId`
+
+- `lib/notification-bridge.ts:36-52` marks both legacy parameters `@deprecated`, documents that they are ignored, and calls `nativeModule.configure(config.baseUrl…)` with the base URL only. No credential is forwarded to the native bridge.
+- Native `NotificationBridgeModule.configure` writes only `baseUrl`; capture reads the Keystore-backed SecureStore envelope. No new plaintext preference copy exists.
+- `lib/api.ts` still sends `x-brainia-api-key` / `x-brainia-client-id` to **v1** endpoints (`:973-975`) and remains unchanged. That is the documented v1 transport path, not a v2 credential or notification-bridge forward. This matches `M01-r2.md` §1.
+
+### 10.4 Offline classification documentation
+
+- The transport returns `HELD / unsupported_or_unavailable_capabilities` for an offline capabilities call; the app wrapper returns `PENDING / offline_capabilities`, preserves the envelope, and makes no observation POST. A direct transport probe (exit 0) and the 10-check wrapper probe both confirm this.
+- `M02-r3.md` §6 / `M01-r2.md` §4 now state the two-layer behavior accurately. The prior report wording that conflated them is superseded. See `M01-verification.md` §9.4 for the independent check.
+
+### 10.5 Scope, signing, and condition status
+
+- Commit `b4c8748` contains the four contract-extension files, `lib/storage.ts`, `lib/notification-bridge.ts`, `app/settings.tsx`, the two follow-up reports, and generated `graphify-out/` files. No `package.json`, native Android, backend, dependency, or build-artifact change. The `graphify-out/` refresh is generated DoD output but is omitted from the reports’ §8 file tables — a documentation omission, not code scope creep.
+- `lib/api.ts` scope is ratified by `M01-r2.md` §1 / `M02-r3.md` §1 under the joint follow-up reservation; the code was not moved. This closes prior condition §8 item 4 administratively (the file still is not an M02-only write).
+- `contracts/`, both backup XML files, and the JVM test are now tracked, closing prior condition §8 item 3 reproducibility.
+- Current working tree and current HEAD `android/gradle.properties` contain no `BRAINIA_RELEASE_*` definitions. Older history (initial commit `00f9f83` and descendants before `cd39363`) still contains the historical names/values; no value was read or reproduced here. Signing custody and Play continuity remain human-gated; no certificate, `apksigner`, Play, or key material was inspected, and no rotation/history rewrite occurred.
+- Prior §8 items 5-8 and 11-12 remain: pre-existing `agent:harness` failure, aggregate Expo test-discovery failure, the corrected rotation-crash window (stale but valid metadata; generation monotonicity is best-effort across a crash), the unsynchronized adoption metadata write, live-v2 absence, and the outstanding G1 mobile reviewer sign-off. Device/Keystore, backup/restore, and connected instrumentation remain blocked with zero ADB devices.
+
+**Updated M02 verdict: accepted-with-conditions.** The epoch/ISO expiry behavior, rotation/revoke/logout confirmations, deprecation of forwarded bridge credentials, and the two-layer offline documentation are verified. No plaintext secret, empty-selection capture, migration downgrade, broken credential lifecycle, or enabled blocked operation was found. Remaining conditions are device/Keystore evidence, signing custody/Play continuity, live v2, the pre-existing harness/aggregate-Gradle failures, the low residual confirmation error handling, and the M01 extension-pin ordering caveat (see `M01-verification.md` §9.3).

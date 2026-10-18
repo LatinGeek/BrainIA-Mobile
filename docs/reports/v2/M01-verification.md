@@ -2,7 +2,7 @@
 
 Date: 2026-10-18. Repository: `D:/Coding/BrainIA/BrainIA-Mobile`, branch `main`, HEAD `a526b3498fff63df5374c72c11ab09ccc39d13fc`, dirty tree (73 porcelain entries, unchanged from `docs/reports/v2/mobile-contract-review.md`). Verifier: independent of the M01 implementer; read-only. Implementer artifact: `docs/reports/v2/M01-r1.md` (revised 2026-10-18 11:36). This report **supersedes** the 2026-10-15 `M01-verification.md`, which validated the stale `312c92f8…` staging subset and must not be used as evidence.
 
-**Verdict: M01 accepted-with-conditions.** The approved G1 bytes are now imported exactly: the mobile manifest recomputes to `666af99f…bfb55`, all 15 sealed members match the backend bundle byte-for-byte, `spec.md` is the approved `2.0.0-draft.3` normative document, the extension is independently pinned, and `contracts:verify` passes 912 sealed + 204 mobile checks. No hash mismatch, unapproved contract surface, unauthenticated observation send, backend filesystem dependency, or app/native scope creep was found. Conditions are evidence/behavioral, not byte-integrity: the offline-at-capabilities state contradicts the implementer's own table, the extension trust root is local, the repo still cannot reproduce the tree from a clean checkout, and the G1 ledger still records the mobile reviewer sign-off as outstanding.
+**Verdict: M01 accepted-with-conditions (updated 2026-10-18 after the M01-r2/M02-r3 follow-up; see addendum §9).** The approved G1 bytes are now imported exactly: the mobile manifest recomputes to `666af99f…bfb55`, all 15 sealed members match the backend bundle byte-for-byte, `spec.md` is the approved `2.0.0-draft.3` normative document, the extension is independently pinned, and `contracts:verify` passes 912 sealed + 204 mobile checks. No hash mismatch, unapproved contract surface, unauthenticated observation send, backend filesystem dependency, or app/native scope creep was found. Conditions are evidence/behavioral, not byte-integrity: the offline-at-capabilities state contradicts the implementer's own table, the extension trust root is local, the repo still cannot reproduce the tree from a clean checkout, and the G1 ledger still records the mobile reviewer sign-off as outstanding.
 
 Scope of this verification: offline JavaScript contract layer, manifest/spec bytes, extension, transport state machine, and repository scope. No live backend, device, native capture, APK/AAB, or Metro bundle execution was performed.
 
@@ -157,3 +157,53 @@ Remaining M02 conditions (unchanged, from `M02-r1.md` and the 11:27 review): `ag
 - The dirty tree prevents hunk-level authorship attribution for `lib/api.ts` and `lib/domain.ts`; path scope and mtime evidence are conclusive for app/native/package files but not for authorship inside the two reserved dirty files.
 - The sealed artifact still self-describes as proposed/unapproved (`approvalReady: false`); acceptance here is conformance to the ledger-pinned bytes, not contract approval, and it does not approve the five disabled gates or any provisional operation.
 - This verifier created only this report inside the repository. Scratch copies and probes were confined to `C:/Users/germa/AppData/Local/Temp/opencode/`; no app, native, config, contract, or package file was modified, and no commit, install, build, device run, or backend write was performed. HEAD remains `a526b3498fff63df5374c72c11ab09ccc39d13fc`.
+
+## 9. Addendum — M01-r2/M02-r3 re-verification (HEAD `b4c8748`)
+
+Re-verified: 2026-10-18. Current HEAD is `b4c87486d4bd73aba2bfaf09fd5a078a9d79b38e` (commit `chore: complete mobile contract and credential follow-ups`), parent `cd39363`; the tree is clean except untracked `untitled.md`. The implementer reports `docs/reports/v2/M01-r2.md` and `M02-r3.md` describe the parent state (`cd39363`); their follow-up changes are committed in `b4c8748`. This addendum is read-only and supersedes only the stale command counts, extension-pin details, and C1/C3/C4 condition status above. No device, Play, signing-custody, or live-v2 acceptance is claimed.
+
+### 9.1 Commands (current tree)
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `npm run lint` | **0** | `expo lint`; no diagnostics. |
+| `npm run typecheck` | **0** | `tsc --noEmit`; no diagnostics. |
+| `npm run contracts:verify` | **0** | `PASS 912 contract checks; 152 positive/negative schema+semantic fixtures; 7 identity sequences`; manifest `666af99f…bfb55`; `PASS 221 mobile conformance checks; 15 sealed files; 4 pinned extension files; 111 $defs; 19 OpenAPI paths`. |
+| `android/: .\gradlew.bat :app:testDebugUnitTest --rerun-tasks` | **0** | `BUILD SUCCESSFUL`; XML `tests=21 failures=0 errors=0 skipped=0`. |
+| `npm run agent:harness` | **1** | Five browser suites pass (`REVIEW_LOADING_OK`, `REVIEW_EMPTY_OK`, `REVIEW_EDITING_OK`, `REVIEW_AGENT_SMOKE_OK`, `CAPTURE_TRANSFER_AGENT_SMOKE_OK`); then the pre-existing `scripts/transaction-edit-agent-smoke.mjs:66` 120 s `Tipo de movimiento` timeout. Port 8090 closed afterwards. |
+| SDK `adb devices` | **0** | Zero devices. |
+| Guard probe (temp, real transport) | **0** | 23/23 checks (§9.2). |
+| Offline probe (temp, real wrapper + transport) | **0** | 10/10 checks (§9.4). |
+| Extension tamper probe (temp copy) | **1** | Modified `transport.cjs` fails the extension hash pin (`extension bytes transport.cjs`). |
+
+### 9.2 Provisional-operation guard
+
+Independent temp probe (`C:/Users/germa/AppData/Local/Temp/opencode/m02-followup/guard-probe.mjs`), using the real `transport.cjs` and `open-items.json`:
+
+- The local `PROVISIONAL_OPERATIONS` list equals the 13 `implementationBlocked` names exactly.
+- Each of the 13 operations rejects with `implementation_blocked` and **zero** fetcher calls when no gate is supplied, including calls with malformed bodies or unexpected query strings.
+- `GET /api/v2/export?unexpected=1` is blocked by the guard before query validation; `GET /api/v2/export/` is rejected by path resolution and sends nothing.
+- An unknown/misspelled gate enables nothing. A gate of `['GET /api/v2/export']` reaches the network for that operation only; `POST /api/v2/queries` remains blocked.
+- `lib/api.ts` passes no fourth argument and contains no `enabledProvisionalOperations`, so the app defaults to fail-closed.
+
+This closes the earlier C4 condition. The guard is caller-side only; a future task that intentionally enables a provisional operation must supply the allowlist and obtain new approval.
+
+### 9.3 Extension trust root — pin works, ordering caveat
+
+- `mobile/SHA256SUMS.json` covers exactly the four code files (`runtime.cjs`, `runtime.d.cts`, `transport.cjs`, `transport.d.cts`); each recomputed SHA-256 matches. The manifest bytes recompute to `e4e30a1a662889d93fb3b4325c1c381a49bd88292e096821ecb592c5044c26e7`, matching `EXTENSION_MANIFEST_SHA256` in `mobile/verify.mjs`.
+- The manifest explicitly says `"trustRoot": "local repository manifest; not an external approval or G1 ledger claim"`; `verify.mjs` documents that `verify.mjs` itself is not covered and is anchored only by the repository commit. This is the documented local-only limitation, not an external signature.
+- A temp copy with one appended comment in `transport.cjs` failed verification with exit 1 and a hash mismatch, so the pin does detect modified bytes.
+- **Caveat (medium):** `verify.mjs` requires `./runtime.cjs` and `./transport.cjs` at lines 10-11, **before** it reads and pins `SHA256SUMS.json` at lines 54-62. The comment says the extension is pinned “before executing any of it,” but the extension modules have already executed. A malicious extension could therefore influence the verifier process before its hash is checked. The hash pin still catches ordinary edits (as the tamper probe shows), and `verify.mjs` itself is the ultimate local trust root, but the ordering claim is inaccurate. Deferring the `require` until after the hash check would make the stated property true.
+- **C2 status:** local pin added; an external anchor (ledger/CI hash of the extension manifest or verifier) is still absent. C2 remains a release/assurance condition, not a hash mismatch.
+
+### 9.4 Offline classification — two layers documented correctly
+
+- Sealed transport, offline during `GET /api/v2/capabilities`: `HELD / unsupported_or_unavailable_capabilities`; one request; no observation POST (independent direct-transport probe, exit 0).
+- Application wrapper in `lib/api.ts:938-969`: the same event is reclassified to `PENDING / offline_capabilities`; offline observation POST is `PENDING / offline`; missing token is `BLOCKED_AUTH / auth_missing` with zero requests; `503` capabilities remains `HELD` and is not reclassified (10/10 wrapper probe checks).
+- `M01-r2.md` §4 and `M02-r3.md` §6 now state this distinction accurately. The earlier C1 wording condition is closed by documentation, not by changing the sealed transport.
+
+### 9.5 Scope and condition status
+
+Commit `b4c8748` changes only: `app/settings.tsx`, the four `contracts/.../mobile/*` follow-up files, `lib/notification-bridge.ts`, `lib/storage.ts`, the two follow-up reports, and generated `graphify-out/` files. No `package.json`, native Android, backend, dependency, or build-artifact change is in the commit. The `graphify-out/` refresh is generated DoD output, but `M01-r2.md`/`M02-r3.md` §8 omit it from their changed-file tables — a documentation omission, not code scope creep. `contracts/`, both backup XML files, and the JVM test are now tracked, closing C3 reproducibility. C5 (type-only `transport.d.cts` import of `lib/domain`) remains. C6 (G1 mobile reviewer sign-off) remains.
+
+**Updated M01 verdict: accepted-with-conditions.** The byte import, provisional guard, and offline documentation are verified; remaining conditions are the local-only extension trust anchor plus the pre-verification require ordering, the typings layering, the G1 ledger sign-off, and the unchanged device/live-v2 limits. No enabled blocked operation, plaintext secret, hash mismatch, or functional regression was found.
