@@ -254,14 +254,14 @@ export function MonthlyCashFlowBar({
             <View style={[styles.cashFlowMetric, { backgroundColor: theme.status.income + '12', borderColor: theme.status.income + '2E' }]}>
               <View style={[styles.cashFlowLegendDot, { backgroundColor: theme.status.income }]} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Income</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ingresos</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.income)}</Text>
               </View>
             </View>
             <View style={[styles.cashFlowMetric, { backgroundColor: theme.status.expense + '12', borderColor: theme.status.expense + '2E' }]}>
               <View style={[styles.cashFlowLegendDot, { backgroundColor: theme.status.expense }]} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Spending</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Gastos</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.spending)}</Text>
               </View>
             </View>
@@ -340,11 +340,11 @@ export function MonthlyCashFlowLine({
       </View>
       {selected ? <Animated.View key={selected.periodLabel} entering={FadeIn.duration(180)} style={{ flexDirection: 'row', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[theme.typography.caption, { color: theme.status.income }]}>● Income</Text>
+          <Text style={[theme.typography.caption, { color: theme.status.income }]}>● Ingresos</Text>
           <Text style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.income)}</Text>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[theme.typography.caption, { color: theme.status.expense }]}>● Expenses</Text>
+          <Text style={[theme.typography.caption, { color: theme.status.expense }]}>● Gastos</Text>
           <Text style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]}>{formatValue(selected.spending)}</Text>
         </View>
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{selected.periodLabel}</Text>

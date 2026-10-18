@@ -1,19 +1,22 @@
 import { NativeModules, Platform } from 'react-native';
 
 type NotificationBridgeNativeModule = {
-  configure: (baseUrl: string, apiKey?: string | null, clientId?: string | null) => void;
+  configure: (baseUrl: string) => void;
   isNotificationListenerEnabled: () => Promise<boolean>;
   openNotificationListenerSettings: () => void;
   getNotificationListenerStatus: () => Promise<NotificationBridgeStatus>;
   reconcileActiveNotifications: () => Promise<boolean>;
   getInstalledCaptureApps: () => Promise<NotificationCaptureApp[]>;
-  setCaptureAppPackages: (packages: string[]) => void;
+  setCaptureAppPackages: (packages: string[]) => Promise<boolean>;
   flushDiagnosticLogs: () => Promise<boolean>;
 };
 
 export type NotificationCaptureApp = { packageName: string; name: string; selected: boolean };
 
 export type NotificationBridgeStatus = {
+  captureConsent?: 'unconfigured' | 'empty' | 'selected';
+  /** Version of the persisted consent record; 0/undefined means pre-migration. */
+  captureConsentVersion?: number;
   accessEnabled: boolean;
   listenerReady: boolean;
   connectedAt: number;
@@ -32,6 +35,11 @@ const nativeModule = NativeModules.BrainIANotificationBridge as NotificationBrid
 
 export async function syncNotificationBridgeConfig(config: {
   baseUrl: string;
+  /**
+   * Accepted for compatibility with existing callers, never forwarded.
+   * Native capture reads the Keystore-backed SecureStore envelope directly, so
+   * no credential is duplicated into SharedPreferences.
+   */
   apiKey?: string;
   clientId?: string;
 }) {
@@ -39,7 +47,7 @@ export async function syncNotificationBridgeConfig(config: {
     return;
   }
 
-  nativeModule.configure(config.baseUrl?.trim() ?? '', config.apiKey?.trim() ?? '', config.clientId?.trim() ?? '');
+  nativeModule.configure(config.baseUrl?.trim() ?? '');
 }
 
 export async function isNotificationBridgeEnabled() {
@@ -78,8 +86,8 @@ export async function getInstalledCaptureApps(): Promise<NotificationCaptureApp[
   return nativeModule.getInstalledCaptureApps();
 }
 
-export function setCaptureAppPackages(packages: string[]) {
-  if (Platform.OS === 'android' && nativeModule?.setCaptureAppPackages) nativeModule.setCaptureAppPackages(packages);
+export async function setCaptureAppPackages(packages: string[]) {
+  if (Platform.OS === 'android' && nativeModule?.setCaptureAppPackages) await nativeModule.setCaptureAppPackages(packages);
 }
 
 export async function flushNotificationBridgeDiagnostics() {

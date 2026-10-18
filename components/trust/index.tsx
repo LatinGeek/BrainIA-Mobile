@@ -8,8 +8,8 @@ import { ProvenanceOrigin } from '@/lib/domain';
 import { cleanDisplayText, FIXED_FX_LABEL, formatCurrency, parseCurrency } from '@/lib/format';
 
 const provenanceLabels: Record<ProvenanceOrigin, string> = {
-  model: 'Model',
-  captured: 'Captured',
+  model: 'IA',
+  captured: 'Capturado',
   user: 'You',
   pending: 'Unresolved',
 };
@@ -73,10 +73,10 @@ export function FxStamp({ onPress }: { onPress?: () => void }) {
       <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>{FIXED_FX_LABEL}</Text>
     </View>
   );
-  return onPress ? <Pressable accessibilityRole="button" accessibilityLabel="Show exchange-rate explanation" onPress={onPress}>{content}</Pressable> : content;
+  return onPress ? <Pressable accessibilityRole="button" accessibilityLabel="Ver explicación del tipo de cambio" onPress={onPress}>{content}</Pressable> : content;
 }
 
-export function GeneratedTextBlock({ title = 'Generated summary', body, confidence, origin = 'model', children }: { title?: string; body: string; confidence?: number; origin?: ProvenanceOrigin; children?: ReactNode }) {
+export function GeneratedTextBlock({ title = 'Resumen generado', body, confidence, origin = 'model', children }: { title?: string; body: string; confidence?: number; origin?: ProvenanceOrigin; children?: ReactNode }) {
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const text = cleanDisplayText(body);

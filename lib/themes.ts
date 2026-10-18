@@ -86,7 +86,7 @@ export type ThemeTokens = {
 };
 
 const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 40 };
-const radius = { sm: 4, md: 6, lg: 8, xl: 10, pill: 999 };
+const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 };
 const motion = {
   fast: 110,
   base: 180,
@@ -95,47 +95,45 @@ const motion = {
 };
 
 /**
- * BrainIA's single visual system. Colour is semantic: indigo is action/user
- * intent, cyan is machine output, amber is unresolved, and money keeps its
- * own directional palette.
+ * Precision graphite: ice-blue actions, platinum content and semantic money colors.
  */
 export const brainiaTheme: ThemeTokens = {
   id: 'intelligence-console',
-  name: 'BrainIA Dark',
+  name: 'Precisión grafito',
   isDark: true,
   colors: {
-    background: '#070A12',
-    surface: '#0B101C',
-    surfaceRaised: '#0F1625',
-    surfaceSubtle: '#121B2B',
-    border: '#263247',
-    textPrimary: '#F1F5FC',
-    textSecondary: '#AEB9CB',
-    textMuted: '#718096',
-    accent: '#6558F5',
-    accentSoft: '#1D1A48',
-    accentStrong: '#BDB7FF',
-    onAccent: '#FFFFFF',
+    background: '#101214',
+    surface: '#171A1E',
+    surfaceRaised: '#1D2126',
+    surfaceSubtle: '#242A30',
+    border: '#343D46',
+    textPrimary: '#F1F3F5',
+    textSecondary: '#B4BDC7',
+    textMuted: '#929EAC',
+    accent: '#A5D8FA',
+    accentSoft: '#253C4B',
+    accentStrong: '#BDE7FF',
+    onAccent: '#102332',
     success: '#42D59A',
     warning: '#F4B942',
     danger: '#FF6B7A',
     model: '#44C7E8',
     captured: '#8A97AA',
-    user: '#8B7CFF',
+    user: '#9BC7DF',
     pending: '#F4B942',
-    chart: ['#6558F5', '#44C7E8', '#42D59A', '#FF6B7A', '#F4B942', '#718096'],
+    chart: ['#A5D8FA', '#44C7E8', '#42D59A', '#FF6B7A', '#F4B942', '#929EAC'],
   },
   status: {
     income: '#42D59A',
     expense: '#FF6B7A',
-    transfer: '#8B7CFF',
+    transfer: '#9BC7DF',
     insight: '#44C7E8',
     review: '#F4B942',
     warning: '#F4B942',
   },
   depth: {
     overlay: 'rgba(3,6,12,0.84)',
-    glow: 'rgba(101,88,245,0.16)',
+    glow: 'rgba(165,216,250,0.08)',
     hairline: 'rgba(174,185,203,0.16)',
   },
   motion,

@@ -35,34 +35,34 @@ export default function InsightDetailScreen() {
 
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar showBack title={insight?.title ?? 'Insight'} subtitle={insight?.timestamp ? `Generated ${insight.timestamp}` : 'Readable conclusion with supporting context.'} />
+      <TopBar showBack title={insight?.title ?? 'Perspectiva'} subtitle={insight?.timestamp ? `Generada ${insight.timestamp}` : 'Conclusión clara con contexto de respaldo.'} />
 
-      {error ? <EmptyState title="Unable to load insight" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="No se pudo cargar la perspectiva" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
 
       {loading && !insight ? (
         <LoadingSkeleton variant="detail" count={2} />
       ) : insight ? (
         <>
-          <GeneratedTextBlock title="Model insight" body={insight.summary} confidence={insight.confidence} />
+          <GeneratedTextBlock title="Perspectiva asistida" body={insight.summary} confidence={insight.confidence} />
           {insight.whyItMatters ? (
             <>
-              <SectionHeader title="Why it matters" />
+              <SectionHeader title="Por qué importa" />
               <Surface variant="subtle">
                 <ListRow title={insight.whyItMatters} />
               </Surface>
             </>
           ) : null}
 
-          <SectionHeader title="Key takeaways" />
+          <SectionHeader title="Conclusiones principales" />
           <View style={{ gap: 8 }}>
             {insight.takeaways.length ? insight.takeaways.map((takeaway) => (
               <ListRow key={takeaway} title={takeaway} />
-            )) : <EmptyState title="No takeaways yet" description="There are no actionable takeaways for this insight." />}
+            )) : <EmptyState title="Todavía no hay conclusiones" description="No hay acciones concretas que recomendar por ahora." />}
           </View>
 
           {insight.supportingReferences?.length ? (
             <>
-              <SectionHeader title="Evidence trail" subtitle="Only references returned with this insight are shown." />
+              <SectionHeader title="Fuentes de respaldo" subtitle="Se muestran las referencias que respaldan esta perspectiva." />
               <EvidenceTrail items={insight.supportingReferences.map((reference) => ({
                 id: `${reference.kind}-${reference.id}`,
                 title: reference.label,
@@ -75,7 +75,7 @@ export default function InsightDetailScreen() {
 
           {insight.recommendedAction ? (
             <>
-              <SectionHeader title="Next step" />
+              <SectionHeader title="Próximo paso" />
               <Surface variant="subtle">
                 <ListRow title={insight.recommendedAction} />
               </Surface>
@@ -92,27 +92,27 @@ export default function InsightDetailScreen() {
 
           {shouldShowOperationalDetail(settings.dataVisibility) ? (
             <>
-              <SectionHeader title="Technical details" />
+              <SectionHeader title="Detalles técnicos" />
               <View style={{ gap: 8 }}>
-                <ListRow title="Model" subtitle={insight.model ?? 'heuristic-v1'} />
-                <ListRow title="Supporting items" subtitle={String(insight.relatedCount ?? 0)} />
-                <ListRow title="Generated at" subtitle={insight.timestamp ?? 'Unknown timestamp'} />
+                <ListRow title="IA" subtitle={insight.model ?? 'heuristic-v1'} />
+                <ListRow title="Elementos de respaldo" subtitle={String(insight.relatedCount ?? 0)} />
+                <ListRow title="Generado el" subtitle={insight.timestamp ?? 'Fecha desconocida'} />
               </View>
             </>
           ) : null}
 
-          <SectionHeader title="Actions" />
+          <SectionHeader title="Acciones" />
           <EmptyState
-            title="Need more context?"
-            description="Open the graph or search around the current target."
-            primaryActionLabel="Search"
+            title="¿Necesitas más contexto?"
+            description="Abre el mapa o busca alrededor del elemento actual."
+            primaryActionLabel="Buscar"
             onPrimaryAction={() => router.push('/search')}
-            secondaryActionLabel="Home"
+            secondaryActionLabel="Inicio"
             onSecondaryAction={() => router.push('/')}
           />
         </>
       ) : (
-        <EmptyState title="No insight available" description="No insight is available for this item yet." />
+        <EmptyState title="No hay perspectiva disponible" description="Todavía no hay una perspectiva para este elemento." />
       )}
     </AppScreen>
   );

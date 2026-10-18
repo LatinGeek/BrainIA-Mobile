@@ -217,9 +217,13 @@ const server = createServer((req, res) => {
   }
 
   if (requestPath === '/download' || requestPath === '/apk') {
+    // The release APK can be rebuilt while this local share server is running.
+    // Read its metadata per request so the declared length always matches the
+    // streamed file and Android never receives a truncated download.
+    const currentApkStat = statSync(apkPath);
     const headers = {
       'Content-Type': contentTypeFor(apkPath),
-      'Content-Length': apkStat.size,
+      'Content-Length': currentApkStat.size,
       'Content-Disposition': `attachment; filename="${downloadName}"`,
       'Cache-Control': 'no-store',
     };

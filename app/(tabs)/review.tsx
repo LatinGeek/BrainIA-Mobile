@@ -12,19 +12,19 @@ import {
 import { BottomSheet, Button, FilterChip, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { ConfidenceTier, ProvenanceMark } from '@/components/trust';
-import { EntityTagPicker } from '@/components/review';
+import { EntityTagPicker, ReviewDecisionCard } from '@/components/review';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadReviewBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
 import { EntityRole, EntitySemanticProfile, EntitySuggestion, EventSummary, ReviewItem, SemanticCandidate } from '@/lib/domain';
-import { formatCategoryLabel, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
+import { recordInteraction } from '@/lib/interaction-telemetry';
 
 const reviewTypes = [
-  { value: 'entities', label: 'Entities' },
-  { value: 'labels', label: 'Labels' },
-  { value: 'relations', label: 'Relations' },
-  { value: 'reprocess', label: 'Reprocess' },
-  { value: 'resolved', label: 'Resolved' },
+  { value: 'pending', label: 'Pendientes' },
+  { value: 'identities', label: 'Identidades' },
+  { value: 'connections', label: 'Conexiones' },
+  { value: 'history', label: 'Historial' },
 ] as const;
 
 type ReviewType = (typeof reviewTypes)[number]['value'];
@@ -33,7 +33,8 @@ export default function ReviewScreen() {
   const theme = useTheme();
   const client = useBrainIAClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [reviewType, setReviewType] = useState<ReviewType>('entities');
+  const [reviewType, setReviewType] = useState<ReviewType>('pending');
+  const [editorOpen, setEditorOpen] = useState(false);
   const [friendlyNameDraft, setFriendlyNameDraft] = useState<{ reviewId: string; value: string } | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [equivalentEntityIds, setEquivalentEntityIds] = useState<string[]>([]);
@@ -65,7 +66,13 @@ export default function ReviewScreen() {
   const friendlyName = friendlyNameDraft && friendlyNameDraft.reviewId === selected?.id
     ? friendlyNameDraft.value
     : selected?.normalizedValue ?? selected?.alias ?? '';
-  const grouped = useMemo(() => groupReviews(reviews), [reviews]);
+  const pendingReviews = useMemo(() => reviews.filter((item) => item.status === 'pending'), [reviews]);
+  const identityReviews = useMemo(() => pendingReviews.filter((item) => !isRelationshipReview(item)), [pendingReviews]);
+  const historyReviews = useMemo(() => reviews.filter((item) => item.status === 'resolved' || item.status === 'ignored'), [reviews]);
+  const visibleReviews = reviewType === 'pending' ? pendingReviews : reviewType === 'identities' ? identityReviews : reviewType === 'history' ? historyReviews : [];
+  const queueReviews = reviewType === 'pending' ? visibleReviews.slice(1) : visibleReviews;
+  const pendingCount = pendingReviews.length + (semanticCandidates?.length ?? 0);
+  const activeCount = reviewType === 'connections' ? semanticCandidates?.length ?? 0 : queueReviews.length;
   const selectedCategoryLabel = categoryPath.trim() || 'Sin etiquetas todavía';
   const selectedProfileEntityId = selectedEntityId ?? selected?.entityId ?? null;
   const selectedTagLabels = useMemo(() => taxonomyKeys.map((key) => entityTags?.find((tag) => tag.key === key)?.label ?? key), [entityTags, taxonomyKeys]);
@@ -110,6 +117,7 @@ export default function ReviewScreen() {
 
   function chooseReview(item: ReviewItem) {
     setSelectedId(item.id);
+    setEditorOpen(true);
     setFriendlyNameDraft({ reviewId: item.id, value: item.normalizedValue ?? item.alias });
     setSelectedEntityId(null);
     setEquivalentEntityIds([]);
@@ -149,8 +157,8 @@ export default function ReviewScreen() {
 
     return new Promise<boolean>((resolve) => {
       Alert.alert(title, message, [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Continue', onPress: () => resolve(true) },
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Continuar', onPress: () => resolve(true) },
       ]);
     });
   }
@@ -160,7 +168,7 @@ export default function ReviewScreen() {
     setBusy(true);
     try {
       const mergeCount = Math.max(0, equivalentEntityIds.length - 1);
-      const approved = await confirm('Save decision', selectedEntityId ? `Merge this item${mergeCount ? ` and ${mergeCount} other selected match${mergeCount === 1 ? '' : 'es'}` : ''} into "${friendlyName || selected.alias}"?` : `Use "${friendlyName || selected.alias}" for future searches and money summaries?`);
+      const approved = await confirm('Guardar decisión', selectedEntityId ? `¿Unificar este elemento${mergeCount ? ` y ${mergeCount} coincidencias seleccionadas` : ''} en "${friendlyName || selected.alias}"?` : `¿Usar "${friendlyName || selected.alias}" en búsquedas y resúmenes de dinero futuros?`);
       if (!approved) return;
       await client.resolveAlias(selected.id, {
         alias: friendlyName.trim() || selected.alias,
@@ -181,10 +189,12 @@ export default function ReviewScreen() {
         }
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStatusMessage(`Saved decision for ${friendlyName || selected.alias}.`);
+      recordInteraction('review', 'review', 'success');
+      setStatusMessage(`Decisión guardada para ${friendlyName || selected.alias}.`);
       await refresh();
+      setEditorOpen(false);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Could not save this decision. Try a different alias.');
+      setStatusMessage(error instanceof Error ? error.message : 'No se pudo guardar la decisión. Prueba con otro alias.');
     } finally {
       setBusy(false);
     }
@@ -194,14 +204,15 @@ export default function ReviewScreen() {
     if (!selected) return;
     setBusy(true);
     try {
-      const approved = await confirm('Ignore suggestion', `Ignore "${selected.alias}" if it is not useful?`);
+      const approved = await confirm('Ignorar sugerencia', `¿Ignorar "${selected.alias}" si no es útil?`);
       if (!approved) return;
       await client.ignoreAlias(selected.id);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setStatusMessage(`Ignored ${selected.alias}.`);
+      setStatusMessage(`Se ignoró ${selected.alias}.`);
       await refresh();
+      setEditorOpen(false);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Could not ignore this review item.');
+      setStatusMessage(error instanceof Error ? error.message : 'No se pudo ignorar este elemento.');
     } finally {
       setBusy(false);
     }
@@ -252,106 +263,111 @@ export default function ReviewScreen() {
   return (
     <AppScreen refreshing={loading || eventsLoading} onRefresh={() => Promise.all([refresh(), refreshEvents()])}>
       <TopBar
-        title="Review"
-        subtitle="Inspect what arrived, then make decisions that improve your knowledge base."
-        secondaryAction={<Button label="Settings" onPress={() => router.push('/settings')} variant="ghost" />}
+        title="Revisar"
+        subtitle="Inspecciona lo recibido y toma decisiones que mejoran tu conocimiento."
+        secondaryAction={<Button label="Ajustes" onPress={() => router.push('/settings')} variant="ghost" />}
       />
 
-      {error ? <EmptyState title="Could not load review" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="No se pudo cargar la revisión" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
       {loading && !data ? <LoadingSkeleton variant="card" count={2} /> : null}
 
       {!error && data ? (
         <>
-          <Panel tone="review" style={{ gap: theme.spacing.md }}>
-            <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Improve your knowledge base</Text>
-            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-              Confirm identities, labels, and relationships. Each decision becomes evidence BrainIA can use to understand later events.
+          <Panel tone={pendingCount ? 'review' : 'accent'} style={{ gap: theme.spacing.md }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>REVISIÓN DE HOY</Text>
+            <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>
+              {pendingCount ? `${pendingCount} ${pendingCount === 1 ? 'decisión para hoy' : 'decisiones para hoy'}` : 'Todo al día'}
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <StatusBadge label={`${grouped.entities.length} entities`} tone={grouped.entities.length ? 'warning' : 'neutral'} />
-              <StatusBadge label={`${semanticCandidates?.length ?? 0} relationships`} tone={(semanticCandidates?.length ?? 0) ? 'warning' : 'neutral'} />
-              <StatusBadge label={`${grouped.labels.length} labels`} />
-              <StatusBadge label={`${grouped.resolved.length} resolved`} tone={grouped.resolved.length ? 'positive' : 'neutral'} />
-            </View>
+            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
+              {pendingCount ? 'Confirmá lo que importa. Cada decisión mejora cómo BrainIA reconoce tu información después.' : 'No hay decisiones pendientes. La próxima actividad que necesite contexto aparecerá aquí.'}
+            </Text>
+            {pendingReviews[0] ? <ReviewDecisionCard item={pendingReviews[0]} priority onPress={() => chooseReview(pendingReviews[0])} /> : null}
           </Panel>
 
-          {(semanticCandidates?.length ?? 0) > 0 ? <Section title="Relationships and graph placement" subtitle="Confirm what is connected to what; this is how isolated events become usable knowledge." count={semanticCandidates?.length}>
-            {semanticCandidates?.map((candidate: SemanticCandidate) => (
-              <SemanticCandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                onKeep={async (createRule) => { await client.resolveSemanticCandidate(candidate.id, { action: 'approve', createRule }); await refreshSemantic(); }}
-                onSkip={async () => { await client.resolveSemanticCandidate(candidate.id, { action: 'reject' }); await refreshSemantic(); }}
-              />
-            ))}
+          <SegmentedControl
+            value={reviewType}
+            onChange={setReviewType}
+            scrollable
+            options={reviewTypes.map((type) => ({
+              ...type,
+              count: type.value === 'pending' ? pendingCount : type.value === 'identities' ? identityReviews.length : type.value === 'connections' ? semanticCandidates?.length ?? 0 : historyReviews.length,
+            }))}
+          />
+
+          {reviewType !== 'pending' || queueReviews.length ? <Section
+            title={reviewType === 'connections' ? 'Conexiones por confirmar' : reviewType === 'history' ? 'Decisiones anteriores' : reviewType === 'identities' ? 'Identidades por aclarar' : 'Después, podés revisar'}
+            subtitle={reviewType === 'connections' ? 'Confirmá sólo los vínculos que reconozcas.' : reviewType === 'history' ? 'Podés consultar lo que ya resolviste o descartaste.' : reviewType === 'pending' ? 'Estas son las siguientes decisiones disponibles.' : 'Abrí una decisión para ver la evidencia y el efecto antes de guardarla.'}
+            count={activeCount}
+          >
+            {reviewType === 'connections' ? (
+              (semanticCandidates?.length ?? 0) > 0 ? semanticCandidates?.map((candidate: SemanticCandidate) => (
+                <SemanticCandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  onKeep={async (createRule) => { await client.resolveSemanticCandidate(candidate.id, { action: 'approve', createRule }); await refreshSemantic(); }}
+                  onSkip={async () => { await client.resolveSemanticCandidate(candidate.id, { action: 'reject' }); await refreshSemantic(); }}
+                />
+              )) : <EmptyState title="No hay conexiones para confirmar" description="BrainIA te mostrará vínculos cuando encuentre evidencia suficiente." />
+            ) : queueReviews.length ? (
+              queueReviews.map((item) => <ReviewDecisionCard key={item.id} item={item} onPress={() => chooseReview(item)} />)
+            ) : (
+              <EmptyState title={reviewType === 'history' ? 'Todavía no hay decisiones anteriores' : 'Todo al día'} description={emptyCopy(reviewType)} />
+            )}
           </Section> : null}
 
-          <Section title="Incoming activity" subtitle="Recent events that are now available for review and knowledge extraction." count={events?.length ?? 0} actionLabel={activityExpanded ? 'Collapse' : 'Expand'} onActionPress={() => setActivityExpanded((current) => !current)}>
-            {eventsError ? <EmptyState title="Activity unavailable" description={eventsError} primaryActionLabel="Retry" onPrimaryAction={refreshEvents} /> : null}
-            {eventsLoading && !events ? <LoadingSkeleton variant="card" count={2} /> : null}
-            {activityExpanded && events?.length ? events.map((event: EventSummary) => (
+          <Section title="Actividad reciente" subtitle="Contexto recibido. Sólo algunos elementos requieren una decisión." actionLabel={activityExpanded ? 'Ver menos' : events?.length && events.length > 3 ? `Ver ${events.length}` : undefined} onActionPress={events?.length && events.length > 3 ? () => setActivityExpanded((current) => !current) : undefined}>
+            {eventsError ? <EmptyState title="Actividad no disponible" description={eventsError} primaryActionLabel="Reintentar" onPrimaryAction={refreshEvents} /> : null}
+            {eventsLoading && !events ? <LoadingSkeleton variant="list" count={3} /> : null}
+            {(activityExpanded ? events : events?.slice(0, 3))?.map((event: EventSummary) => (
               <ListRow
                 key={event.id}
                 leading={<Feather name={event.kind === 'email' ? 'mail' : event.kind === 'notification' ? 'bell' : 'inbox'} size={18} color={theme.colors.accentStrong} />}
                 title={event.title}
-                subtitle={`${event.source.replace(/^make\./, 'Make · ')} · ${event.receivedAt ? formatDate(event.receivedAt) : 'Received time unavailable'}`}
+                subtitle={`${event.source.replace(/^make\./, 'Make · ')} · ${event.receivedAt ? formatDate(event.receivedAt) : 'Hora no disponible'}`}
                 description={event.body}
-                descriptionNumberOfLines={3}
-                trailing={<StatusBadge label={event.inferredKind ?? event.kind} />}
+                descriptionNumberOfLines={2}
+                trailing={event.interpretationStatus === 'review' ? <StatusBadge label="Requiere contexto" tone="warning" /> : undefined}
                 onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })}
               />
-            )) : !eventsLoading && !eventsError && activityExpanded ? <EmptyState title="No activity yet" description="New emails, notifications, and captures will appear here as they arrive." primaryActionLabel="Refresh" onPrimaryAction={refreshEvents} /> : null}
+            ))}
+            {!eventsLoading && !eventsError && !events?.length ? <EmptyState title="Todavía no hay actividad" description="Los nuevos correos, notificaciones y capturas aparecerán aquí." primaryActionLabel="Actualizar" onPrimaryAction={refreshEvents} /> : null}
           </Section>
 
-          <SegmentedControl value={reviewType} onChange={setReviewType} options={reviewTypes.map((type) => ({ ...type, count: grouped[type.value].length }))} />
-
-          <Section title="Review items" subtitle="Pick one item and preview the effect before saving." count={grouped[reviewType].length}>
-            {grouped[reviewType].length ? (
-              grouped[reviewType].map((item) => (
-                <ListRow
-                  key={item.id}
-                  title={item.normalizedValue ?? item.alias}
-                  subtitle={item.categoryPath.length ? item.categoryPath.map((category) => formatCategoryLabel(category)).join(' / ') : 'Needs category review'}
-                  description={decisionCopy(item)}
-                  trailing={<StatusBadge label={item.id === selected?.id ? 'Selected' : 'Review'} />}
-                  onPress={() => chooseReview(item)}
-                />
-              ))
-            ) : (
-              <EmptyState title="Nothing here" description={emptyCopy(reviewType)} />
-            )}
-          </Section>
-
-          {selected ? (
-            <Section title="Curate entity" subtitle={`Help BrainIA recognize ${selectedLabel} as part of your knowledge graph.`}>
-              <Panel tone="review" style={{ gap: theme.spacing.md }}>
-                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>What is the canonical identity?</Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}> 
-                  This confirms an entity, its preferred label, and possible equivalent identities. BrainIA can use it as supervised context for future classification.
-                </Text>
+          <BottomSheet visible={editorOpen && Boolean(selected)} title={selected ? `Revisar ${selectedLabel}` : 'Revisar decisión'} onClose={() => setEditorOpen(false)}>
+            {selected ? (
+              <View style={{ gap: theme.spacing.md }}>
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Confirmá el contexto antes de guardar</Text>
+                <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Vas a decidir cómo BrainIA reconocerá este nombre en futuras búsquedas, eventos y resúmenes.</Text>
+                <Surface variant="subtle" style={{ gap: 4, borderColor: theme.status.review + '44' }}>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>QUÉ CAMBIA</Text>
+                  <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
+                    {selectedEntityId ? `Se unificará con ${friendlyName || selected.alias}.` : `Las próximas referencias a ${selected.alias} se reconocerán como ${friendlyName || selected.alias}.`}
+                  </Text>
+                </Surface>
+                <Panel tone="review" style={{ gap: theme.spacing.md }}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {uniqueSuggestions(selected).map((suggestion) => (
                     <FilterChip key={suggestion} label={suggestion} selected={friendlyName === suggestion} onPress={() => changeFriendlyName(suggestion)} />
                   ))}
                 </View>
                 <Input
-                  label="Canonical label"
+                  label="Nombre principal"
                   value={friendlyName}
                   onChangeText={changeFriendlyName}
-                  placeholder="Person, organization, place, app, or topic"
+                  placeholder="Persona, organización, lugar, aplicación o tema"
                 />
                 <Surface variant="subtle" style={{ gap: 8 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Possible existing matches</Text>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Suggestions update as you type. Select every identity that represents the same real-world entity; BrainIA keeps aliases, evidence, and links together.</Text>
-                  {loadingEntitySuggestions ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Checking known entities…</Text> : null}
-                  {!loadingEntitySuggestions && selectedEntityQuery.length < 2 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Type at least two characters to search existing names.</Text> : null}
-                  {!loadingEntitySuggestions && selectedEntityQuery.length >= 2 && entitySuggestions.length === 0 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No close matches found. This can be saved as a new name.</Text> : null}
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Posibles coincidencias existentes</Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Las coincidencias se actualizan mientras escribís. Elegí sólo los nombres que representen la misma entidad real.</Text>
+                  {loadingEntitySuggestions ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Buscando entidades conocidas…</Text> : null}
+                  {!loadingEntitySuggestions && selectedEntityQuery.length < 2 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Escribí al menos dos caracteres para buscar nombres existentes.</Text> : null}
+                  {!loadingEntitySuggestions && selectedEntityQuery.length >= 2 && entitySuggestions.length === 0 ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No hay coincidencias cercanas. Podés guardarlo como un nombre nuevo.</Text> : null}
                   {entitySuggestions.map((suggestion) => (
                     <ListRow
                       key={suggestion.id}
                       title={suggestion.name}
-                      subtitle={`${suggestion.type}${suggestion.aliasCount ? ` · ${suggestion.aliasCount} alternate name${suggestion.aliasCount === 1 ? '' : 's'}` : ''}`}
-                      trailing={<StatusBadge label={equivalentEntityIds.includes(suggestion.id) ? 'Same entity' : 'Mark same'} tone={equivalentEntityIds.includes(suggestion.id) ? 'positive' : 'neutral'} />}
+                      subtitle={`${suggestion.type}${suggestion.aliasCount ? ` · ${suggestion.aliasCount} nombre${suggestion.aliasCount === 1 ? '' : 's'} alternativo${suggestion.aliasCount === 1 ? '' : 's'}` : ''}`}
+                      trailing={<StatusBadge label={equivalentEntityIds.includes(suggestion.id) ? 'Misma entidad' : 'Marcar igual'} tone={equivalentEntityIds.includes(suggestion.id) ? 'positive' : 'neutral'} />}
                       onPress={() => chooseEntitySuggestion(suggestion)}
                     />
                   ))}
@@ -389,30 +405,25 @@ export default function ReviewScreen() {
                   {relationQuery.trim().length >= 2 ? relationSuggestions.map((suggestion) => <ListRow key={suggestion.id} title={suggestion.name} subtitle={suggestion.type} trailing={<StatusBadge label="Relacionar" />} onPress={() => addRelation(suggestion)} />) : null}
                   {profileRelations.map((relation) => <ListRow key={`${relation.relationType}:${relation.targetEntityId}`} title={relation.targetLabel} subtitle={relationTypeOptions.find((option) => option.value === relation.relationType)?.label ?? relation.relationType} trailing={<StatusBadge label="Quitar" tone="warning" />} onPress={() => removeRelation(relation.targetEntityId, relation.relationType)} />)}
                 </Surface>
-                <Surface variant="raised" style={{ gap: 4, borderColor: theme.status.review + '44' }}>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Action preview</Text>
-                  <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-                    {selectedEntityId ? `This item${equivalentEntityIds.length > 1 ? ` and ${equivalentEntityIds.length - 1} selected match${equivalentEntityIds.length === 2 ? '' : 'es'}` : ''} will become the same entity as ${friendlyName || selected.alias}.` : `Future events using ${selected.alias} will recognize ${friendlyName || selected.alias}.`} {selectedTagLabels.length ? ` Etiquetas: ${selectedTagLabels.join(', ')}.` : ''} {entityRoles.length ? ` Roles: ${entityRoles.join(', ')}.` : ''} {profileRelations.length ? ` Relaciones: ${profileRelations.map((relation) => relation.targetLabel).join(', ')}.` : ''}
-                  </Text>
-                </Surface>
                 <Surface variant="raised" style={{ gap: 4, borderColor: theme.depth.glow }}>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>What happens next</Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Qué cambia después</Text>
                   <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-                    Accepted changes become supervised examples for future event classification, entity matching, graph relations, search, and insights.
+                    Los cambios aceptados se convierten en ejemplos supervisados para clasificar eventos, reconocer entidades, relacionar conocimiento y mejorar búsquedas futuras.
                   </Text>
                 </Surface>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <Button label={busy ? 'Saving...' : 'Accept'} onPress={resolveSelected} loading={busy} />
-                  <Button label="Ignore" onPress={ignoreSelected} variant="secondary" disabled={busy} />
-                  <Button label="Later" onPress={() => setStatusMessage('Kept for later.')} variant="ghost" disabled={busy} />
+                  <Button label={busy ? 'Guardando…' : 'Aceptar'} onPress={resolveSelected} loading={busy} />
+                  <Button label="Ignorar" onPress={ignoreSelected} variant="secondary" disabled={busy} />
+                  <Button label="Más tarde" onPress={() => { setEditorOpen(false); setStatusMessage('La decisión quedó pendiente para más tarde.'); }} variant="ghost" disabled={busy} />
                 </View>
               </Panel>
-            </Section>
-          ) : null}
+              </View>
+            ) : null}
+          </BottomSheet>
         </>
       ) : null}
 
-      {statusMessage ? <EmptyState title="Review updated" description={statusMessage} primaryActionLabel="Dismiss" onPrimaryAction={() => setStatusMessage(null)} /> : null}
+      {statusMessage ? <EmptyState title="Revisión actualizada" description={statusMessage} primaryActionLabel="Descartar" onPrimaryAction={() => setStatusMessage(null)} /> : null}
 
       <BottomSheet visible={categorySheetOpen} title="Etiquetar entidad" onClose={() => setCategorySheetOpen(false)}>
         <EntityTagPicker
@@ -439,10 +450,10 @@ function SemanticCandidateCard({
   const [createRule, setCreateRule] = useState(false);
   const relationLabel = formatRelationLabel(candidate.relationType);
   const roleLabel = candidate.anchorRole === 'primary'
-    ? 'Primary area'
+    ? 'Área principal'
     : candidate.anchorRole === 'secondary'
-      ? 'Secondary area'
-      : 'Semantic link';
+      ? 'Área secundaria'
+      : 'Vínculo semántico';
 
   async function resolve(action: 'keep' | 'skip') {
     setResolving(action);
@@ -456,18 +467,18 @@ function SemanticCandidateCard({
   return (
     <Panel tone="review" style={{ gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-        <ProvenanceMark origin="model" label="Suggested" />
+        <ProvenanceMark origin="model" label="Sugerido" />
         <ConfidenceTier confidence={candidate.confidence} showValue />
         <StatusBadge label={roleLabel} />
-        {candidate.decisionKind === 'create' ? <StatusBadge label="Creates a node" tone="warning" /> : null}
+        {candidate.decisionKind === 'create' ? <StatusBadge label="Crea un elemento" tone="warning" /> : null}
       </View>
 
-      <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>PROPOSED RELATION</Text>
+      <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>RELACIÓN PROPUESTA</Text>
       <Surface variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ gap: 3 }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>From</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Desde</Text>
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-            {candidate.subjectValue ?? 'Source entity name unavailable'}
+            {candidate.subjectValue ?? 'El nombre de la entidad de origen no está disponible'}
           </Text>
           {candidate.subjectType ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{formatRelationLabel(candidate.subjectType)}</Text> : null}
         </View>
@@ -478,7 +489,7 @@ function SemanticCandidateCard({
         </View>
 
         <View style={{ gap: 3 }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>To</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Hacia</Text>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{candidate.targetValue}</Text>
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{formatRelationLabel(candidate.targetType)}</Text>
         </View>
@@ -486,36 +497,36 @@ function SemanticCandidateCard({
 
       {candidate.proposedPath.length ? (
         <View style={{ gap: 4 }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>PLACEMENT IN YOUR GRAPH</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>UBICACIÓN EN TU CONOCIMIENTO</Text>
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{candidate.proposedPath.join(' → ')}</Text>
         </View>
       ) : null}
 
       <View style={{ gap: 4 }}>
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>WHY THIS IS SUGGESTED</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>POR QUÉ SE SUGIERE</Text>
         <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-          {candidate.rationale ?? 'No explanation was provided for this proposal.'}
+          {candidate.rationale ?? 'No se recibió una explicación para esta sugerencia.'}
         </Text>
       </View>
 
       {candidate.alternatives.length ? (
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-          Other possible destinations: {candidate.alternatives.slice(0, 3).map((alternative) => `${alternative.value} (${Math.round(alternative.confidence * 100)}%)`).join(', ')}
+          Otros destinos posibles: {candidate.alternatives.slice(0, 3).map((alternative) => `${alternative.value} (${Math.round(alternative.confidence * 100)}%)`).join(', ')}
         </Text>
       ) : null}
 
       <View style={{ gap: 7 }}>
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>WHEN APPROVED</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>AL CONFIRMAR</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button label="Apply once" size="sm" variant={createRule ? 'secondary' : 'primary'} onPress={() => setCreateRule(false)} />
-          <Button label="Create rule" size="sm" variant={createRule ? 'primary' : 'secondary'} onPress={() => setCreateRule(true)} />
+          <Button label="Aplicar una vez" size="sm" variant={createRule ? 'secondary' : 'primary'} onPress={() => setCreateRule(false)} />
+          <Button label="Crear regla" size="sm" variant={createRule ? 'primary' : 'secondary'} onPress={() => setCreateRule(true)} />
         </View>
-        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{createRule ? 'Use this decision automatically for matching suggestions in the future.' : 'Save only this relationship; future suggestions will still ask.'}</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{createRule ? 'Usá esta decisión automáticamente cuando aparezca una sugerencia equivalente.' : 'Guardá sólo esta relación; las próximas sugerencias volverán a preguntarte.'}</Text>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-        <Button label="Reject" size="sm" variant="ghost" loading={resolving === 'skip'} disabled={resolving !== null} onPress={() => resolve('skip')} />
-        <Button label="Approve relation" size="sm" loading={resolving === 'keep'} disabled={resolving !== null} onPress={() => resolve('keep')} />
+        <Button label="Rechazar" size="sm" variant="ghost" loading={resolving === 'skip'} disabled={resolving !== null} onPress={() => resolve('skip')} />
+        <Button label="Aprobar relación" size="sm" loading={resolving === 'keep'} disabled={resolving !== null} onPress={() => resolve('keep')} />
       </View>
     </Panel>
   );
@@ -523,14 +534,17 @@ function SemanticCandidateCard({
 
 function formatRelationLabel(value: string) {
   const normalized = value.replace(/_/g, ' ').trim();
-  if (normalized === 'part of') return 'is part of';
-  if (normalized === 'belongs to domain') return 'belongs to';
+  if (normalized === 'part of') return 'Es parte de';
+  if (normalized === 'belongs to domain') return 'Pertenece a';
+  if (normalized === 'uses service') return 'Usa el servicio';
+  if (normalized === 'produced by app') return 'Producido por la app';
+  if (normalized === 'related to') return 'Relacionado con';
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
 const entityRoleOptions: { value: EntityRole; label: string }[] = [
   { value: 'business', label: 'Negocio' },
-  { value: 'merchant', label: 'Merchant' },
+  { value: 'merchant', label: 'Comercio' },
   { value: 'payment_method', label: 'Método de pago' },
   { value: 'organization', label: 'Organización' },
   { value: 'app', label: 'App' },
@@ -557,41 +571,15 @@ function tagPath(tag: { key: string; label: string; parentKey?: string | null },
   return path;
 }
 
-function groupReviews(reviews: ReviewItem[]): Record<ReviewType, ReviewItem[]> {
-  const pending = reviews.filter((item) => item.status === 'pending');
-
-  return {
-    entities: pending.filter((item) => !/merge|same|duplicate/i.test(item.reason)),
-    labels: pending.filter((item) => Boolean(item.normalizedValue) || /alias|name|identity/i.test(item.reason)),
-    relations: pending.filter((item) => /merge|same|duplicate|relation/i.test(item.reason)),
-    reprocess: pending.filter((item) => /reprocess|stale|refresh/i.test(item.reason)),
-    resolved: reviews.filter((item) => item.status === 'resolved' || item.status === 'ignored'),
-  };
+function isRelationshipReview(item: ReviewItem) {
+  return /merge|same|duplicate|relation/i.test(item.reason);
 }
 
 function emptyCopy(type: ReviewType) {
-  switch (type) {
-    case 'relations':
-      return 'Suggested links and duplicate identities will appear here when BrainIA finds a meaningful connection.';
-    case 'reprocess':
-      return 'Suggestions to refresh stale activity will appear here.';
-    case 'resolved':
-      return 'Completed decisions will appear here after actions are saved.';
-    default:
-      return 'This review type has no pending suggestions.';
-  }
-}
-
-function decisionCopy(item: ReviewItem) {
-  if (item.normalizedValue && item.normalizedValue !== item.alias) {
-    return `Suggested friendly name: ${item.normalizedValue}.`;
-  }
-
-  if (item.categoryPath.length) {
-    return `Etiquetas de contexto sugeridas: ${item.categoryPath.join(' / ')}.`;
-  }
-
-  return `Confirm whether this is a real ${item.entityType ?? 'entity'} that should be retained in your knowledge graph.`;
+  if (type === 'history') return 'Las decisiones que aceptes o descartes aparecerán aquí.';
+  if (type === 'connections') return 'BrainIA te avisará cuando encuentre un vínculo con evidencia suficiente.';
+  if (type === 'identities') return 'No hay nombres que necesiten una aclaración en este momento.';
+  return 'No hay decisiones pendientes por ahora.';
 }
 
 function uniqueSuggestions(selected: ReviewItem) {

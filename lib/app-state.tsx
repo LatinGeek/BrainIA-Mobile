@@ -36,6 +36,9 @@ type AppStateValue = {
   settings: AppSettings;
   theme: ThemeTokens;
   client: BrainIAClient;
+  /** Bumps after a financial mutation so every mounted money view reloads. */
+  financialDataRevision: number;
+  invalidateFinancialData: () => void;
   setBaseUrl: (baseUrl: string) => void;
   setApiKey: (apiKey: string) => void;
   setClientId: (clientId: string) => void;
@@ -87,6 +90,7 @@ async function loadSettings(): Promise<AppSettings> {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [hydrated, setHydrated] = useState(false);
+  const [financialDataRevision, setFinancialDataRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -152,6 +156,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       settings,
       theme: themeRegistry['intelligence-console'],
       client,
+      financialDataRevision,
+      invalidateFinancialData: () => setFinancialDataRevision((revision) => revision + 1),
       setBaseUrl: (baseUrl) => setSettings((current) => ({ ...current, baseUrl })),
       setApiKey: (apiKey) => setSettings((current) => ({ ...current, apiKey })),
       setClientId: (clientId) => setSettings((current) => ({ ...current, clientId })),
@@ -182,7 +188,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setSettings(next);
       },
     }),
-    [client, hydrated, settings]
+    [client, financialDataRevision, hydrated, settings]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

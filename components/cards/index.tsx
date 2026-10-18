@@ -41,7 +41,7 @@ export function InsightCard({ insight, onPress }: { insight: InsightSummary; onP
     <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? insight.title : undefined} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
       <Surface variant="raised" style={{ gap: theme.spacing.sm, borderLeftWidth: 2, borderLeftColor: theme.colors.model }}>
         <View style={styles.rowBetween}>
-          <ProvenanceMark origin="model" label="Insight" />
+          <ProvenanceMark origin="model" label="Perspectiva" />
           <ConfidenceTier confidence={insight.confidence} />
         </View>
         <View style={styles.rowBetween}>
@@ -63,7 +63,7 @@ export function DigestCard({ digest, onPress }: { digest: DigestSummary; onPress
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? digest.title : undefined} onPress={onPress} style={{ marginBottom: theme.spacing.sm }}>
       <Surface variant="raised" style={{ gap: theme.spacing.sm, borderLeftWidth: 2, borderLeftColor: theme.colors.model }}>
-        <ProvenanceMark origin="model" label="Digest" />
+        <ProvenanceMark origin="model" label="Resumen" />
         <View style={styles.rowBetween}>
           <View style={{ flex: 1 }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(digest.windowLabel)}</Text>
@@ -139,7 +139,7 @@ export function FinancialSnapshotCard({
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(periodLabel)}</Text>
           <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, marginTop: 4, fontSize: 22, lineHeight: 28 }]}>{cleanDisplayText(title)}</Text>
         </View>
-        {onBadgePress ? <Pressable accessibilityRole="button" accessibilityLabel="Show calculation explanation" onPress={onBadgePress}><Feather name="info" size={18} color={theme.colors.textMuted} /></Pressable> : null}
+        {onBadgePress ? <Pressable accessibilityRole="button" accessibilityLabel="Ver explicación del cálculo" onPress={onBadgePress}><Feather name="info" size={18} color={theme.colors.textMuted} /></Pressable> : null}
       </View>
       {amount ? (
         <Text style={[theme.typography.numeral, { color: amountColor }]}>
@@ -191,18 +191,18 @@ export function TodayFinanceSnapshot({
       <Surface variant="raised" style={{ borderColor: theme.colors.accent + '55', gap: theme.spacing.sm }}>
         <View style={styles.rowBetween}>
           <View>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Money this cycle</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Dinero en este ciclo</Text>
             <Text style={[theme.typography.numeral, { color: netIsPositive ? theme.colors.accent : theme.status.expense, marginTop: 3 }]}>{cleanDisplayText(net)}</Text>
           </View>
           <Feather name="arrow-up-right" size={18} color={theme.colors.accentStrong} />
         </View>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <View style={[styles.financeMetric, { borderColor: theme.status.income + '33', backgroundColor: theme.status.income + '0d' }]}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Income</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ingresos</Text>
             <Text style={[theme.typography.bodyStrong, { color: theme.status.income, marginTop: 3, fontVariant: ['tabular-nums'] }]}>{cleanDisplayText(income)}</Text>
           </View>
           <View style={[styles.financeMetric, { borderColor: theme.status.expense + '33', backgroundColor: theme.status.expense + '0d' }]}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Spent</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Gastado</Text>
             <Text style={[theme.typography.bodyStrong, { color: theme.status.expense, marginTop: 3, fontVariant: ['tabular-nums'] }]}>{cleanDisplayText(expenses)}</Text>
           </View>
         </View>

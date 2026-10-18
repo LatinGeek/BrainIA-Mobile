@@ -21,20 +21,20 @@ export default function EmailDetailScreen() {
 
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar showBack title={email?.title ?? 'Email details'} subtitle="The complete captured email record." />
+      <TopBar showBack title={email?.title ?? 'Detalle del correo'} subtitle="El correo original completo." />
       {loading && !email ? <LoadingSkeleton variant="detail" count={2} /> : null}
-      {error ? <EmptyState title="Unable to load email" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
-      {!loading && !error && !email ? <EmptyState title="Email unavailable" description="This activity is no longer available as an email record." /> : null}
+      {error ? <EmptyState title="No se pudo cargar el correo" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
+      {!loading && !error && !email ? <EmptyState title="Correo no disponible" description="Esta actividad ya no está disponible como registro de correo." /> : null}
       {email ? <>
-        <SectionHeader title="Email record" />
+        <SectionHeader title="Correo capturado" />
         <Surface variant="raised" style={{ gap: theme.spacing.sm }}>
-          <ListRow title={email.source} subtitle="Captured from" />
-          <ListRow title={email.inferredKind ?? 'email'} subtitle="Interpreted as" />
-          {email.receivedAt ? <ListRow title={formatDate(email.receivedAt)} subtitle="Received" /> : null}
+          <ListRow title={email.source} subtitle="Capturado desde" />
+          <ListRow title={email.inferredKind ?? 'email'} subtitle="Interpretado como" />
+          {email.receivedAt ? <ListRow title={formatDate(email.receivedAt)} subtitle="Recibido" /> : null}
         </Surface>
-        <SectionHeader title="Email content" />
+        <SectionHeader title="Contenido del correo" />
         <Surface variant="subtle"><Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{email.body ?? 'No email body is available.'}</Text></Surface>
-        <View style={{ marginTop: theme.spacing.md }}><Button label="Discover related knowledge" onPress={() => router.push('/search')} /></View>
+        <View style={{ marginTop: theme.spacing.md }}><Button label="Descubrir conocimiento relacionado" onPress={() => router.push('/search')} /></View>
       </> : null}
     </AppScreen>
   );

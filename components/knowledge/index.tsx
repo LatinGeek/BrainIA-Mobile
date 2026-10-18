@@ -28,12 +28,12 @@ export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View>
-          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Highlights</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>The few things worth your attention.</Text>
+          <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Lo más importante</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>Lo que merece tu atención.</Text>
         </View>
         <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>{Math.min(items.length, 8).toString().padStart(2, '0')}</Text>
       </View>
-      <ScrollView horizontal directionalLockEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + theme.spacing.sm} snapToAlignment="start" contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }} accessibilityLabel="Swipe through highlights">
+      <ScrollView horizontal directionalLockEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + theme.spacing.sm} snapToAlignment="start" contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }} accessibilityLabel="Explorar lo más importante">
       {items.slice(0, 8).map((item) => (
         <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={cleanDisplayText(item.title)} onPress={item.onActionPress} style={{ width: cardWidth }}>
           <Panel tone="accent" style={{ minHeight: 138, justifyContent: 'space-between', gap: theme.spacing.md, borderLeftWidth: 3, borderColor: theme.colors.accent }}>
@@ -43,7 +43,7 @@ export function DailyBrief({ items }: { items: DailyBriefItem[] }) {
               <Feather name="arrow-up-right" size={16} color={theme.colors.accentStrong} />
             </View>
             {item.summary ? <Text numberOfLines={3} style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(item.summary)}</Text> : null}
-            <Text style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Open detail</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Ver detalle</Text>
           </Panel>
         </Pressable>
       ))}
@@ -87,7 +87,7 @@ export function GraphPreview({ nodes, relations }: { nodes: EntityLink[]; relati
       </View>
       <View style={{ gap: theme.spacing.sm }}>
         {relations.slice(0, 3).map((relation) => (
-          <ListRow key={relation.id} title={relation.label} subtitle="Connection" />
+          <ListRow key={relation.id} title={relation.label} subtitle="Conexión" />
         ))}
       </View>
     </Surface>

@@ -41,7 +41,7 @@ export function ErrorState({
   title,
   description,
   errorCode,
-  retryLabel = 'Try again',
+  retryLabel = 'Reintentar',
   onRetry,
 }: {
   title: string;

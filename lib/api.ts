@@ -1,4 +1,5 @@
 import { cleanDisplayText } from './format';
+import { createV2Transport, type V2Transport } from '../contracts/brain-ai/2.0.0/mobile/transport.cjs';
 import {
   BriefCard,
   DigestSummary,
@@ -7,7 +8,9 @@ import {
   ExploreGraph,
   EntitySuggestion,
   FinancialAccount,
+  DEFAULT_FINANCIAL_CATEGORIES,
   FinancialCategories,
+  PendingTransaction,
   EntityLink,
   EventSummary,
   GraphRelation,
@@ -18,11 +21,17 @@ import {
   SummaryMetric,
   TransactionDetail,
   TransactionSummary,
+  V2QueuedRevision,
 } from './domain';
 import { recordDiagnostic } from './diagnostics';
+import { readV2AccessToken, V2_ACCESS_TOKEN_KEY } from './storage';
+
+export { V2_ACCESS_TOKEN_KEY };
 
 type ClientConfig = {
   baseUrl: string;
+  /** Provisioned v2 bearer credential; legacy API keys cannot authenticate v2. */
+  accessToken?: string;
   apiKey?: string;
   clientId?: string;
 };
@@ -154,7 +163,7 @@ async function safeFetchJson(baseUrl: string, path: string, options: RequestOpti
     /^https:\/\/brain-ia-six\.vercel\.app\/?$/i.test(trimSlash(baseUrl)) &&
     isLocalWebPreview()
   ) {
-    throw new Error('Live service is skipped in local web preview.');
+    throw new Error('Conecta un backend local en Ajustes para cargar tus datos.');
   }
 
   const startedAt = Date.now();
@@ -615,6 +624,24 @@ function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
   };
 }
 
+function normalizePendingTransaction(item: unknown, index = 0): PendingTransaction {
+  const record = (isRecord(item) ? item : {}) as Record<string, any>;
+  const rawCurrency = asString(record.currency, 'UYU').toUpperCase();
+  return {
+    id: asString(record.id, `pending_${index + 1}`),
+    title: normalizeNarrativeText(record.title ?? record.merchantLabel, `Pendiente ${index + 1}`),
+    kind: asString(record.kind, 'expense') === 'income' ? 'income' : 'expense',
+    amount: asString(record.amount, '0.00'),
+    currency: rawCurrency === 'USD' ? 'USD' : 'UYU',
+    category: asString(record.category) || undefined,
+    account: asString(record.account) || undefined,
+    accountId: asString(record.accountId ?? record.account_id) || undefined,
+    estimatedExecutionDate: asString(record.estimatedExecutionDate ?? record.estimated_execution_date),
+    createdAt: asString(record.createdAt ?? record.created_at) || undefined,
+    updatedAt: asString(record.updatedAt ?? record.updated_at) || undefined,
+  };
+}
+
 function normalizeFinancialAccount(item: unknown, fallback?: { name: string; currency: 'UYU' | 'USD'; type?: string }) : FinancialAccount {
   const record = (isRecord(item) ? item : {}) as Record<string, any>;
   const rawCurrency = asString(record.currency, fallback?.currency).toUpperCase();
@@ -850,6 +877,7 @@ async function requestWithFallback<T>(baseUrl: string, path: string, fallback: T
 
 export type BrainIAClient = {
   baseUrl: string;
+  v2: V2Transport;
   health: () => Promise<{ ok: boolean }>;
   metrics: () => Promise<SummaryMetric[]>;
   listEvents: (limit?: number) => Promise<EventSummary[]>;
@@ -861,6 +889,12 @@ export type BrainIAClient = {
   listDigests: (limit?: number) => Promise<DigestSummary[]>;
   getDigestRun: (id: string) => Promise<DigestSummary>;
   listTransactions: (limit?: number, range?: { from?: string; to?: string }) => Promise<TransactionSummary[]>;
+  createManualTransaction: (input: { title: string; kind: 'expense' | 'income'; amount: number; currency: 'UYU' | 'USD'; category?: string | null; accountId?: string | null; observedAt: string }) => Promise<TransactionDetail>;
+  listPendingTransactions: () => Promise<PendingTransaction[]>;
+  createPendingTransaction: (input: { title: string; kind: 'expense' | 'income'; amount: number; currency: 'UYU' | 'USD'; category?: string | null; accountId?: string | null; estimatedExecutionDate: string }) => Promise<PendingTransaction>;
+  updatePendingTransaction: (id: string, input: Partial<{ title: string; kind: 'expense' | 'income'; amount: number; currency: 'UYU' | 'USD'; category: string | null; accountId: string | null; estimatedExecutionDate: string }>) => Promise<PendingTransaction>;
+  executePendingTransaction: (id: string, input: { executedAt: string }) => Promise<TransactionDetail>;
+  cancelPendingTransaction: (id: string) => Promise<void>;
   getTransaction: (id: string) => Promise<TransactionDetail>;
   listFinancialAccounts: () => Promise<FinancialAccount[]>;
   listFinancialCategories: () => Promise<FinancialCategories>;
@@ -872,9 +906,10 @@ export type BrainIAClient = {
   updateFinancialAccount: (id: string, input: { name: string; currency: 'UYU' | 'USD'; type?: string; mask?: string; color?: string }) => Promise<FinancialAccount>;
   deleteFinancialAccount: (id: string) => Promise<{ deleted: boolean; detachedTransactions: number }>;
   createBalanceAdjustment: (accountId: string, input: { targetBalance: number; note?: string }) => Promise<TransactionDetail>;
-    updateTransactionContext: (id: string, input: { title?: string; category?: string | null; accountId?: string | null; destinationAccountId?: string | null; destinationAmount?: number | null; destinationCurrency?: 'UYU' | 'USD' | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
+    updateTransactionContext: (id: string, input: { title?: string; category?: string | null; amount?: number; accountId?: string | null; destinationAccountId?: string | null; destinationAmount?: number | null; destinationCurrency?: 'UYU' | 'USD' | null; currency?: 'UYU' | 'USD'; kind?: 'expense' | 'income' | 'transfer' }) => Promise<TransactionDetail>;
   mergeTransactions: (canonicalId: string, duplicateId: string) => Promise<TransactionDetail>;
   deleteTransaction: (id: string) => Promise<void>;
+  markTransactionFalsePositive: (id: string) => Promise<void>;
   listEntityAliases: (entityId?: string) => Promise<string[]>;
   createEntityAlias: (input: { entityId: string; alias: string }) => Promise<{ id: string; alias: string }>;
   search: (query: string, filters?: { source?: string; kind?: string; from?: string; to?: string }) => Promise<SearchResultItem[]>;
@@ -893,6 +928,46 @@ export type BrainIAClient = {
   resolveSemanticCandidate: (id: string, input: { action: 'approve' | 'reject'; targetEntityId?: string; createRule?: boolean }) => Promise<{ ok: boolean }>;
 };
 
+/**
+ * M01 condition C1: a transient network failure during GET /capabilities is a
+ * retryable PENDING/offline state, not a HELD "unsupported server". The sealed
+ * transport keeps its own contract semantics, so the reclassification happens
+ * here, before the queue persists the revision. The transport still never
+ * attempts the observation POST while capabilities are unavailable.
+ */
+function createV2TransportWithOfflineClassification(
+  baseUrl: string,
+  accessToken: string | (() => string | null | Promise<string | null>),
+) {
+  const network = { failures: 0 };
+  const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      return await fetch(input, init);
+    } catch {
+      network.failures += 1;
+      const error = new Error('v2 network unavailable') as Error & { code?: string };
+      error.code = 'network_offline';
+      throw error;
+    }
+  };
+  const transport = createV2Transport(baseUrl, accessToken, fetcher);
+  return {
+    request: transport.request,
+    async deliverRevision(revision: V2QueuedRevision): Promise<V2QueuedRevision> {
+      const before = network.failures;
+      const result = await transport.deliverRevision(revision);
+      if (network.failures <= before) return result;
+      if (result.state === 'HELD' && result.reason === 'unsupported_or_unavailable_capabilities') {
+        return { ...result, state: 'PENDING', reason: 'offline_capabilities' };
+      }
+      if (result.state === 'PENDING' && (result.reason === 'invalid_or_missing_acknowledgement' || result.reason === 'network_offline')) {
+        return { ...result, reason: 'offline' };
+      }
+      return result;
+    },
+  };
+}
+
 export function createBrainIAClient(config: ClientConfig): BrainIAClient {
   const baseUrl = config.baseUrl || '';
   const headers = {
@@ -902,6 +977,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
 
   const client: BrainIAClient = {
     baseUrl,
+    v2: createV2TransportWithOfflineClassification(baseUrl, config.accessToken ?? (() => readV2AccessToken())),
     async health() {
       return requestWithFallback(baseUrl, '/health', { ok: false }, { headers });
     },
@@ -1067,6 +1143,30 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       const items = asArray<unknown>(isRecord(json) ? json.transactions ?? json.items ?? json : json).map(normalizeTransaction);
       return items.slice(0, limit);
     },
+    async createManualTransaction(input) {
+      const json = await safeFetchJson(baseUrl, '/api/v1/financial/transactions', { method: 'POST', body: input, headers });
+      return normalizeTransactionDetail(json);
+    },
+    async listPendingTransactions() {
+      const json = await requestWithFallback(baseUrl, '/api/v1/financial/pending-transactions', { items: [] }, { headers });
+      const items = isRecord(json) ? json.items : json;
+      return asArray<unknown>(items).map(normalizePendingTransaction).filter((item) => item.id);
+    },
+    async createPendingTransaction(input) {
+      const json = await safeFetchJson(baseUrl, '/api/v1/financial/pending-transactions', { method: 'POST', body: input, headers });
+      return normalizePendingTransaction(json);
+    },
+    async updatePendingTransaction(id, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/pending-transactions/${encodeURIComponent(id)}`, { method: 'PATCH', body: input, headers });
+      return normalizePendingTransaction(json);
+    },
+    async executePendingTransaction(id, input) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/financial/pending-transactions/${encodeURIComponent(id)}/execute`, { method: 'POST', body: input, headers });
+      return normalizeTransactionDetail(json);
+    },
+    async cancelPendingTransaction(id) {
+      await safeFetchJson(baseUrl, `/api/v1/financial/pending-transactions/${encodeURIComponent(id)}`, { method: 'DELETE', headers });
+    },
     async getTransaction(id: string) {
       const json = await requestWithFallback(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { id }, { headers });
       return normalizeTransactionDetail(json);
@@ -1077,12 +1177,18 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       return asArray<unknown>(items).map((item) => normalizeFinancialAccount(item)).filter((item) => item.id);
     },
     async listFinancialCategories() {
-      const json = await requestWithFallback(baseUrl, '/api/v1/financial/categories', { categories: { expense: [], income: [] } }, { headers });
-      const categories: Record<string, unknown> = isRecord(json) && isRecord(json.categories) ? json.categories : {};
-      return {
-        expense: asArray<unknown>(categories.expense).map((value) => asString(value)).filter(Boolean),
-        income: asArray<unknown>(categories.income).map((value) => asString(value)).filter(Boolean),
-      };
+      try {
+        const json = await safeFetchJson(baseUrl, '/api/v1/financial/categories', { headers });
+        const categories: Record<string, unknown> = isRecord(json) && isRecord(json.categories) ? json.categories : {};
+        return {
+          expense: asArray<unknown>(categories.expense).map((value) => asString(value)).filter(Boolean),
+          income: asArray<unknown>(categories.income).map((value) => asString(value)).filter(Boolean),
+        };
+      } catch {
+        // Core categories must remain usable if fetching optional custom
+        // categories is temporarily unavailable.
+        return { expense: [...DEFAULT_FINANCIAL_CATEGORIES.expense], income: [...DEFAULT_FINANCIAL_CATEGORIES.income] };
+      }
     },
     async listEntityTags() {
       if (getLocalPreviewState() === 'edge') {
@@ -1181,6 +1287,9 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
     },
     async deleteTransaction(id) {
       await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}`, { method: 'DELETE', headers });
+    },
+    async markTransactionFalsePositive(id) {
+      await safeFetchJson(baseUrl, `/api/v1/financial/transactions/${encodeURIComponent(id)}/false-positive`, { method: 'POST', body: {}, headers });
     },
     async listEntityAliases(entityId) {
       const suffix = entityId ? `?entityId=${encodeURIComponent(entityId)}` : '';
@@ -1537,19 +1646,20 @@ export async function loadFinancialBundle(client: BrainIAClient, financialPeriod
     return waitForPreviewLoading();
   }
   if (previewState === 'empty') {
-    return { transactions: [], trendTransactions: [], accounts: [], insights: [], digests: [], source: 'empty' as const };
+    return { transactions: [], trendTransactions: [], pendingTransactions: [], accounts: [], insights: [], digests: [], source: 'empty' as const };
   }
   if (previewState === 'edge') {
-    return { transactions: edgeTransactions, trendTransactions: edgeTransactions, accounts: [], insights: demoInsights, digests: demoDigests, source: 'cache' as const };
+    return { transactions: edgeTransactions, trendTransactions: edgeTransactions, pendingTransactions: [], accounts: [], insights: demoInsights, digests: demoDigests, source: 'cache' as const };
   }
 
-  const cacheKey = buildCacheKey(client.baseUrl, `financials:v4:${financialPeriodStartDay}`);
+  const cacheKey = buildCacheKey(client.baseUrl, `financials:v5:${financialPeriodStartDay}`);
   const bundle = await resolveBundle(
     cacheKey,
     async () => {
-      const [transactions, trendTransactions, accounts, insights, digests] = await Promise.all([
+      const [transactions, trendTransactions, pendingTransactions, accounts, insights, digests] = await Promise.all([
         loadMonthlyFinancialSummaryTransactions(client, financialPeriodStartDay),
         client.listTransactions(FINANCIAL_TREND_LIMIT, financialTrendRange(financialPeriodStartDay)),
+        client.listPendingTransactions(),
         client.listFinancialAccounts(),
         client.listInsights(3),
         client.listDigests(2),
@@ -1558,6 +1668,7 @@ export async function loadFinancialBundle(client: BrainIAClient, financialPeriod
       return {
         transactions,
         trendTransactions,
+        pendingTransactions,
         accounts,
         insights,
         digests,
@@ -1566,6 +1677,7 @@ export async function loadFinancialBundle(client: BrainIAClient, financialPeriod
     {
       transactions: [],
       trendTransactions: [],
+      pendingTransactions: [],
       accounts: [],
       insights: demoInsights,
       digests: demoDigests,

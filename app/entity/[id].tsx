@@ -76,9 +76,9 @@ export default function EntityDetailScreen() {
 
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar showBack title={entity?.title ?? id} subtitle={entity?.type ? `What BrainIA knows about this ${entity.type}.` : 'Knowledge detail'} />
+      <TopBar showBack title={entity?.title ?? id} subtitle={entity?.type ? `Lo que Brain IA sabe sobre esta entidad de tipo ${entity.type}.` : 'Detalle del conocimiento'} />
 
-      {error ? <EmptyState title="Unable to load entity" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="No se pudo cargar el elemento" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
 
       {loading && !entity ? (
         <LoadingSkeleton variant="detail" count={2} />
@@ -91,68 +91,68 @@ export default function EntityDetailScreen() {
             <StatusBadge label={`${entity.relations.length} connections`} />
           </View>
 
-          <SectionHeader title="What this is" subtitle={entity.summary} />
+          <SectionHeader title="Qué es" subtitle={entity.summary} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {entity.aliases.map((alias) => (
               <EntityPill key={alias} label={alias} type="alternate name" />
             ))}
           </View>
 
-          <DetailBlock title="Names and identity" subtitle="Add an alternate name or link this node to the same real-world thing.">
-            <Button label="Organize this node" onPress={openOrganize} variant="secondary" />
+          <DetailBlock title="Nombres e identidad" subtitle="Agrega un nombre alternativo o vincula este nodo con la misma entidad real.">
+            <Button label="Organizar este elemento" onPress={openOrganize} variant="secondary" />
           </DetailBlock>
 
-          <DetailBlock title="Connections" subtitle="Nearby people, merchants, places, topics, or activity.">
+          <DetailBlock title="Conexiones" subtitle="Personas, comercios, lugares, temas o actividad cercanos.">
             {graph?.nodes?.length || graph?.relations?.length ? (
               <GraphPreview nodes={graph?.nodes ?? []} relations={graph?.relations ?? []} />
             ) : (
-              <EmptyState title="No connections yet" description="Connections appear when more activity references this item." />
+              <EmptyState title="Todavía no hay conexiones" description="Aparecerán cuando más actividad haga referencia a este elemento." />
             )}
           </DetailBlock>
 
-          <DetailBlock title="Origin" subtitle="Captured activity that introduced or supports this item.">
+          <DetailBlock title="Origen" subtitle="Actividad que originó o respalda este elemento.">
             {originEvents.length ? originEvents.map((event) => (
               <ListRow
                 key={event.id}
                 title={event.title}
                 subtitle={`${formatEventSource(event.source)} · ${event.receivedAt ? formatDate(event.receivedAt) : event.kind}`}
                 description={event.body}
-                trailing={<StatusBadge label="Open" />}
+                trailing={<StatusBadge label="Abrir" />}
                 onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })}
               />
-            )) : <EmptyState title="No captured origin yet" description="This item may have been created by a manual decision or its source event is no longer available." />}
+            )) : <EmptyState title="Sin fuente capturada" description="Este elemento puede provenir de una decisión manual o su evento de origen ya no está disponible." />}
           </DetailBlock>
 
-          <DetailBlock title="Connection details" subtitle="Readable reasons this item is connected.">
+          <DetailBlock title="Detalles de conexión" subtitle="Por qué está relacionado este elemento.">
             {relationGroups.length ? relationGroups.map((relation) => <GraphRelationRow key={relation.key} label={relation.label} description={relation.description} direction={relation.direction} />) : null}
           </DetailBlock>
 
-          <ActionRow primaryLabel="Open search" primaryOnPress={() => router.push('/search')} secondaryLabel="Refresh" secondaryOnPress={refresh} />
+          <ActionRow primaryLabel="Abrir búsqueda" primaryOnPress={() => router.push('/search')} secondaryLabel="Actualizar" secondaryOnPress={refresh} />
         </>
       ) : null}
 
-      <BottomSheet visible={organizeOpen} title="Organize this node" onClose={() => setOrganizeOpen(false)}>
+      <BottomSheet visible={organizeOpen} title="Organizar este elemento" onClose={() => setOrganizeOpen(false)}>
         <View style={{ gap: 12 }}>
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Alternate name</Text>
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use names people actually use for this person, place, project, merchant, topic, or account.</Text>
-          <Input label="Name" value={alias} onChangeText={setAlias} placeholder="Add an alternate name" />
-          <Button label="Save alternate name" onPress={saveAlias} disabled={!alias.trim() || saving} loading={saving} />
+          <Input label="Nombre" value={alias} onChangeText={setAlias} placeholder="Agrega un nombre alternativo" />
+          <Button label="Guardar nombre alternativo" onPress={saveAlias} disabled={!alias.trim() || saving} loading={saving} />
 
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginTop: 8 }]}>Same as another node</Text>
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginTop: 8 }]}>Es el mismo elemento</Text>
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Link duplicates so their knowledge and future activity stay together.</Text>
           <Input
-            label="Find an existing node"
+            label="Buscar un elemento existente"
             value={equivalentQuery}
             onChangeText={(value) => {
               setEquivalentQuery(value);
               setEquivalentId(null);
             }}
-            placeholder="Search by name"
+            placeholder="Buscar por nombre"
           />
           {(equivalentMatches ?? []).filter((match) => match.id !== entity?.id).slice(0, 5).map((match) => (
-            <ListRow key={match.id} title={match.name} subtitle={match.type} trailing={<StatusBadge label={equivalentId === match.id ? 'Selected' : 'Use'} tone={equivalentId === match.id ? 'positive' : 'neutral'} />} onPress={() => setEquivalentId(match.id)} />
+            <ListRow key={match.id} title={match.name} subtitle={match.type} trailing={<StatusBadge label={equivalentId === match.id ? 'Seleccionado' : 'Usar'} tone={equivalentId === match.id ? 'positive' : 'neutral'} />} onPress={() => setEquivalentId(match.id)} />
           ))}
-          <Button label="Link as the same thing" onPress={mergeEquivalent} disabled={!equivalentId || saving} loading={saving} />
+          <Button label="Unificar identidades" onPress={mergeEquivalent} disabled={!equivalentId || saving} loading={saving} />
           {message ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{message}</Text> : null}
         </View>
       </BottomSheet>

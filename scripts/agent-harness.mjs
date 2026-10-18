@@ -9,17 +9,18 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error(`Invalid agent harness port: ${port}`);
 }
 
-function command(name, args) {
-  const result = spawnSync(name, args, {
+async function command(name, args) {
+  const result = spawn(name, args, {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'inherit',
     shell: process.platform === 'win32',
   });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`${name} ${args.join(' ')} failed with exit code ${result.status ?? 'unknown'}.`);
-  }
+  // Keep draining Expo's pipes while browser checks run to avoid backpressure.
+  await new Promise((resolve, reject) => {
+    result.once('error', reject);
+    result.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`${name} ${args.join(' ')} failed with exit code ${code ?? 'unknown'}.`)));
+  });
 }
 
 async function waitForExpo(server, output) {
@@ -53,8 +54,8 @@ const serverOutput = { value: '' };
 
 try {
   console.log('AGENT_HARNESS_STATIC_CHECKS');
-  command('npm', ['run', 'typecheck']);
-  command('npm', ['run', 'lint']);
+  await command('npm', ['run', 'typecheck']);
+  await command('npm', ['run', 'lint']);
 
   console.log(`AGENT_HARNESS_START_EXPO ${baseUrl}`);
   server = spawn('npm', ['run', 'web', '--', '--port', String(port)], {
@@ -72,13 +73,16 @@ try {
   await waitForExpo(server, serverOutput);
   console.log('AGENT_HARNESS_BROWSER_CHECKS');
   if (fullSuite) {
-    command('node', ['scripts/ux-smoke.mjs', baseUrl]);
+    await command('node', ['scripts/ux-smoke.mjs', baseUrl]);
   } else {
-    command('node', ['scripts/review-agent-smoke.mjs', baseUrl]);
-    command('node', ['scripts/capture-agent-smoke.mjs', baseUrl]);
-    command('node', ['scripts/transaction-edit-agent-smoke.mjs', baseUrl]);
-    command('node', ['scripts/account-delete-agent-smoke.mjs', baseUrl]);
+    await command('node', ['scripts/review-agent-smoke.mjs', baseUrl]);
+    await command('node', ['scripts/capture-agent-smoke.mjs', baseUrl]);
+    await command('node', ['scripts/transaction-edit-agent-smoke.mjs', baseUrl]);
+    await command('node', ['scripts/account-delete-agent-smoke.mjs', baseUrl]);
   }
+  const intelligenceWarmup = await fetch(`${baseUrl}/intelligence`, { signal: AbortSignal.timeout(120_000) });
+  if (!intelligenceWarmup.ok) throw new Error(`Intelligence route warmup failed with ${intelligenceWarmup.status}.`);
+  await command('node', ['scripts/intelligence-agent-smoke.mjs', baseUrl]);
   console.log('AGENT_HARNESS_OK');
 } finally {
   stopProcessTree(server);

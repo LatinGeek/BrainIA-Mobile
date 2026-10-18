@@ -7,7 +7,7 @@ import { Button, Input, ListRow, Surface } from '@/components/primitives';
 import { SummaryGrid } from '@/components/cards';
 import { ResolutionForm, AliasDecisionForm } from '@/components/forms';
 import { useTheme } from '@/lib/app-state';
-import { EntityTag, SummaryMetric } from '@/lib/domain';
+import { EntityTag, ReviewItem, SummaryMetric } from '@/lib/domain';
 
 export { AliasDecisionForm, ResolutionForm };
 
@@ -18,8 +18,42 @@ export function ReviewSummary({ metrics }: { metrics: SummaryMetric[] }) {
 export const ReviewQueueItem = ListRow;
 export const ActionPreview = EmptyState;
 
+export function ReviewDecisionCard({
+  item,
+  onPress,
+  priority = false,
+}: {
+  item: ReviewItem;
+  onPress: () => void;
+  priority?: boolean;
+}) {
+  const theme = useTheme();
+  const suggestedName = item.normalizedValue ?? item.alias;
+  const context = item.source ? `Detectado en ${item.source.replace(/^make\./, 'Make · ')}` : 'Detectado en tu actividad reciente';
+  const effect = item.categoryPath.length
+    ? `Las próximas referencias a ${item.alias} usarán ${item.categoryPath.join(' / ')}.`
+    : `Las próximas referencias a ${item.alias} se reconocerán como ${suggestedName}.`;
+
+  return (
+    <Surface variant={priority ? 'raised' : 'default'} style={{ gap: theme.spacing.md, borderColor: priority ? theme.status.review + '66' : theme.colors.border }}>
+      <View style={{ gap: 4 }}>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>DECISIÓN PENDIENTE</Text>
+        <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>
+          {suggestedName === item.alias ? `¿Cómo querés reconocer “${item.alias}”?` : `¿“${item.alias}” es ${suggestedName}?`}
+        </Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{context}</Text>
+      </View>
+      <Surface variant="subtle" padding="sm" style={{ gap: 4 }}>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>QUÉ CAMBIA</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{effect}</Text>
+      </Surface>
+      <Button label={priority ? 'Revisar ahora' : 'Revisar decisión'} onPress={onPress} variant={priority ? 'primary' : 'secondary'} />
+    </Surface>
+  );
+}
+
 export function MergePreview() {
-  return <EmptyState title="Merge preview" description="Suggested item merges will appear here when BrainIA finds likely duplicates." />;
+  return <EmptyState title="Vista previa de unificación" description="Las unificaciones sugeridas aparecerán cuando Brain IA encuentre posibles duplicados." />;
 }
 
 export function CategoryPicker({

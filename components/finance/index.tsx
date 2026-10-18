@@ -11,7 +11,7 @@ import { presentEvidenceReason, presentObservedAt, presentTransactionSubtitle } 
 
 export { AccountBreakdown, CategoryBreakdown, ChartCard, FinanceOverview, FinancialSnapshotCard, InsightCard as FinanceInsightCard, MetricCard, MoneyMetric, TrendChart };
 
-export function TransactionRow({ transaction, onPress }: { transaction: TransactionSummary; onPress?: () => void }) {
+export function TransactionRow({ transaction, onPress, onLongPress, selected = false, selectionMode = false }: { transaction: TransactionSummary; onPress?: () => void; onLongPress?: () => void; selected?: boolean; selectionMode?: boolean }) {
   const theme = useTheme();
   const { settings } = useAppState();
   const subtitle = presentTransactionSubtitle(transaction, settings.dataVisibility);
@@ -22,9 +22,12 @@ export function TransactionRow({ transaction, onPress }: { transaction: Transact
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? merchantLabel : undefined}
+      accessibilityLabel={onPress ? (selectionMode ? `${merchantLabel}, ${selected ? 'seleccionado' : 'no seleccionado'}` : merchantLabel) : undefined}
+      accessibilityState={selectionMode ? { selected } : undefined}
       onPress={onPress}
-      style={{ minHeight: 64, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm }}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      style={{ minHeight: 64, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: selected ? theme.colors.accentStrong : theme.colors.border, borderLeftWidth: selected ? 3 : 0, paddingVertical: theme.spacing.sm, paddingHorizontal: selectionMode ? theme.spacing.sm : 0, backgroundColor: selected ? theme.colors.accentSoft : undefined }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <View style={{ width: 36, height: 36, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
@@ -39,7 +42,7 @@ export function TransactionRow({ transaction, onPress }: { transaction: Transact
           {transaction.kind === 'transfer' && transaction.destinationAmount && transaction.destinationCurrency ? <MoneyAmount amount={transaction.destinationAmount} currency={transaction.destinationCurrency} tone="income" compact /> : null}
           {settings.dataVisibility !== 'essential' && transaction.evidenceCount ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${transaction.evidenceCount} source${transaction.evidenceCount === 1 ? '' : 's'}`}</Text> : null}
         </View>
-        {onPress ? <Feather name="chevron-right" size={16} color={theme.colors.textMuted} /> : null}
+        {onPress && !selectionMode ? <Feather name="chevron-right" size={16} color={theme.colors.textMuted} /> : null}
       </View>
     </Pressable>
   );
@@ -59,7 +62,7 @@ export function EvidenceRow({ source, kind, amount, merchantLabel, observedAt, m
         <View style={{ gap: 5 }}><Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cleanDisplayText(displayedSource)}</Text><ProvenanceMark origin="captured" /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(kind)}</Text>{onPress ? <Feather name="arrow-up-right" size={15} color={theme.colors.accentStrong} /> : null}</View>
       </View>
-      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 5 }]}>{joinDisplayParts([merchantLabel || 'Merchant', amount])}</Text>
+      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 5 }]}>{joinDisplayParts([merchantLabel || 'Comercio', amount])}</Text>
       {displayedObservedAt ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted, marginTop: 3 }]}>{cleanDisplayText(displayedObservedAt)}</Text> : null}
       {displayedReason ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted, marginTop: 3 }]}>{cleanDisplayText(displayedReason)}</Text> : null}
     </View>

@@ -1,12 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, ScrollViewProps, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, ScrollViewProps, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/primitives';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
+import { NavigationRail } from './NavigationRail';
 
 export function AppScreen({
   children,
@@ -27,10 +28,20 @@ export function AppScreen({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const {width}=useWindowDimensions();
+  const desktop=width>=1024;
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background,flexDirection:'row' }]}>
+      {desktop?<NavigationRail/>:null}
+      {/* Android already resizes this activity (adjustResize in the manifest).
+          Applying a second height-based keyboard avoidance shrinks the screen
+          twice, which breaks the capture form and its sticky save action. */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior="padding"
+        enabled={Platform.OS === 'ios'}
+      >
       {scrollable ? (
         <ScrollView
           style={styles.flex}
@@ -39,6 +50,8 @@ export function AppScreen({
             styles.scrollContent,
             {
               paddingTop: theme.spacing.lg,
+              paddingHorizontal:desktop?40:20,
+              width:'100%',maxWidth:1440,alignSelf:'center',gap:24,
               paddingBottom: (stickyFooter ? theme.spacing.xl : theme.spacing.xxxl) + insets.bottom,
             },
             contentStyle,
@@ -72,7 +85,7 @@ export function TopBar({
   onActionPress,
   secondaryAction,
   showBack = false,
-  backLabel = 'Back',
+  backLabel = 'Volver',
 }: {
   title: string;
   subtitle?: string;
@@ -113,12 +126,13 @@ export function TopBar({
         <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
           <View style={[styles.brandRow, { marginBottom: 6 }]}>
             <View style={[styles.brandDot, { backgroundColor: theme.colors.accent }]} />
-            <Text style={[theme.typography.overline, { color: theme.colors.accentStrong }]}>BrainIA Ledger</Text>
+            <Text style={[theme.typography.overline, { color: theme.colors.accentStrong }]}>BRAIN IA / PERSONAL</Text>
           </View>
           <Text style={[theme.typography.display, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
           {subtitle ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginTop: 4 }]}>{cleanDisplayText(subtitle)}</Text> : null}
         </View>
         <View style={styles.row}>
+          <IconButton icon={<Feather name="plus" size={20} color={theme.colors.accent}/>} label="Capturar" onPress={()=>router.push('/capture')}/>
           {secondaryAction}
           {actionLabel ? (
             <IconButton icon={<Feather name="sliders" size={18} color={theme.colors.textPrimary} />} label={actionLabel} onPress={onActionPress ?? (() => router.push('/settings'))} />

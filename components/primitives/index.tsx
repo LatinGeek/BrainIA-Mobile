@@ -16,7 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/lib/app-state';
@@ -39,8 +39,9 @@ export function AnimatedPressable({
 }) {
   const theme = useTheme();
   const progress = useSharedValue(0);
+  const reducedMotion=useReducedMotion();
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - progress.value * (1 - scaleTo) }],
+    transform: [{ scale: reducedMotion ? 1 : 1 - progress.value * (1 - scaleTo) }],
     opacity: disabled ? 0.58 : 1 - progress.value * 0.08,
   }));
 
@@ -131,7 +132,7 @@ export function Panel({
       padding={padding}
       style={[
         {
-          borderColor: tone === 'neutral' ? theme.colors.border : `${toneColor}66`,
+          borderColor: tone === 'neutral' ? theme.colors.border : toneColor,
           borderLeftWidth: tone === 'neutral' ? StyleSheet.hairlineWidth : 2,
         },
         style,
@@ -410,7 +411,7 @@ export function SegmentedControl<T extends string>({
           {scrollEdges.left ? (
             <AnimatedPressable
               accessibilityRole="button"
-              accessibilityLabel="Scroll tabs left"
+              accessibilityLabel="Desplazar pestañas a la izquierda"
               onPress={() => scrollByPage(-1)}
               scaleTo={0.92}
               style={[styles.segmentedEdgeButton, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border }]}
@@ -445,7 +446,7 @@ export function SegmentedControl<T extends string>({
           {scrollEdges.right ? (
             <AnimatedPressable
               accessibilityRole="button"
-              accessibilityLabel="Scroll tabs right"
+              accessibilityLabel="Desplazar pestañas a la derecha"
               onPress={() => scrollByPage(1)}
               scaleTo={0.92}
               style={[styles.segmentedEdgeButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accentStrong + '66' }]}
@@ -631,12 +632,22 @@ export function BottomSheet({ visible, title, children, onClose }: { visible: bo
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.keyboardAvoidingSheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/*
+        A React Native Modal is rendered in its own Android window, so the
+        activity-level `adjustResize` setting does not move this sheet above
+        the IME. Keep the whole reusable sheet keyboard-aware on both
+        platforms; otherwise a focused field and its primary action can be
+        hidden behind Android's keyboard.
+      */}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingSheet}
+        behavior={Platform.select({ ios: 'padding', android: 'height' })}
+      >
         <View style={[styles.sheetScrim, { paddingTop: insets.top + theme.spacing.sm, paddingBottom: insets.bottom + theme.spacing.md }]}>
           <Surface variant="raised" radius="xl" style={{ gap: theme.spacing.md, marginTop: 'auto', maxHeight: maxSheetHeight }}>
             <View style={styles.rowBetween}>
               <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
-              <IconButton icon={<Feather name="x" size={18} color={theme.colors.textPrimary} />} label="Close" onPress={onClose} />
+              <IconButton icon={<Feather name="x" size={18} color={theme.colors.textPrimary} />} label="Cerrar" onPress={onClose} />
             </View>
             <ScrollView
               nestedScrollEnabled

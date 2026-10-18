@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { IntelligenceOverview } from '@/components/intelligence';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -18,12 +19,13 @@ import { formatCategoryLabel } from '@/lib/format';
 import { useAsyncResource, useDebouncedValue } from '@/lib/hooks';
 import { clusterSearchResults } from '@/lib/grouping';
 import { GraphExplorer } from '@/components/knowledge/GraphExplorer';
+import { recordInteraction } from '@/lib/interaction-telemetry';
 
 const sourceFilters = [
-  { value: 'all', label: 'All' },
-  { value: 'wallet', label: 'Money' },
+  { value: 'all', label: 'Todo' },
+  { value: 'wallet', label: 'Dinero' },
   { value: 'email', label: 'Email' },
-  { value: 'mobile', label: 'Notes' },
+  { value: 'mobile', label: 'Notas' },
 ] as const;
 
 export default function SearchScreen() {
@@ -119,19 +121,20 @@ export default function SearchScreen() {
 
   return (
     <AppScreen refreshing={activeRefreshing} onRefresh={activeRefresh} contentStyle={{ paddingTop: theme.spacing.md }}>
+      <IntelligenceOverview/>
       <TopBar
-        title="Discover"
-        subtitle="Explore your knowledge graph or search for a person, merchant, topic, or event."
-        secondaryAction={<StatusBadge label={loading ? 'Searching' : hasQuery ? `${results.length} results` : `${entities?.length ?? 0} nodes`} />}
+        title="Descubrir"
+        subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
+        secondaryAction={<StatusBadge label={loading ? 'Buscando' : hasQuery ? `${results.length} resultados` : `${entities?.length ?? 0} nodos`} />}
       />
 
       <CommandPanel>
         <SearchField
-          label="Search your knowledge"
+          label="Busca en tu conocimiento"
           value={query}
           onChangeText={setQuery}
-          placeholder="Spotify, groceries, a contact, a topic..."
-          accessibilityLabel="Search your knowledge graph"
+          placeholder="Spotify, compras, un contacto, un tema…"
+          accessibilityLabel="Busca en tu mapa de conocimiento"
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -144,7 +147,7 @@ export default function SearchScreen() {
           </ScrollView>
         ) : (
           <View style={{ gap: 8 }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Try a starting point or explore the graph below</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prueba un punto de partida o explora el mapa inferior</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {recentPrompts.map((item) => (
                 <FilterChip key={item} label={item} selected={false} onPress={() => setQuery(item)} />
@@ -154,25 +157,25 @@ export default function SearchScreen() {
         )}
       </CommandPanel>
 
-      {error ? <EmptyState title="Search unavailable" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="Búsqueda no disponible" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
 
       {!hasQuery ? (
         <>
-          <Section title="Knowledge graph" subtitle="Explore the connections behind your captured activity.">
-            {entitiesError || graphError ? <EmptyState title="Knowledge graph unavailable" description={entitiesError ?? graphError ?? 'Could not load the graph.'} primaryActionLabel="Retry" onPrimaryAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
+          <Section title="Mapa de conocimiento" subtitle="Explora las conexiones entre tus actividades.">
+            {entitiesError || graphError ? <EmptyState title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} primaryActionLabel="Reintentar" onPrimaryAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
             {(entitiesLoading && !entities) || (graphLoading && !graph) ? <LoadingSkeleton variant="card" count={2} /> : null}
             {displayGraph?.nodes.length ? (
               <Panel tone="accent" style={{ gap: theme.spacing.md }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
                   <Feather name="share-2" size={20} color={theme.colors.accentStrong} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Interactive knowledge map</Text>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa de conocimiento interactivo</Text>
                     <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Start broad, then tap a node to reveal the relationships that matter.</Text>
                   </View>
                 </View>
                 <ToggleRow
-                  title="Show people and services"
-                  subtitle="Reveal merchants, apps, contacts, and accounts connected to the category map."
+                  title="Mostrar personas y servicios"
+                  subtitle="Muestra comercios, aplicaciones, contactos y cuentas conectados con el mapa de categorías."
                   value={showIdentityNodes}
                   onValueChange={(value) => {
                     setShowIdentityNodes(value);
@@ -183,8 +186,8 @@ export default function SearchScreen() {
                   }}
                 />
                 <ToggleRow
-                  title="Show event evidence"
-                  subtitle="Include the captured emails, notifications, and financial events behind this map."
+                  title="Mostrar evidencia"
+                  subtitle="Incluye los correos, notificaciones y eventos financieros capturados que sostienen este mapa."
                   value={showEvidenceNodes}
                   onValueChange={(value) => {
                     setShowEvidenceNodes(value);
@@ -204,13 +207,13 @@ export default function SearchScreen() {
                     setTaxonomyStack((current) => current.some((item) => item.key === entity.taxonomyKey) ? current : [...current, { key: entity.taxonomyKey!, label: entity.name }]);
                   }
                 }} onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)} />
-                <Button label="Refresh graph" onPress={() => { void refreshEntities(); void refreshGraph(); }} variant="secondary" />
+                <Button label="Actualizar mapa" onPress={() => { void refreshEntities(); void refreshGraph(); }} variant="secondary" />
               </Panel>
-            ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? <EmptyState title="Your graph is still growing" description="Capture notes, emails, or notifications to create people, merchants, topics, and their connections." /> : null}
+            ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? <EmptyState title="Tu conocimiento está creciendo" description="Captura notas, correos o notificaciones para crear personas, comercios, temas y conexiones." /> : null}
           </Section>
 
-          <Section title="Recent activity" subtitle="Pick up where you left off.">
-            {recentError ? <EmptyState title="Recent activity unavailable" description={recentError} primaryActionLabel="Retry" onPrimaryAction={refreshRecent} /> : null}
+          <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
+            {recentError ? <EmptyState title="Actividad reciente no disponible" description={recentError} primaryActionLabel="Reintentar" onPrimaryAction={refreshRecent} /> : null}
             {recentLoading && !recentData ? <LoadingSkeleton variant="card" count={3} /> : null}
             {!recentLoading && recentData ? (
               <View style={{ gap: theme.spacing.md }}>
@@ -224,7 +227,7 @@ export default function SearchScreen() {
                   <ListRow
                     key={transaction.id}
                     title={transaction.displayMerchantLabel ?? transaction.merchantLabel}
-                    subtitle={transaction.kind === 'income' ? 'Income' : formatCategoryLabel(transaction.category)}
+                    subtitle={transaction.kind === 'income' ? 'Ingresos' : formatCategoryLabel(transaction.category)}
                     description={transaction.observedAt ? `Seen ${transaction.observedAt}` : 'Recent transaction'}
                     trailing={<StatusBadge label={transaction.amount} tone={transaction.kind === 'income' ? 'positive' : 'danger'} />}
                     onPress={() => router.push(`/transaction/${transaction.id}`)}
@@ -234,14 +237,14 @@ export default function SearchScreen() {
             ) : null}
           </Section>
 
-          <Section title="How discovery works" subtitle="Everything you capture becomes searchable and connected.">
+          <Section title="Cómo funciona la exploración" subtitle="Todo lo que capturas se puede buscar y conectar.">
             <Panel tone="accent" style={{ gap: theme.spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
                 <Feather name="search" size={20} color={theme.colors.accentStrong} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Universal retrieval</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Búsqueda unificada</Text>
                   <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                    Search finds relevant activity and graph nodes. Opening a node expands its bounded neighborhood with readable connection reasons.
+                    La búsqueda encuentra actividad relevante y nodos de conocimiento. Al abrir un nodo verás sus conexiones cercanas y el motivo de cada relación.
                   </Text>
                 </View>
               </View>
@@ -252,7 +255,7 @@ export default function SearchScreen() {
 
       {hasQuery ? (
         <>
-          <Section title="Top match" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Best available result for this query.'}>
+          <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado disponible para esta consulta.'}>
             {loading ? <LoadingSkeleton variant="card" count={1} /> : null}
             {!loading && topMatch ? (
               <Panel tone="accent" style={{ gap: theme.spacing.md }}>
@@ -266,13 +269,13 @@ export default function SearchScreen() {
                 <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
                   {topMatch.hint ?? `Matched ${topMatch.subtitle ?? topMatch.type} content.`}
                 </Text>
-                <Button label="Open result" onPress={() => router.push(topMatch.route as never)} variant="secondary" />
+                <Button label="Abrir resultado" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} variant="secondary" />
               </Panel>
             ) : null}
-            {!loading && !error && !topMatch ? <EmptyState title="No matches" description="Try another phrase or clear the filter." /> : null}
+            {!loading && !error && !topMatch ? <EmptyState title="Sin coincidencias" description="Prueba otra frase o quita el filtro." /> : null}
           </Section>
 
-          <Section title="Grouped results" subtitle="Skimmable result groups with direct actions." count={results.length}>
+          <Section title="Resultados agrupados" subtitle="Grupos fáciles de revisar con acciones directas." count={results.length}>
             {clusters.map((cluster) => (
               <Surface key={cluster.id} variant="subtle" style={{ gap: theme.spacing.md }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.spacing.md }}>
@@ -305,12 +308,12 @@ function resultTypeLabel(type: string) {
     case 'entity':
       return 'Item';
     case 'insight':
-      return 'Insight';
+      return 'Perspectiva';
     case 'transaction':
       return 'Transaction';
     case 'event':
       return 'Activity';
     default:
-      return 'Connection';
+      return 'Conexión';
   }
 }

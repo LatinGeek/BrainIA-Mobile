@@ -58,3 +58,7 @@ yarn-error.*
 /dist-force-graph-check/
 /dist-force-graph-zoom-check/
 /output/
+
+# Generated graphify caches and dated backups
+graphify-out/cache/ast/
+graphify-out/20*/

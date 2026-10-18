@@ -1,6 +1,6 @@
 export function formatDate(value?: string) {
   if (!value) {
-    return 'Unknown date';
+    return 'Fecha desconocida';
   }
 
   const date = new Date(value);
@@ -8,7 +8,7 @@ export function formatDate(value?: string) {
     return value;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('es-UY', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -48,7 +48,7 @@ export function formatCategoryInsight(label: string | undefined, amount: string)
     return `A spending area needs category review and currently totals ${amount}.`;
   }
 
-  return `${formatCategoryLabel(label)} is the largest spending area at ${amount}.`;
+  return `${formatCategoryLabel(label)} es el área de mayor gasto con ${amount}.`;
 }
 
 export function formatMonthLabel(value?: string) {
@@ -61,14 +61,14 @@ export function formatMonthLabel(value?: string) {
     return value;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('es-UY', {
     month: 'short',
     day: 'numeric',
   }).format(date);
 }
 
 export function formatCurrency(value: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('es-UY', {
     style: 'currency',
     currency,
     maximumFractionDigits: 2,

@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
@@ -18,29 +19,30 @@ import { MonthlyCashFlowBar, MonthlyCashFlowLine, SpendingRadial, type MonthlyCa
 import { TransactionRow } from '@/components/finance';
 import { AccountIcon } from '@/components/finance/AccountIcon';
 import { AppScreen, Section, TopBar } from '@/components/layout';
-import { AnimatedPressable, BottomSheet, Button, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
+import { AnimatedPressable, BottomSheet, Button, FilterChip, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
 import { EmptyState, LoadingSkeleton } from '@/components/states';
 import { FxStamp } from '@/components/trust';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
 import { hasFinancialCurrencyConversion, summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { useAsyncResource } from '@/lib/hooks';
-import { convertCurrency, formatCategoryLabel, formatCurrency, parseCurrency, SupportedCurrency } from '@/lib/format';
+import { convertCurrency, formatCategoryLabel, formatCurrency, isUncategorizedLabel, parseCurrency, SupportedCurrency } from '@/lib/format';
 import type { TransactionGroup } from '@/lib/grouping';
-import type { FinancialAccount, TransactionSummary } from '@/lib/domain';
+import type { FinancialAccount, PendingTransaction, TransactionSummary } from '@/lib/domain';
 import { DEFAULT_FINANCIAL_ACCOUNT_COLOR, FINANCIAL_ACCOUNT_COLORS } from '@/lib/financial-accounts';
 
 const views = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'trends', label: 'Trends' },
-  { value: 'accounts', label: 'Accounts' },
-  { value: 'transactions', label: 'Transactions' },
-  { value: 'insights', label: 'Insights' },
+  { value: 'overview', label: 'Resumen' },
+  { value: 'trends', label: 'Tendencias' },
+  { value: 'accounts', label: 'Cuentas' },
+  { value: 'transactions', label: 'Movimientos' },
+  { value: 'pending', label: 'Pendientes' },
+  { value: 'insights', label: 'Perspectivas' },
 ] as const;
 
 const periods = [
-  { value: 'month', label: 'Cycle' },
-  { value: 'year', label: 'Year' },
+  { value: 'month', label: 'Ciclo' },
+  { value: 'year', label: 'Año' },
 ] as const;
 
 type FinanceView = (typeof views)[number]['value'];
@@ -48,6 +50,7 @@ type FinancePeriod = (typeof periods)[number]['value'];
 type TrendChartMode = 'line' | 'bars';
 type TransactionKindFilter = 'all' | 'expense' | 'income' | 'transfer';
 type TransactionSort = 'recent' | 'oldest' | 'highest' | 'lowest';
+type ManualEntryKind = 'expense' | 'income';
 
 const displayCurrencies = [
   { value: 'UYU', label: 'UYU' },
@@ -57,10 +60,10 @@ const displayCurrencies = [
 const TRANSACTION_CYCLE_LIMIT = 1000;
 
 const transactionSortLabels: Record<TransactionSort, string> = {
-  recent: 'Recent',
-  oldest: 'Oldest',
-  highest: 'Highest',
-  lowest: 'Lowest',
+  recent: 'Recientes',
+  oldest: 'Más antiguos',
+  highest: 'Mayor importe',
+  lowest: 'Menor importe',
 };
 
 function CompactFinanceSwitch<T extends string>({
@@ -122,11 +125,11 @@ function CompactFinanceSwitch<T extends string>({
 }
 
 function CompactCurrencySwitch({ value, onChange }: { value: SupportedCurrency; onChange: (value: SupportedCurrency) => void }) {
-  return <CompactFinanceSwitch value={value} onChange={onChange} options={displayCurrencies} accessibilityLabel="Display currency" />;
+  return <CompactFinanceSwitch value={value} onChange={onChange} options={displayCurrencies} accessibilityLabel="Moneda de visualización" />;
 }
 
 function CompactPeriodSwitch({ value, onChange }: { value: FinancePeriod; onChange: (value: FinancePeriod) => void }) {
-  return <CompactFinanceSwitch value={value} onChange={onChange} options={periods} accessibilityLabel="Financial period" minOptionWidth={48} />;
+  return <CompactFinanceSwitch value={value} onChange={onChange} options={periods} accessibilityLabel="Período financiero" minOptionWidth={48} />;
 }
 
 function displayAmount(transaction: { amount: string; currency: string }, currency: SupportedCurrency) {
@@ -146,6 +149,31 @@ function financialPeriodRangeAtOffset(financialPeriodStartDay: number, cycleOffs
   from.setMonth(from.getMonth() - Math.max(0, cycleOffset));
   const nextBoundary = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate());
   return { from: from.toISOString(), to: new Date(nextBoundary.getTime() - 1).toISOString() };
+}
+
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function localDateToIso(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 12).toISOString();
+}
+
+function formatEstimatedExecutionDate(value: string) {
+  if (!isCalendarDate(value)) return value;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-UY', { dateStyle: 'medium' }).format(new Date(year, month - 1, day, 12));
 }
 
 function buildMonthlyCashFlow(
@@ -311,7 +339,7 @@ function AccountListItem({
             {nativeCurrency !== displayCurrency ? (
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
             ) : (
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Available balance</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo disponible</Text>
             )}
           </View>
           <Animated.View style={[{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: expanded ? `${accountColor}20` : theme.colors.surface }, chevronStyle]}>
@@ -328,20 +356,20 @@ function AccountListItem({
             <View style={{ height: 1, backgroundColor: theme.colors.border, marginBottom: theme.spacing.md }} />
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
               <View style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, gap: 3 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Native balance</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo en moneda original</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
               </View>
               <View style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: `${accountColor}12`, gap: 3 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Portfolio value</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Valor de tus cuentas</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <View style={{ flex: 1 }}>
-                <Button label="Edit account" variant="secondary" size="sm" onPress={onEdit} icon={<Feather name="edit-2" size={14} color={theme.colors.textPrimary} />} />
+                <Button label="Editar cuenta" variant="secondary" size="sm" onPress={onEdit} icon={<Feather name="edit-2" size={14} color={theme.colors.textPrimary} />} />
               </View>
               <View style={{ flex: 1 }}>
-                <Button label="Adjust balance" variant="secondary" size="sm" onPress={onAdjust} icon={<Feather name="sliders" size={14} color={theme.colors.textPrimary} />} />
+                <Button label="Ajustar saldo" variant="secondary" size="sm" onPress={onAdjust} icon={<Feather name="sliders" size={14} color={theme.colors.textPrimary} />} />
               </View>
             </View>
             <View style={{ marginTop: theme.spacing.sm }}>
@@ -362,7 +390,7 @@ function AccountListItem({
 }
 
 export default function FinancialsScreen() {
-  const { client, settings, theme } = useAppState();
+  const { client, financialDataRevision, invalidateFinancialData, settings, theme } = useAppState();
   const [view, setView] = useState<FinanceView>('overview');
   const [period, setPeriod] = useState<FinancePeriod>('month');
   const [trendChartMode, setTrendChartMode] = useState<TrendChartMode>('line');
@@ -383,13 +411,33 @@ export default function FinancialsScreen() {
   const [transactionKindFilter, setTransactionKindFilter] = useState<TransactionKindFilter>('all');
   const [transactionSort, setTransactionSort] = useState<TransactionSort>('recent');
   const [transactionFiltersOpen, setTransactionFiltersOpen] = useState(false);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [consolidationOpen, setConsolidationOpen] = useState(false);
+  const [canonicalTransactionId, setCanonicalTransactionId] = useState<string | null>(null);
+  const [consolidationCategory, setConsolidationCategory] = useState<string | null>(null);
+  const [consolidationAccountId, setConsolidationAccountId] = useState<string | null>(null);
+  const [consolidating, setConsolidating] = useState(false);
+  const [consolidationError, setConsolidationError] = useState<string | null>(null);
   const [historicalTransactions, setHistoricalTransactions] = useState<TransactionSummary[]>([]);
   const [historicalTransactionsLoading, setHistoricalTransactionsLoading] = useState(false);
+  const [entryEditorOpen, setEntryEditorOpen] = useState(false);
+  const [editingPending, setEditingPending] = useState<PendingTransaction | null>(null);
+  const [entryIsPending, setEntryIsPending] = useState(false);
+  const [entryTitle, setEntryTitle] = useState('');
+  const [entryKind, setEntryKind] = useState<ManualEntryKind>('expense');
+  const [entryAmount, setEntryAmount] = useState('');
+  const [entryCurrency, setEntryCurrency] = useState<SupportedCurrency>('UYU');
+  const [entryCategory, setEntryCategory] = useState('');
+  const [entryAccountId, setEntryAccountId] = useState<string | null>(null);
+  const [entryDate, setEntryDate] = useState(localDateInputValue());
+  const [entrySaving, setEntrySaving] = useState(false);
+  const [executingPending, setExecutingPending] = useState<PendingTransaction | null>(null);
+  const [executionDate, setExecutionDate] = useState(localDateInputValue());
   const loader = useMemo(
     () => () => loadFinancialBundle(client, settings.financialPeriodStartDay),
     [client, settings.financialPeriodStartDay],
   );
-  const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
+  const { data, loading, error, refresh } = useAsyncResource(loader, [financialDataRevision, loader]);
   useFocusEffect(useCallback(() => {
     void refresh();
   }, [refresh]));
@@ -422,9 +470,10 @@ export default function FinancialsScreen() {
         if (active) setHistoricalTransactionsLoading(false);
       });
     return () => { active = false; };
-  }, [client, selectedTransactionCycleRange, transactionCycleOffset]);
+  }, [client, financialDataRevision, selectedTransactionCycleRange, transactionCycleOffset]);
 
   const transactions = data?.transactions ?? [];
+  const pendingTransactions = data?.pendingTransactions ?? [];
   const selectedCycleTransactions = transactionCycleOffset === 0 ? transactions : historicalTransactions;
   const selectedCycleTransactionsLoading = transactionCycleOffset > 0 && historicalTransactionsLoading;
   const filteredCycleTransactions = useMemo(() => {
@@ -443,6 +492,11 @@ export default function FinancialsScreen() {
     });
   }, [displayCurrency, selectedCycleTransactions, transactionKindFilter, transactionSort]);
   const accounts = data?.accounts ?? [];
+  const selectedTransactions = useMemo(
+    () => selectedTransactionIds.map((id) => selectedCycleTransactions.find((transaction) => transaction.id === id)).filter((transaction): transaction is TransactionSummary => Boolean(transaction)),
+    [selectedCycleTransactions, selectedTransactionIds],
+  );
+  const transactionSelectionMode = selectedTransactionIds.length > 0;
   const insights = data?.insights ?? [];
   const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => [
     'spending_variation',
@@ -495,7 +549,7 @@ export default function FinancialsScreen() {
       }))
     : [
         {
-          label: 'No spend',
+          label: 'Sin gastos',
           value: 1,
         },
       ];
@@ -507,6 +561,165 @@ export default function FinancialsScreen() {
     setAccountCurrency(displayCurrency);
     setAccountColor(DEFAULT_FINANCIAL_ACCOUNT_COLOR);
     setAccountEditorOpen(true);
+  }
+
+  function openEntryEditor(pending = false) {
+    setEditingPending(null);
+    setEntryIsPending(pending);
+    setEntryTitle('');
+    setEntryKind('expense');
+    setEntryAmount('');
+    setEntryCurrency(displayCurrency);
+    setEntryCategory('');
+    setEntryAccountId(null);
+    setEntryDate(localDateInputValue());
+    setEntryEditorOpen(true);
+  }
+
+  function openPendingEditor(pending: PendingTransaction) {
+    setEditingPending(pending);
+    setEntryIsPending(true);
+    setEntryTitle(pending.title);
+    setEntryKind(pending.kind);
+    setEntryAmount(pending.amount);
+    setEntryCurrency(pending.currency);
+    setEntryCategory(pending.category ?? '');
+    setEntryAccountId(pending.accountId ?? null);
+    setEntryDate(pending.estimatedExecutionDate);
+    setEntryEditorOpen(true);
+  }
+
+  async function saveEntry() {
+    const amount = Number(entryAmount.replace(',', '.'));
+    if (!entryTitle.trim()) {
+      Alert.alert('Falta un título', 'Agrega una descripción para reconocer este movimiento.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      Alert.alert('Monto inválido', 'Ingresa un importe mayor a cero.');
+      return;
+    }
+    if (!isCalendarDate(entryDate)) {
+      Alert.alert('Fecha inválida', 'Usa el formato AAAA-MM-DD.');
+      return;
+    }
+
+    setEntrySaving(true);
+    try {
+      const baseInput = {
+        title: entryTitle.trim(),
+        kind: entryKind,
+        amount,
+        currency: entryCurrency,
+        category: entryCategory.trim() || null,
+        accountId: entryAccountId,
+      };
+      if (editingPending) {
+        await client.updatePendingTransaction(editingPending.id, { ...baseInput, estimatedExecutionDate: entryDate });
+      } else if (entryIsPending) {
+        await client.createPendingTransaction({ ...baseInput, estimatedExecutionDate: entryDate });
+      } else {
+        await client.createManualTransaction({ ...baseInput, observedAt: localDateToIso(entryDate) });
+      }
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setEntryEditorOpen(false);
+      invalidateFinancialData();
+      await refresh();
+    } catch (error) {
+      Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Inténtalo de nuevo.');
+    } finally {
+      setEntrySaving(false);
+    }
+  }
+
+  async function executePending() {
+    if (!executingPending) return;
+    if (!isCalendarDate(executionDate)) {
+      Alert.alert('Fecha inválida', 'Usa el formato AAAA-MM-DD.');
+      return;
+    }
+    setEntrySaving(true);
+    try {
+      await client.executePendingTransaction(executingPending.id, { executedAt: localDateToIso(executionDate) });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setExecutingPending(null);
+      invalidateFinancialData();
+      await refresh();
+    } catch (error) {
+      Alert.alert('No se pudo ejecutar', error instanceof Error ? error.message : 'Inténtalo de nuevo.');
+    } finally {
+      setEntrySaving(false);
+    }
+  }
+
+  async function cancelPending(pending: PendingTransaction) {
+    try {
+      await client.cancelPendingTransaction(pending.id);
+      invalidateFinancialData();
+      await refresh();
+    } catch (error) {
+      Alert.alert('No se pudo cancelar', error instanceof Error ? error.message : 'Inténtalo de nuevo.');
+    }
+  }
+
+  function confirmCancelPending(pending: PendingTransaction) {
+    const message = `Se cancelará “${pending.title}”. No afectará tus saldos ni informes.`;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Cancelar pendiente?\n\n${message}`)) void cancelPending(pending);
+      return;
+    }
+    Alert.alert('Cancelar pendiente?', message, [
+      { text: 'Volver', style: 'cancel' },
+      { text: 'Cancelar pendiente', style: 'destructive', onPress: () => void cancelPending(pending) },
+    ]);
+  }
+
+  function toggleTransactionSelection(transaction: TransactionSummary) {
+    setSelectedTransactionIds((current) => {
+      if (current.includes(transaction.id)) {
+        void Haptics.selectionAsync();
+        return current.filter((id) => id !== transaction.id);
+      }
+      if (current.length === 2) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return current;
+      }
+      void Haptics.selectionAsync();
+      return [...current, transaction.id];
+    });
+  }
+
+  function openConsolidation() {
+    if (selectedTransactions.length !== 2) return;
+    const [first, second] = selectedTransactions;
+    setCanonicalTransactionId(first.id);
+    setConsolidationCategory([first, second].map((transaction) => transaction.category).find((category): category is string => Boolean(category && !isUncategorizedLabel(category))) ?? first.category ?? second.category ?? null);
+    setConsolidationAccountId([first, second].map((transaction) => transaction.accountId).find((accountId): accountId is string => Boolean(accountId)) ?? null);
+    setConsolidationError(null);
+    setConsolidationOpen(true);
+  }
+
+  async function consolidateSelectedTransactions() {
+    const canonical = selectedTransactions.find((transaction) => transaction.id === canonicalTransactionId);
+    const duplicate = selectedTransactions.find((transaction) => transaction.id !== canonicalTransactionId);
+    if (!canonical || !duplicate) return;
+    setConsolidating(true);
+    setConsolidationError(null);
+    try {
+      await client.updateTransactionContext(canonical.id, {
+        category: consolidationCategory,
+        accountId: consolidationAccountId,
+      });
+      await client.mergeTransactions(canonical.id, duplicate.id);
+      invalidateFinancialData();
+      setSelectedTransactionIds([]);
+      setConsolidationOpen(false);
+      await refresh();
+    } catch (consolidationFailure) {
+      setConsolidationError(consolidationFailure instanceof Error ? consolidationFailure.message : 'No se pudieron consolidar los movimientos.');
+    } finally {
+      setConsolidating(false);
+    }
   }
 
   function openEditAccount(account: FinancialAccount) {
@@ -542,8 +755,8 @@ export default function FinancialsScreen() {
       await refresh();
       if (result.detachedTransactions > 0) {
         Alert.alert(
-          'Account deleted',
-          `${result.detachedTransactions} transaction${result.detachedTransactions === 1 ? '' : 's'} remain in your history and are now unassigned.`,
+          'Cuenta eliminada',
+          `${result.detachedTransactions} ${result.detachedTransactions === 1 ? 'transacción permanece' : 'transacciones permanecen'} en tu historial sin una cuenta asignada.`,
         );
       }
     } catch (deleteError) {
@@ -554,13 +767,13 @@ export default function FinancialsScreen() {
   }
 
   function confirmDeleteAccount(account: FinancialAccount) {
-    const message = `${account.name} will be removed. Existing transactions will be preserved but will no longer be assigned to this account.`;
+    const message = `Se eliminará ${account.name}. Las transacciones existentes se conservarán sin una cuenta asignada.`;
     if (Platform.OS === 'web') {
       if (globalThis.confirm(`Delete account?\n\n${message}`)) void deleteAccount(account);
       return;
     }
     Alert.alert('Delete account?', message, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: 'Cancelar', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void deleteAccount(account) },
     ]);
   }
@@ -593,17 +806,25 @@ export default function FinancialsScreen() {
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
       <TopBar
-        title="Money"
-        subtitle="Where your money moved and what changed."
-        secondaryAction={<StatusBadge label={loading ? 'Syncing' : error ? 'Offline' : 'Current'} tone={error ? 'warning' : 'positive'} />}
+        title="Dinero"
+        subtitle="Dónde se movió tu dinero y qué cambió."
+        secondaryAction={<StatusBadge label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Current'} tone={error ? 'warning' : 'positive'} />}
       />
 
-      {error ? <EmptyState title="Could not load Money" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="No se pudo cargar Dinero" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
       {loading && !data ? <LoadingSkeleton variant="chart" count={2} /> : null}
 
       {data ? (
         <>
-          <SegmentedControl scrollable value={view} onChange={setView} options={views.map((item) => ({ ...item, count: item.value === 'transactions' ? transactions.length : undefined }))} />
+          <SegmentedControl
+            scrollable
+            value={view}
+            onChange={setView}
+            options={views.map((item) => ({
+              ...item,
+              count: item.value === 'transactions' ? transactions.length : item.value === 'pending' ? pendingTransactions.length : undefined,
+            }))}
+          />
           {hasCurrencyConversion ? <FxStamp /> : null}
 
           {view === 'overview' ? (
@@ -611,7 +832,7 @@ export default function FinancialsScreen() {
               <Panel tone="finance" style={{ gap: theme.spacing.lg, paddingTop: theme.spacing.lg }}>
                 <View style={{ gap: theme.spacing.sm }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{period === 'year' ? 'Projected net movement' : 'Net movement'}</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{period === 'year' ? 'Movimiento neto proyectado' : 'Movimiento neto'}</Text>
                     <CompactPeriodSwitch value={period} onChange={setPeriod} />
                   </View>
                   <Text style={[theme.typography.numeral, { color: periodNet >= 0 ? theme.colors.accent : theme.status.expense }]}>
@@ -619,13 +840,13 @@ export default function FinancialsScreen() {
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                  <MoneyTile label="Income" value={displaySummaryTotal(periodIncome)} tone="positive" compact />
-                  <MoneyTile label="Expenses" value={displaySummaryTotal(periodSpend)} tone="danger" compact />
+                  <MoneyTile label="Ingresos" value={displaySummaryTotal(periodIncome)} tone="positive" compact />
+                  <MoneyTile label="Gastos" value={displaySummaryTotal(periodSpend)} tone="danger" compact />
                 </View>
               </Panel>
               <SpendingRadial
-                title="Expense mix"
-                subtitle={period === 'year' ? 'Projected category share' : `Category share · ${cycleLabel}`}
+                title="Distribución de gastos"
+                subtitle={period === 'year' ? 'Participación proyectada por categoría' : `Participación por categoría · ${cycleLabel}`}
                 amount={displayTotal(periodSpend)}
                 segments={radialSegments}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
@@ -640,31 +861,31 @@ export default function FinancialsScreen() {
                   },
                 }}
               />
-              <Section title="At a glance" subtitle={period === 'year' ? 'Projected annual picture from current cycle data.' : `The biggest signals for ${cycleLabel}.`}>
-                <ListRow title={topCategory ? formatCategoryLabel(topCategory.label) : 'No category yet'} subtitle="Top spending group" description={topCategory ? `${topCategory.count} transactions` : 'Grouped categories will appear after sync.'} />
-                <ListRow title={topMerchant ? topMerchant.displayMerchantLabel ?? topMerchant.merchantLabel : 'No merchant yet'} subtitle="Top recent merchant" description={topMerchant?.amount ?? 'Waiting for transaction data.'} />
+              <Section title="De un vistazo" subtitle={period === 'year' ? 'Proyección anual basada en los datos del ciclo actual.' : `Las señales principales de ${cycleLabel}.`}>
+                <ListRow title={topCategory ? formatCategoryLabel(topCategory.label) : 'Todavía no hay categorías'} subtitle="Principal grupo de gastos" description={topCategory ? `${topCategory.count} transacciones` : 'Las categorías agrupadas aparecerán después de sincronizar.'} />
+                <ListRow title={topMerchant ? topMerchant.displayMerchantLabel ?? topMerchant.merchantLabel : 'Todavía no hay comercios'} subtitle="Comercio destacado" description={topMerchant?.amount ?? 'Esperando datos de transacciones.'} />
               </Section>
             </>
           ) : null}
 
           {view === 'trends' ? (
-            <Section title="Trends" subtitle="Recent movement by transaction sequence.">
-              <SegmentedControl value={trendChartMode} onChange={(value) => setTrendChartMode(value as TrendChartMode)} options={[{ value: 'line', label: 'Line' }, { value: 'bars', label: 'Bars' }]} />
+            <Section title="Tendencias" subtitle="Evolución de los últimos movimientos.">
+              <SegmentedControl value={trendChartMode} onChange={(value) => setTrendChartMode(value as TrendChartMode)} options={[{ value: 'line', label: 'Línea' }, { value: 'bars', label: 'Barras' }]} />
               {trendChartMode === 'line' ? <MonthlyCashFlowLine
                 points={monthlyCashFlow}
-                subtitle="Income versus spending across the last six financial cycles."
+                subtitle="Ingresos y gastos de los últimos seis ciclos financieros."
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
-              /> : <MonthlyCashFlowBar points={monthlyCashFlow} subtitle="Income versus spending across the last six financial cycles." formatValue={(value) => formatCurrency(value, displayCurrency)} headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />} />}
+              /> : <MonthlyCashFlowBar points={monthlyCashFlow} subtitle="Ingresos y gastos de los últimos seis ciclos financieros." formatValue={(value) => formatCurrency(value, displayCurrency)} headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />} />}
               <SpendingRadial
-                title="Money movement"
-                subtitle={period === 'year' ? 'Projected merchant share' : `Merchant share · ${cycleLabel}`}
+                title="Movimiento de dinero"
+                subtitle={period === 'year' ? 'Participación proyectada por comercio' : `Participación por comercio · ${cycleLabel}`}
                 amount={displayTotal(periodSpend)}
                 segments={merchantGroups.map((group) => ({ id: group.label, label: group.label, value: group.total * periodMultiplier }))}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                itemNoun="merchant"
-                percentageNoun="spend"
-                emptyLabel="No merchants"
+                itemNoun="comercio"
+                percentageNoun="gasto"
+                emptyLabel="Sin comercios"
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
                 drilldown={{
                   getItems: (segment) => expenses.filter((transaction) => (transaction.displayMerchantLabel ?? transaction.merchantLabel) === segment.id),
@@ -678,26 +899,26 @@ export default function FinancialsScreen() {
           ) : null}
 
           {view === 'accounts' ? (
-            <Section title="Accounts" subtitle="Your current money across every linked account." count={accounts.length}>
+            <Section title="Cuentas" subtitle="Tu dinero en las cuentas vinculadas." count={accounts.length}>
               <SpendingRadial
-                title="Portfolio overview"
-                subtitle="Net portfolio value split across your accounts. Negative balances count toward account share by magnitude."
+                title="Resumen de cuentas"
+                subtitle="Valor neto distribuido entre tus cuentas. Los saldos negativos se ponderan por su magnitud."
                 amount={displayTotal(totalAccountBalance)}
                 segments={portfolioSegments}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                totalLabel="Total portfolio"
-                itemNoun="account"
-                percentageNoun="portfolio"
-                emptyLabel="No accounts"
+                totalLabel="Total de cuentas"
+                itemNoun="cuenta"
+                percentageNoun="cartera"
+                emptyLabel="Sin cuentas"
                 headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
               />
               <Panel tone="finance" style={{ gap: theme.spacing.md }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Total available in {displayCurrency}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Total disponible en {displayCurrency}</Text>
                 <Text style={[theme.typography.numeral, { color: totalAccountBalance >= 0 ? theme.colors.accent : theme.status.expense }]}>
                   {displayTotal(totalAccountBalance)}
                 </Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Balances include transfers and balance adjustments. Adjustments never affect Money reports.</Text>
-                <Button label="Create account" onPress={openCreateAccount} icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Los saldos incluyen transferencias y ajustes. Los ajustes no afectan los informes de Dinero.</Text>
+                <Button label="Crear cuenta" onPress={openCreateAccount} icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} />
               </Panel>
               {accounts.length ? accounts.map((account) => (
                 <AccountListItem
@@ -711,18 +932,31 @@ export default function FinancialsScreen() {
                   onDelete={() => confirmDeleteAccount(account)}
                   deleting={deletingAccountId === account.id}
                 />
-              )) : <EmptyState title="No accounts yet" description="Create an account, then set its current balance with an adjustment." />}
+              )) : <EmptyState title="Todavía no hay cuentas" description="Crea una cuenta y luego establece su saldo actual con un ajuste." />}
             </Section>
           ) : null}
 
           {view === 'transactions' ? (
-            <Section title="Transactions" subtitle={`Financial records · ${selectedTransactionCycleLabel}`} count={filteredCycleTransactions.length}>
+            <Section title="Movimientos" subtitle={transactionSelectionMode ? 'Tocá los registros que querés comparar.' : `Registros financieros · ${selectedTransactionCycleLabel} · Mantené presionado para consolidar`} count={filteredCycleTransactions.length}>
+              {!transactionSelectionMode ? <Button label="Nuevo movimiento" size="sm" onPress={() => openEntryEditor(false)} icon={<Feather name="plus" size={15} color={theme.colors.onAccent} />} /> : null}
+              {selectedTransactionIds.length ? (
+                <Panel tone="finance" style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{`${selectedTransactionIds.length} de 2 seleccionados`}</Text>
+                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{selectedTransactionIds.length === 1 ? 'Tocá otro movimiento para compararlo.' : 'Revisá los datos que vas a conservar.'}</Text>
+                    </View>
+                    <Button label="Cancelar" size="sm" variant="secondary" onPress={() => setSelectedTransactionIds([])} />
+                  </View>
+                  {selectedTransactionIds.length === 2 ? <Button label="Revisar y consolidar" size="sm" onPress={openConsolidation} /> : null}
+                </Panel>
+              ) : null}
               <Panel tone="finance" style={{ padding: theme.spacing.xs }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, borderWidth: 1, borderColor: theme.colors.border }}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Show previous financial cycle"
+                    accessibilityLabel="Ver ciclo anterior"
                     onPress={() => {
                       setHistoricalTransactionsLoading(true);
                       setTransactionCycleOffset((offset) => offset + 1);
@@ -736,7 +970,7 @@ export default function FinancialsScreen() {
                   </View>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Show next financial cycle"
+                    accessibilityLabel="Ver próximo ciclo"
                     accessibilityState={{ disabled: transactionCycleOffset === 0 }}
                     disabled={transactionCycleOffset === 0}
                     onPress={() => {
@@ -750,7 +984,7 @@ export default function FinancialsScreen() {
                   </View>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Filter and sort transactions. Current sort: ${transactionSortLabels[transactionSort]}`}
+                    accessibilityLabel={`Filtrar y ordenar movimientos. Orden actual: ${transactionSortLabels[transactionSort]}`}
                     onPress={() => setTransactionFiltersOpen(true)}
                     style={{ height: 34, paddingHorizontal: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: theme.radius.md, backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.accentStrong + '66' }}
                   >
@@ -762,35 +996,96 @@ export default function FinancialsScreen() {
               {selectedCycleTransactionsLoading ? <LoadingSkeleton variant="list" count={3} /> : null}
               {!selectedCycleTransactionsLoading && filteredCycleTransactions.length ? (
                 filteredCycleTransactions.map((transaction) => (
-                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                  <TransactionRow
+                    key={transaction.id}
+                    transaction={transaction}
+                    selected={selectedTransactionIds.includes(transaction.id)}
+                    selectionMode={transactionSelectionMode}
+                    onLongPress={() => toggleTransactionSelection(transaction)}
+                    onPress={() => transactionSelectionMode ? toggleTransactionSelection(transaction) : router.push(`/transaction/${transaction.id}`)}
+                  />
                 ))
               ) : (
-                <EmptyState title="No matching transactions" description="Try another financial cycle or adjust the type filter." />
+                <EmptyState title="Sin movimientos coincidentes" description="Prueba otro período o cambia el filtro." />
               )}
             </Section>
           ) : null}
 
+          {view === 'pending' ? (
+            <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length}>
+              <Button label="Nuevo pendiente" size="sm" onPress={() => openEntryEditor(true)} icon={<Feather name="plus" size={15} color={theme.colors.onAccent} />} />
+              {pendingTransactions.length ? pendingTransactions.map((pending) => (
+                <PendingTransactionRow
+                  key={pending.id}
+                  pending={pending}
+                  onExecute={() => {
+                    setExecutionDate(localDateInputValue());
+                    setExecutingPending(pending);
+                  }}
+                  onEdit={() => openPendingEditor(pending)}
+                  onCancel={() => confirmCancelPending(pending)}
+                />
+              )) : <EmptyState title="No hay pendientes" description="Anota un cobro o una deuda futura para tenerla presente sin alterar tu balance." primaryActionLabel="Crear pendiente" onPrimaryAction={() => openEntryEditor(true)} />}
+            </Section>
+          ) : null}
+
           {view === 'insights' ? (
-            <Section title="Finance insights" subtitle="Patterns worth noticing.">
+            <Section title="Perspectivas financieras" subtitle="Patrones que merecen atención.">
               {financeInsights.length ? (
                 financeInsights.map((insight) => <InsightCard key={insight.id} insight={insight} onPress={() => router.push(`/insight/${insight.id}`)} />)
               ) : (
-                <EmptyState title="No finance insights yet" description="Recurring charges, unusual activity, and category trends will appear here." />
+                <EmptyState title="Todavía no hay perspectivas financieras" description="Aquí aparecerán recurrencias, cambios importantes y tendencias." />
               )}
             </Section>
           ) : null}
         </>
       ) : null}
 
-      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Edit account' : 'Create account'} onClose={() => setAccountEditorOpen(false)}>
-        <Input label="Account name" value={accountName} onChangeText={setAccountName} placeholder="Main bank account" autoCapitalize="words" />
-        <Input label="Mask or last digits (optional)" value={accountMask} onChangeText={setAccountMask} placeholder="•••• 5343" />
+      <BottomSheet visible={consolidationOpen} title="Consolidar movimientos" onClose={() => !consolidating && setConsolidationOpen(false)}>
+        <View style={{ gap: theme.spacing.md }}>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Se conservará un único movimiento y las fuentes del otro quedarán adjuntas como evidencia. Elegí qué información representa el pago real.</Text>
+
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Monto y movimiento principal</Text>
+          {selectedTransactions.map((transaction) => (
+            <ListRow
+              key={transaction.id}
+              title={`${transaction.displayMerchantLabel ?? transaction.merchantLabel} · ${formatCurrency(parseCurrency(transaction.amount), transaction.currency)}`}
+              subtitle={transaction.observedAt}
+              trailing={<Text style={{ color: canonicalTransactionId === transaction.id ? theme.colors.success : theme.colors.textMuted }}>{canonicalTransactionId === transaction.id ? 'Conservar' : 'Usar'}</Text>}
+              onPress={() => setCanonicalTransactionId(transaction.id)}
+            />
+          ))}
+
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
+          {Array.from(new Set(selectedTransactions.map((transaction) => transaction.category).filter((category): category is string => Boolean(category)))).map((category) => (
+            <FilterChip key={category} label={formatCategoryLabel(category)} selected={consolidationCategory === category} onPress={() => setConsolidationCategory(category)} />
+          ))}
+          {!consolidationCategory ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene categoría: el movimiento quedará sin categorizar.</Text> : null}
+
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Cuenta o método de pago</Text>
+          {Array.from(new Set(selectedTransactions.map((transaction) => transaction.accountId).filter((accountId): accountId is string => Boolean(accountId)))).map((accountId) => {
+            const account = accounts.find((candidate) => candidate.id === accountId);
+            return <ListRow key={accountId} title={account?.name ?? 'Cuenta vinculada'} subtitle={account?.currency ?? ''} trailing={<Text style={{ color: consolidationAccountId === accountId ? theme.colors.success : theme.colors.textMuted }}>{consolidationAccountId === accountId ? 'Conservar' : 'Usar'}</Text>} onPress={() => setConsolidationAccountId(accountId)} />;
+          })}
+          {!consolidationAccountId ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene una cuenta asociada.</Text> : null}
+
+          {consolidationError ? <Text style={{ color: theme.colors.danger }}>{consolidationError}</Text> : null}
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <Button label="Consolidar" loading={consolidating} disabled={!canonicalTransactionId || selectedTransactions.length !== 2} onPress={consolidateSelectedTransactions} />
+            <Button label="Cancelar" variant="secondary" disabled={consolidating} onPress={() => setConsolidationOpen(false)} />
+          </View>
+        </View>
+      </BottomSheet>
+
+      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Editar cuenta' : 'Crear cuenta'} onClose={() => setAccountEditorOpen(false)}>
+        <Input label="Nombre de la cuenta" value={accountName} onChangeText={setAccountName} placeholder="Cuenta bancaria principal" autoCapitalize="words" />
+        <Input label="Últimos dígitos (opcional)" value={accountMask} onChangeText={setAccountMask} placeholder="•••• 5343" />
         <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Currency</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
           <SegmentedControl value={accountCurrency} onChange={(value) => setAccountCurrency(value as SupportedCurrency)} options={displayCurrencies} />
         </View>
         <View style={{ gap: theme.spacing.sm }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Account color</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Color de la cuenta</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {FINANCIAL_ACCOUNT_COLORS.map((option) => (
               <Pressable
@@ -815,52 +1110,167 @@ export default function FinancialsScreen() {
             ))}
           </View>
         </View>
-        <Button label={editingAccount ? 'Save changes' : 'Create account'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} />
+        <Button label={editingAccount ? 'Guardar cambios' : 'Crear cuenta'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} />
       </BottomSheet>
 
-      <BottomSheet visible={Boolean(adjustingAccount)} title="Adjust account balance" onClose={() => setAdjustingAccount(null)}>
+      <BottomSheet visible={Boolean(adjustingAccount)} title="Ajustar saldo de la cuenta" onClose={() => setAdjustingAccount(null)}>
         {adjustingAccount ? (
           <>
-            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Set the real current balance for {adjustingAccount.name}. BrainIA will create an excluded income or expense for the difference.</Text>
-            <Input label={`Current balance (${adjustingAccount.currency ?? 'UYU'})`} value={targetBalance} onChangeText={setTargetBalance} keyboardType="decimal-pad" placeholder="0.00" />
-            <Input label="Note (optional)" value={adjustmentNote} onChangeText={setAdjustmentNote} placeholder="Statement reconciliation" />
-            <Button label="Sync balance" onPress={saveAdjustment} loading={saving} />
+            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Establece el saldo real de {adjustingAccount.name}. Brain IA creará un ingreso o gasto excluido por la diferencia.</Text>
+            <Input label={`Saldo actual (${adjustingAccount.currency ?? 'UYU'})`} value={targetBalance} onChangeText={setTargetBalance} keyboardType="decimal-pad" placeholder="0.00" />
+            <Input label="Nota (opcional)" value={adjustmentNote} onChangeText={setAdjustmentNote} placeholder="Conciliación de saldo" />
+            <Button label="Ajustar saldo" onPress={saveAdjustment} loading={saving} />
           </>
         ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={transactionFiltersOpen} title="Filter transactions" onClose={() => setTransactionFiltersOpen(false)}>
+      <BottomSheet
+        visible={entryEditorOpen}
+        title={editingPending ? 'Editar pendiente' : entryIsPending ? 'Nuevo pendiente' : 'Nuevo movimiento'}
+        onClose={() => !entrySaving && setEntryEditorOpen(false)}
+      >
+        <View style={{ gap: theme.spacing.md }}>
+          {!editingPending ? (
+            <View style={{ gap: theme.spacing.xs }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Registro</Text>
+              <SegmentedControl
+                value={entryIsPending ? 'pending' : 'posted'}
+                onChange={(value) => setEntryIsPending(value === 'pending')}
+                options={[{ value: 'posted', label: 'Movimiento' }, { value: 'pending', label: 'Pendiente' }]}
+              />
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                {entryIsPending ? 'No afectará tus saldos hasta que lo marques como ejecutado.' : 'Afectará tus saldos e informes al guardarlo.'}
+              </Text>
+            </View>
+          ) : null}
+
+          <Input label="Título" value={entryTitle} onChangeText={setEntryTitle} placeholder="Ej. Cobro de cliente" autoCapitalize="sentences" />
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
+            <SegmentedControl
+              value={entryKind}
+              onChange={(value) => setEntryKind(value as ManualEntryKind)}
+              options={[{ value: 'expense', label: 'Gasto' }, { value: 'income', label: 'Ingreso' }]}
+            />
+          </View>
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
+            <SegmentedControl
+              value={entryCurrency}
+              onChange={(value) => {
+                setEntryCurrency(value as SupportedCurrency);
+                setEntryAccountId(null);
+              }}
+              options={displayCurrencies}
+            />
+          </View>
+          <Input label={`Monto (${entryCurrency})`} value={entryAmount} onChangeText={setEntryAmount} keyboardType="decimal-pad" placeholder="0.00" />
+          <Input label="Categoría (opcional)" value={entryCategory} onChangeText={setEntryCategory} placeholder={entryKind === 'income' ? 'Ej. Sueldo' : 'Ej. Servicios'} />
+
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cuenta (opcional)</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <FilterChip label="Sin cuenta" selected={!entryAccountId} onPress={() => setEntryAccountId(null)} />
+              {accounts.filter((account) => (account.currency ?? 'UYU') === entryCurrency).map((account) => (
+                <FilterChip key={account.id} label={account.name} selected={entryAccountId === account.id} onPress={() => setEntryAccountId(account.id)} />
+              ))}
+            </View>
+          </View>
+
+          <Input
+            label={entryIsPending ? 'Fecha estimada de ejecución' : 'Fecha del movimiento'}
+            value={entryDate}
+            onChangeText={setEntryDate}
+            placeholder="AAAA-MM-DD"
+            autoCapitalize="none"
+            accessibilityHint="Usa el formato año, mes y día."
+          />
+          <Button label={editingPending ? 'Guardar cambios' : entryIsPending ? 'Guardar pendiente' : 'Guardar movimiento'} onPress={saveEntry} loading={entrySaving} disabled={!entryTitle.trim() || !entryAmount.trim()} />
+        </View>
+      </BottomSheet>
+
+      <BottomSheet visible={Boolean(executingPending)} title="Marcar como ejecutado" onClose={() => !entrySaving && setExecutingPending(null)}>
+        {executingPending ? (
+          <View style={{ gap: theme.spacing.md }}>
+            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>“{executingPending.title}” pasará a Movimientos y empezará a afectar tus saldos e informes.</Text>
+            <Input label="Fecha real de ejecución" value={executionDate} onChangeText={setExecutionDate} placeholder="AAAA-MM-DD" autoCapitalize="none" />
+            <Button label="Confirmar ejecución" onPress={executePending} loading={entrySaving} />
+          </View>
+        ) : null}
+      </BottomSheet>
+
+      <BottomSheet visible={transactionFiltersOpen} title="Filtrar movimientos" onClose={() => setTransactionFiltersOpen(false)}>
         <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Type</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
           <SegmentedControl
             scrollable
             value={transactionKindFilter}
             onChange={setTransactionKindFilter}
             options={[
-              { value: 'all', label: 'All' },
-              { value: 'expense', label: 'Expenses' },
-              { value: 'income', label: 'Income' },
-              { value: 'transfer', label: 'Transfers' },
+              { value: 'all', label: 'Todos' },
+              { value: 'expense', label: 'Gastos' },
+              { value: 'income', label: 'Ingresos' },
+              { value: 'transfer', label: 'Transferencias' },
             ]}
           />
         </View>
         <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Sort</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ordenar</Text>
           <SegmentedControl
             scrollable
             value={transactionSort}
             onChange={setTransactionSort}
             options={[
-              { value: 'recent', label: 'Recent' },
-              { value: 'oldest', label: 'Oldest' },
-              { value: 'highest', label: 'Highest amount' },
-              { value: 'lowest', label: 'Lowest amount' },
+              { value: 'recent', label: 'Recientes' },
+              { value: 'oldest', label: 'Más antiguos' },
+              { value: 'highest', label: 'Mayor importe' },
+              { value: 'lowest', label: 'Menor importe' },
             ]}
           />
         </View>
-        <Button label="Done" onPress={() => setTransactionFiltersOpen(false)} />
+        <Button label="Listo" onPress={() => setTransactionFiltersOpen(false)} />
       </BottomSheet>
     </AppScreen>
+  );
+}
+
+function PendingTransactionRow({
+  pending,
+  onExecute,
+  onEdit,
+  onCancel,
+}: {
+  pending: PendingTransaction;
+  onExecute: () => void;
+  onEdit: () => void;
+  onCancel: () => void;
+}) {
+  const theme = useTheme();
+  const isIncome = pending.kind === 'income';
+  const amountColor = isIncome ? theme.status.income : theme.status.expense;
+  return (
+    <Surface variant="subtle" padding="md" style={{ gap: theme.spacing.sm, borderColor: `${amountColor}44` }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+        <View style={{ width: 36, height: 36, borderRadius: theme.radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: `${amountColor}1A` }}>
+          <Feather name={isIncome ? 'arrow-down-left' : 'arrow-up-right'} size={17} color={amountColor} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{pending.title}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {isIncome ? 'Ingreso previsto' : 'Gasto previsto'}{pending.category ? ` · ${formatCategoryLabel(pending.category)}` : ''}{pending.account ? ` · ${pending.account}` : ''}
+          </Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.warning }]}>{`Estimado: ${formatEstimatedExecutionDate(pending.estimatedExecutionDate)}`}</Text>
+        </View>
+        <Text style={[theme.typography.bodyStrong, { color: amountColor, fontVariant: ['tabular-nums'] }]}>{formatCurrency(parseCurrency(pending.amount), pending.currency)}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+        <View style={{ flex: 1 }}><Button label="Ejecutar" size="sm" onPress={onExecute} /></View>
+        <Button label="Editar" size="sm" variant="secondary" onPress={onEdit} />
+        <Pressable accessibilityRole="button" accessibilityLabel={`Cancelar pendiente ${pending.title}`} onPress={onCancel} hitSlop={8} style={{ width: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.md, backgroundColor: theme.colors.surface }}>
+          <Feather name="x" size={17} color={theme.colors.danger} />
+        </Pressable>
+      </View>
+    </Surface>
   );
 }
 

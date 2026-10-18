@@ -21,12 +21,13 @@ import { CategoryPicker } from '@/components/review';
 import { AppScreen, Section, TopBar } from '@/components/layout';
 import { AnimatedPressable, BottomSheet, Button, CommandPanel, DisclosureSection, Input, ListRow, Panel, SegmentedControl, StatusBadge } from '@/components/primitives';
 import { EmptyState } from '@/components/states';
-import { useBrainIAClient, useTheme } from '@/lib/app-state';
+import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import type { FinancialAccount, FinancialCategories } from '@/lib/domain';
+import { recordInteraction } from '@/lib/interaction-telemetry';
 
 const captureKinds = [
-  { value: 'note', label: 'Note', icon: 'edit-3' },
-  { value: 'wallet', label: 'Money', icon: 'dollar-sign' },
+  { value: 'note', label: 'Nota', icon: 'edit-3' },
+  { value: 'wallet', label: 'Dinero', icon: 'dollar-sign' },
 ] as const;
 
 type CaptureKind = (typeof captureKinds)[number]['value'];
@@ -40,6 +41,20 @@ type VoiceNoteNativeModule = {
   addListener: (eventName: string) => void;
   removeListeners: (count: number) => void;
 };
+
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
 
 const voiceModule = Platform.OS === 'android' ? NativeModules.BrainIAVoiceNote as VoiceNoteNativeModule | undefined : undefined;
 
@@ -88,8 +103,8 @@ function VoiceRecordButton({
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={voiceModule ? label : 'Voice capture is available on Android'}
-      accessibilityHint={voiceModule ? 'Press and hold while speaking, then release to transcribe.' : undefined}
+      accessibilityLabel={voiceModule ? label : 'La captura de voz está disponible en Android'}
+      accessibilityHint={voiceModule ? 'Mantén presionado mientras hablas y suelta para transcribir.' : undefined}
       accessibilityState={{ disabled, busy: processing || recording }}
       disabled={disabled}
       onPressIn={onPressIn}
@@ -135,6 +150,7 @@ function VoiceRecordButton({
 export default function CaptureScreen() {
   const theme = useTheme();
   const client = useBrainIAClient();
+  const { invalidateFinancialData } = useAppState();
   const [kind, setKind] = useState<CaptureKind>('note');
   const [body, setBody] = useState('');
   const [title, setTitle] = useState('');
@@ -150,6 +166,8 @@ export default function CaptureScreen() {
   const [categories, setCategories] = useState<FinancialCategories>({ expense: [], income: [] });
   const [category, setCategory] = useState('');
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [estimatedExecutionDate, setEstimatedExecutionDate] = useState(localDateInputValue());
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -316,9 +334,9 @@ export default function CaptureScreen() {
 
   const kindCopy = useMemo(() => {
     return kind === 'wallet'
-      ? 'Registrá un ingreso, gasto o transferencia sin completar campos que no necesitás.'
+      ? isPending ? 'Anotá un cobro o deuda futura sin afectar tu balance todavía.' : 'Registrá un ingreso, gasto o transferencia sin completar campos que no necesitás.'
       : 'Guardá una idea, recordatorio o detalle útil antes de que se pierda.';
-  }, [kind]);
+  }, [isPending, kind]);
 
   async function submit() {
     const parsedSourceAmount = Number(amount.replace(',', '.'));
@@ -348,6 +366,11 @@ export default function CaptureScreen() {
       return;
     }
 
+    if (kind === 'wallet' && isPending && !isCalendarDate(estimatedExecutionDate)) {
+      setResult({ ok: false, message: 'Usa el formato AAAA-MM-DD para la fecha estimada.' });
+      return;
+    }
+
     if (kind === 'note' && !body.trim()) {
       setResult({ ok: false, message: 'Escribí una nota antes de capturar.' });
       return;
@@ -359,7 +382,7 @@ export default function CaptureScreen() {
       const payload =
         kind === 'wallet'
           ? {
-              title: title.trim() || merchant.trim() || (transactionType === 'income' ? 'Income' : transactionType === 'transfer' ? 'Transfer between accounts' : 'Expense'),
+              title: title.trim() || merchant.trim() || (transactionType === 'income' ? 'Ingreso' : transactionType === 'transfer' ? 'Transferencia entre cuentas' : 'Gasto'),
               body: body.trim() || undefined,
               amount: amount.trim() || undefined,
               currency,
@@ -381,9 +404,23 @@ export default function CaptureScreen() {
               tags: ['mobile', kind],
             };
 
-      await client.capture(kind, payload);
+      if (kind === 'wallet' && isPending) {
+        await client.createPendingTransaction({
+          title: title.trim() || merchant.trim() || (transactionType === 'income' ? 'Ingreso pendiente' : 'Gasto pendiente'),
+          kind: transactionType as 'expense' | 'income',
+          amount: parsedSourceAmount,
+          currency,
+          category: category || null,
+          accountId: accountId || null,
+          estimatedExecutionDate,
+        });
+        invalidateFinancialData();
+      } else {
+        await client.capture(kind, payload);
+      }
+      recordInteraction('capture', 'capture', 'success');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setResult({ ok: true, message: 'Guardado en BrainIA.' });
+      setResult({ ok: true, message: isPending ? 'Pendiente guardado. No afectará tu balance hasta ejecutarlo.' : 'Guardado en BrainIA.' });
       setBody('');
       setTitle('');
       setAmount('');
@@ -393,6 +430,8 @@ export default function CaptureScreen() {
       setDestinationAccountId(null);
       setDestinationAmount('');
       setCategory('');
+      setIsPending(false);
+      setEstimatedExecutionDate(localDateInputValue());
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setResult({ ok: false, message: error instanceof Error ? error.message : 'No se pudo guardar ahora. Revisá tu conexión e intentá de nuevo.' });
@@ -404,7 +443,7 @@ export default function CaptureScreen() {
   return (
     <AppScreen
       stickyFooter={kind === 'wallet' ? (
-        <Button label={busy ? 'Guardando...' : `Guardar ${transactionType === 'expense' ? 'gasto' : transactionType === 'income' ? 'ingreso' : 'transferencia'}`} onPress={submit} loading={busy} size="lg" />
+        <Button label={busy ? 'Guardando...' : isPending ? 'Guardar pendiente' : `Guardar ${transactionType === 'expense' ? 'gasto' : transactionType === 'income' ? 'ingreso' : 'transferencia'}`} onPress={submit} loading={busy} size="lg" />
       ) : undefined}
     >
       <TopBar
@@ -459,6 +498,7 @@ export default function CaptureScreen() {
               setDestinationAccountId(null);
               setDestinationAmount('');
               setAccountSelectorTarget(null);
+              if (nextType === 'transfer') setIsPending(false);
               setResult(null);
               void Haptics.selectionAsync();
             }}
@@ -468,6 +508,27 @@ export default function CaptureScreen() {
               { value: 'transfer', label: 'Transferir', icon: <Feather name="repeat" size={16} color={transactionType === 'transfer' ? theme.colors.onAccent : theme.colors.accentStrong} /> },
             ]}
           />
+
+          {transactionType !== 'transfer' ? (
+            <View style={{ gap: theme.spacing.xs }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Registro</Text>
+              <SegmentedControl
+                value={isPending ? 'pending' : 'posted'}
+                onChange={(value) => setIsPending(value === 'pending')}
+                options={[{ value: 'posted', label: 'Movimiento' }, { value: 'pending', label: 'Pendiente' }]}
+              />
+              {isPending ? (
+                <Input
+                  label="Fecha estimada de ejecución"
+                  value={estimatedExecutionDate}
+                  onChangeText={setEstimatedExecutionDate}
+                  placeholder="AAAA-MM-DD"
+                  autoCapitalize="none"
+                  accessibilityHint="Usa el formato año, mes y día."
+                />
+              ) : null}
+            </View>
+          ) : null}
 
           <Input
             label={transactionType === 'transfer' ? `Monto de origen${selectedAccount?.currency ? ` (${selectedAccount.currency})` : ''}` : 'Monto'}
@@ -480,7 +541,7 @@ export default function CaptureScreen() {
             }}
             placeholder="0.00"
             keyboardType="decimal-pad"
-            accessibilityLabel={`${transactionType === 'income' ? 'Income' : transactionType === 'transfer' ? 'Source transfer' : 'Expense'} amount`}
+            accessibilityLabel={transactionType === 'income' ? 'Monto del ingreso' : transactionType === 'transfer' ? 'Monto de origen de la transferencia' : 'Monto del gasto'}
             style={[theme.typography.numeral, { minHeight: 64, fontSize: 28 }]}
           />
           <ListRow
@@ -533,12 +594,12 @@ export default function CaptureScreen() {
           {transactionType === 'transfer' ? (
             <View style={{ gap: theme.spacing.sm }}>
               <Input
-                label={`To amount${selectedDestinationAccount?.currency ? ` (${selectedDestinationAccount.currency})` : ''}`}
+                label={`Monto de destino${selectedDestinationAccount?.currency ? ` (${selectedDestinationAccount.currency})` : ''}`}
                 value={destinationAmount}
                 onChangeText={setDestinationAmount}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
-                accessibilityLabel="Destination transfer amount"
+                accessibilityLabel="Monto de destino de la transferencia"
                 style={[theme.typography.numeral, { minHeight: 64, fontSize: 28 }]}
               />
               {transferRate && selectedAccount?.currency && selectedDestinationAccount?.currency ? (
@@ -583,22 +644,22 @@ export default function CaptureScreen() {
                 <Feather name="edit-3" size={20} color={theme.status.income} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[theme.typography.overline, { color: theme.status.income }]}>Quick note</Text>
-                <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Capture a thought</Text>
+                <Text style={[theme.typography.overline, { color: theme.status.income }]}>Nota rápida</Text>
+                <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Captura una idea</Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{kindCopy}</Text>
               </View>
             </View>
             <Input
               value={body}
               onChangeText={setBody}
-              placeholder="What do you want to remember?"
+              placeholder="¿Qué quieres recordar?"
               multiline
-              accessibilityLabel="Quick capture text"
+              accessibilityLabel="Texto para capturar"
               style={{ minHeight: 168, textAlignVertical: 'top' }}
             />
             <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: theme.spacing.sm }}>
               <View style={{ flex: 1 }}>
-                <Button label={voiceState === 'transcribing' ? 'Transcribing...' : busy ? 'Capturing...' : 'Capture note'} onPress={submit} loading={busy} disabled={voiceBusy} size="lg" />
+                <Button label={voiceState === 'transcribing' ? 'Transcribiendo...' : busy ? 'Capturando...' : 'Capturar nota'} onPress={submit} loading={busy} disabled={voiceBusy} size="lg" />
               </View>
               <VoiceRecordButton state={voiceState} label={voiceStatus} onPressIn={() => { void startVoiceNote(); }} onPressOut={stopVoiceNote} />
             </View>
@@ -617,7 +678,7 @@ export default function CaptureScreen() {
       {result?.ok ? (
         <CaptureSuccess message={result.message} onCaptureAnother={() => setResult(null)} />
       ) : result ? (
-        <EmptyState title="Capture failed" description={result.message} primaryActionLabel="Try again" onPrimaryAction={() => setResult(null)} />
+        <EmptyState title="No se pudo capturar" description={result.message} primaryActionLabel="Reintentar" onPrimaryAction={() => setResult(null)} />
       ) : null}
 
       <BottomSheet
@@ -625,7 +686,7 @@ export default function CaptureScreen() {
         title={accountSelectorTarget === 'destination' ? 'Select destination account' : transactionType === 'income' ? 'Select to account' : 'Select from account'}
         onClose={() => setAccountSelectorTarget(null)}
       >
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{transactionType === 'transfer' ? 'Choose any UYU or USD account. Source and destination currencies may differ.' : `Only accounts using ${currency} are available.`}</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{transactionType === 'transfer' ? 'Elige cualquier cuenta en UYU o USD. Las monedas de origen y destino pueden ser distintas.' : `Solo se muestran cuentas en ${currency}.`}</Text>
         {selectableAccounts.length ? selectableAccounts.map((account) => {
           const selectedId = accountSelectorTarget === 'destination' ? destinationAccountId : accountId;
           return (
@@ -652,8 +713,8 @@ export default function CaptureScreen() {
             }}
           />
           );
-        }) : <EmptyState title={transactionType === 'transfer' ? 'No other accounts' : `No other ${currency} accounts`} description="Create another account in Money, then return here to complete the transfer." />}
-        {(accountSelectorTarget === 'destination' ? destinationAccountId : accountId) ? <Button label="Clear selection" variant="secondary" onPress={() => {
+        }) : <EmptyState title={transactionType === 'transfer' ? 'No hay otras cuentas' : `No hay otras cuentas en ${currency}`} description="Crea otra cuenta en Dinero y vuelve para completar la transferencia." />}
+        {(accountSelectorTarget === 'destination' ? destinationAccountId : accountId) ? <Button label="Quitar selección" variant="secondary" onPress={() => {
           if (accountSelectorTarget === 'destination') setDestinationAccountId(null);
           else setAccountId(null);
           if (accountSelectorTarget === 'destination') setDestinationAmount('');

@@ -1,5 +1,51 @@
 export type ThemeId = 'intelligence-console';
 
+/** Wire types stay separate from v1 display models. Runtime validation is required. */
+export type V2Envelope = {
+  contractVersion: 2;
+  deliveryId: string;
+  sourceInstanceId: string;
+  sourceObservationKey: string;
+  producerRevisionId: string;
+  producerSequence: string;
+  changeKind: 'posted' | 'updated' | 'removed' | 'imported';
+  canonicalizationVersion: 'jcs-sha256-v1';
+  contentFingerprint: string;
+  sourceOccurredAt: string | null;
+  sourceUpdatedAt: string | null;
+  deviceObservedAt: string;
+  content: Record<string, unknown>;
+};
+
+/** Queue storage persists this result; HELD/BLOCKED_AUTH never authorize a v1 retry. */
+export type V2QueuedRevision = {
+  envelope: V2Envelope;
+  /** BLOCKED_AUTH is the 401 pause; HELD covers 403, gate and unsupported holds. */
+  state: 'PENDING' | 'HELD' | 'BLOCKED_AUTH' | 'ACKNOWLEDGED';
+  reason?: string;
+  receipt?: unknown;
+};
+
+/** Approved `Capabilities` document; feature gates are server-authoritative. */
+export type V2Capabilities = {
+  apiVersion: '2.0.0';
+  captureVersions: [1, 2];
+  maxBatchItems: 100;
+  maxItemBytes: 65536;
+  maxBatchBytes: 1048576;
+  currencyRegistryVersion: string;
+  features: {
+    observationRevisions: true;
+    decimalFinance: true;
+    email: false;
+    activity: false;
+    location: false;
+    episodes: false;
+    connectors: false;
+  };
+  policyVersion: number;
+};
+
 export type ProvenanceOrigin = 'model' | 'captured' | 'user' | 'pending';
 
 export type SupportingReference = {
@@ -75,6 +121,20 @@ export type TransactionSummary = {
   evidenceCount?: number;
   excludedFromReports?: boolean;
   adjustmentTargetBalance?: string;
+};
+
+export type PendingTransaction = {
+  id: string;
+  title: string;
+  kind: 'expense' | 'income';
+  amount: string;
+  currency: 'UYU' | 'USD';
+  category?: string;
+  account?: string;
+  accountId?: string;
+  estimatedExecutionDate: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type SearchResultItem = {
@@ -249,6 +309,12 @@ export type FinancialAccount = {
 export type FinancialCategories = {
   expense: string[];
   income: string[];
+};
+
+/** Available even while the optional custom-category request is retried. */
+export const DEFAULT_FINANCIAL_CATEGORIES: FinancialCategories = {
+  expense: ['Food / Delivery', 'Food / Groceries', 'Subscriptions', 'Bills / Utilities', 'Transport', 'Shopping', 'Health', 'Home', 'Entertainment', 'Going Out'],
+  income: ['Salary', 'Freelance / Client', 'Business', 'Refund', 'Investments', 'Interest', 'Gift', 'Other Income'],
 };
 
 export type EntityTag = {

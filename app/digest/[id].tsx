@@ -20,52 +20,52 @@ export default function DigestDetailScreen() {
 
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar showBack title={digest?.title ?? 'Digest'} subtitle={digest?.windowLabel ?? 'Time-window summary and next useful context.'} />
+      <TopBar showBack title={digest?.title ?? 'Resumen'} subtitle={digest?.windowLabel ?? 'Resumen del período y próximo contexto útil.'} />
 
-      {error ? <EmptyState title="Unable to load digest" description={error} primaryActionLabel="Retry" onPrimaryAction={refresh} /> : null}
+      {error ? <EmptyState title="No se pudo cargar el resumen" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
 
       {loading && !digest ? (
         <LoadingSkeleton variant="detail" count={2} />
       ) : digest ? (
         <>
-          <GeneratedTextBlock title="Model digest" body={digest.summary} />
+          <GeneratedTextBlock title="Resumen asistido" body={digest.summary} />
           {digest.highlights?.length ? (
             <>
-              <SectionHeader title="Highlights" />
+              <SectionHeader title="Lo más importante" />
               <View style={{ gap: 8 }}>
                 {digest.highlights.map((highlight) => <ListRow key={highlight} title={highlight} />)}
               </View>
             </>
           ) : null}
 
-          <SectionHeader title="Activity metrics" />
+          <SectionHeader title="Métricas de actividad" />
           <View style={{ gap: 8 }}>
             {digest.metrics?.length ? digest.metrics.map((metric) => (
               <ListRow key={metric.label} title={metric.label} subtitle={metric.value} />
-            )) : <EmptyState title="No metrics yet" description="Metrics will appear once enough activity is summarized." />}
+            )) : <EmptyState title="Todavía no hay métricas" description="Aparecerán cuando exista suficiente actividad resumida." />}
           </View>
 
           {digest.recommendedAction ? (
             <>
-              <SectionHeader title="Next step" />
+              <SectionHeader title="Próximo paso" />
               <Surface variant="subtle">
                 <ListRow title={digest.recommendedAction} />
               </Surface>
             </>
           ) : null}
 
-          <SectionHeader title="Follow up" />
+          <SectionHeader title="Seguimiento" />
           <EmptyState
-            title="Review related activity"
-            description="Open search or the finance dashboard for deeper context."
-            primaryActionLabel="Search"
+            title="Revisar actividad relacionada"
+            description="Abre Explorar o Dinero para obtener más contexto."
+            primaryActionLabel="Buscar"
             onPrimaryAction={() => router.push('/search')}
-            secondaryActionLabel="Money"
+            secondaryActionLabel="Dinero"
             onSecondaryAction={() => router.push('/financials')}
           />
         </>
       ) : (
-        <EmptyState title="No digest available" description="No summary is available for this time window yet." />
+        <EmptyState title="No hay resumen disponible" description="Todavía no hay un resumen para este período." />
       )}
     </AppScreen>
   );

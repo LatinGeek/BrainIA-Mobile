@@ -24,11 +24,11 @@ export function CaptureForm({
   return (
     <Surface>
       <View style={{ gap: theme.spacing.md }}>
-        <ListRow title={kind.toUpperCase()} subtitle="Capture type" />
-        <Input label="Title" value={title} onChangeText={setTitle} placeholder="Short title" />
-        <Input label="Body" value={body} onChangeText={setBody} placeholder="Text or payload" multiline />
-        {settings.dataVisibility === 'detailed' ? <Input label="External ID" value={externalId} onChangeText={setExternalId} placeholder="optional" /> : null}
-        <Input label="Tags" value={tags} onChangeText={setTags} placeholder="comma separated" />
+        <ListRow title={kind.toUpperCase()} subtitle="Tipo de captura" />
+        <Input label="Título" value={title} onChangeText={setTitle} placeholder="Título breve" />
+        <Input label="Contenido" value={body} onChangeText={setBody} placeholder="Texto original" multiline />
+        {settings.dataVisibility === 'detailed' ? <Input label="Identificador externo" value={externalId} onChangeText={setExternalId} placeholder="opcional" /> : null}
+        <Input label="Etiquetas" value={tags} onChangeText={setTags} placeholder="separados por comas" />
         <ActionButton
           label={submitLabel}
           onPress={() =>
@@ -55,7 +55,7 @@ export const EmailCapture = CaptureForm;
 export const NotificationCapture = CaptureForm;
 
 export function CaptureSuccess({ message, onCaptureAnother }: { message?: string; onCaptureAnother: () => void }) {
-  return <EmptyState title="Captured" description={message ?? 'Saved to your personal knowledge base.'} primaryActionLabel="Capture another" onPrimaryAction={onCaptureAnother} />;
+  return <EmptyState title="Capturado" description={message ?? 'Guardado en tu conocimiento personal.'} primaryActionLabel="Capturar otra" onPrimaryAction={onCaptureAnother} />;
 }
 
 export function ActionRow({
@@ -98,9 +98,9 @@ export function ResolutionForm({
   return (
     <Surface>
       <View style={{ gap: theme.spacing.md }}>
-        <Input label="Friendly name" value={alias} onChangeText={setAlias} placeholder="Merchant or topic name" />
-        <Input label="Category" value={categoryPath} onChangeText={setCategoryPath} placeholder="Food / Groceries" />
-        <Input label="Notes" value={notes} onChangeText={setNotes} placeholder="Why this decision is useful" multiline />
+        <Input label="Nombre habitual" value={alias} onChangeText={setAlias} placeholder="Nombre de comercio o tema" />
+        <Input label="Categoría" value={categoryPath} onChangeText={setCategoryPath} placeholder="Food / Groceries" />
+        <Input label="Notas" value={notes} onChangeText={setNotes} placeholder="Por qué ayuda esta decisión" multiline />
         {suggestions.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {suggestions.map((suggestion) => (
@@ -109,9 +109,9 @@ export function ResolutionForm({
           </View>
         ) : null}
         <ActionRow
-          primaryLabel="Accept"
+          primaryLabel="Aceptar"
           primaryOnPress={() => onResolve({ alias, categoryPath: categoryPath.split('/').map((part) => part.trim()).filter(Boolean), notes: notes.trim() || undefined })}
-          secondaryLabel="Ignore"
+          secondaryLabel="Ignorar"
           secondaryOnPress={onIgnore}
         />
       </View>
@@ -120,4 +120,3 @@ export function ResolutionForm({
 }
 
 export const AliasDecisionForm = ResolutionForm;
-

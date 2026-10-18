@@ -1,4 +1,4 @@
-import { DependencyList, useEffect, useMemo, useState } from 'react';
+import { DependencyList, useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useDebouncedValue<T>(value: T, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -18,6 +18,21 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
   const [refreshIndex, setRefreshIndex] = useState(0);
 
   const refresh = useMemo(() => () => setRefreshIndex((value) => value + 1), []);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await loader();
+      setData(result);
+      return result;
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : 'Unable to load data';
+      setError(message);
+      throw loadError;
+    } finally {
+      setLoading(false);
+    }
+  }, [loader]);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +62,5 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
     };
   }, [loader, refreshIndex, ...deps]);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, reload };
 }
-

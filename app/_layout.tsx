@@ -9,6 +9,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { AppStateProvider, useAppState } from '@/lib/app-state';
+import { Telemetry } from '@/components/Telemetry';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -66,6 +67,7 @@ function RootNavigator() {
 
   return (
     <>
+      <Telemetry/>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} animated />
       <Stack
         screenOptions={{

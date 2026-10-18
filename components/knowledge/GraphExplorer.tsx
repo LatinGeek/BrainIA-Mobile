@@ -80,7 +80,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
 
   const summary = focused
     ? focused.nodeKind === 'category'
-      ? `${focused.breadcrumb?.join(' › ') ?? communityById.get(focused.communityId)?.label ?? 'Category'} · ${focused.evidenceCount ?? 0} captured event${focused.evidenceCount === 1 ? '' : 's'}`
+      ? `${focused.breadcrumb?.join(' › ') ?? communityById.get(focused.communityId)?.label ?? 'Categoría'} · ${focused.evidenceCount ?? 0} captured event${focused.evidenceCount === 1 ? '' : 's'}`
       : `${communityById.get(focused.communityId)?.label ?? 'Connected group'} · ${focusedRelations.length} direct connection${focusedRelations.length === 1 ? '' : 's'}`
     : visualGraph.nodes.every((node) => node.nodeKind === 'category')
       ? `${visualGraph.stats.nodesCount} categories · tap a category to descend one level`

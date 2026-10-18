@@ -46,7 +46,7 @@ try {
   });
 
   await page.goto(`${baseUrl}/financials`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.getByText('Accounts', { exact: true }).first().click();
+  await page.getByText('Cuentas', { exact: true }).first().click();
   const accountRow = page.getByRole('button', { name: /Delete test account.*Expand account options/ });
   await accountRow.waitFor({ timeout: 120000 });
   await accountRow.click();

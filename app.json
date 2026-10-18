@@ -2,7 +2,7 @@
   "expo": {
     "name": "BrainIA Mobile",
     "slug": "brainia-mobile",
-    "version": "1.0.4",
+    "version": "1.0.7",
     "orientation": "portrait",
     "backgroundColor": "#F5F7FA",
     "icon": "./assets/images/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.brainia.mobile",
-      "versionCode": 5,
+      "versionCode": 8,
       "softwareKeyboardLayoutMode": "resize",
       "backgroundColor": "#F5F7FA",
       "adaptiveIcon": {

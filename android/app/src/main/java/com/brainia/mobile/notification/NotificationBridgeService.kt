@@ -10,8 +10,6 @@ import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -118,7 +116,7 @@ class NotificationBridgeService : NotificationListenerService() {
       try {
         sendCapture(sbn, appName, packageName)
       } catch (error: Exception) {
-        Log.w(TAG, "Unable to forward notification capture", error)
+        Log.w(TAG, "Unable to forward notification capture")
         updateStatus { putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Unable to forward a notification; it will be retried while active") }
         NotificationBridgeDiagnostics.record(applicationContext, "error", "capture_exception", "Notification forwarding raised ${error.javaClass.simpleName}")
         NotificationBridgeDiagnostics.flush(applicationContext)
@@ -136,7 +134,7 @@ class NotificationBridgeService : NotificationListenerService() {
       val notifications = try {
         getActiveNotifications()?.toList().orEmpty()
       } catch (error: Exception) {
-        Log.w(TAG, "Unable to inspect active notifications", error)
+        Log.w(TAG, "Unable to inspect active notifications")
         updateStatus { putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Active notifications are not available yet; BrainIA will retry") }
         NotificationBridgeDiagnostics.record(applicationContext, "error", "active_notifications_unavailable", "Android active notifications raised ${error.javaClass.simpleName}")
         onComplete?.invoke(false)
@@ -157,7 +155,7 @@ class NotificationBridgeService : NotificationListenerService() {
             if (!sendCapture(sbn, appName, packageName)) failedCaptures += 1
           } catch (error: Exception) {
             failedCaptures += 1
-            Log.w(TAG, "Unable to reconcile one active notification", error)
+            Log.w(TAG, "Unable to reconcile one active notification")
           }
         }
         updateStatus {
@@ -178,7 +176,7 @@ class NotificationBridgeService : NotificationListenerService() {
         NotificationBridgeDiagnostics.flush(applicationContext)
         completed = true
       } catch (error: Exception) {
-        Log.w(TAG, "Unable to reconcile active notifications", error)
+        Log.w(TAG, "Unable to reconcile active notifications")
         updateStatus { putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Active notifications are not available yet; BrainIA will retry") }
         NotificationBridgeDiagnostics.record(applicationContext, "error", "reconciliation_exception", "Reconciliation raised ${error.javaClass.simpleName}")
       } finally {
@@ -193,6 +191,7 @@ class NotificationBridgeService : NotificationListenerService() {
     appName: String,
     packageName: String,
   ): Boolean {
+    if (!shouldCapture(packageName, appName)) return true
     val prefs = applicationContext.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, MODE_PRIVATE)
     val baseUrl = prefs.getString(NotificationBridgeConfig.KEY_BASE_URL, null).orEmpty().trim()
     if (baseUrl.isEmpty()) {
@@ -262,11 +261,11 @@ class NotificationBridgeService : NotificationListenerService() {
       connection.readTimeout = 10_000
       connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
       connection.setRequestProperty("Accept", "application/json")
-      prefs.getString(NotificationBridgeConfig.KEY_API_KEY, null)
+      NotificationBridgeConfig.readCredential(applicationContext, NotificationBridgeConfig.KEY_API_KEY)
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?.let { connection.setRequestProperty("x-brainia-api-key", it) }
-      prefs.getString(NotificationBridgeConfig.KEY_CLIENT_ID, null)
+      NotificationBridgeConfig.readCredential(applicationContext, NotificationBridgeConfig.KEY_CLIENT_ID)
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?.let { connection.setRequestProperty("x-brainia-client-id", it) }
@@ -277,10 +276,8 @@ class NotificationBridgeService : NotificationListenerService() {
 
       val status = connection.responseCode
       if (status !in 200..299) {
-        val errorBody = connection.errorStream?.use { stream ->
-          BufferedReader(InputStreamReader(stream)).use { reader -> reader.readText() }
-        }
-        Log.w(TAG, "Capture rejected with status=$status body=${errorBody ?: "<empty>"}")
+        connection.errorStream?.close()
+        Log.w(TAG, "Capture rejected with status=$status")
         updateStatus { putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Server rejected capture ($status)") }
         NotificationBridgeDiagnostics.record(applicationContext, "error", "capture_rejected", "Backend rejected notification capture", JSONObject().put("statusCode", status).put("packageName", packageName))
         return false
@@ -304,16 +301,9 @@ class NotificationBridgeService : NotificationListenerService() {
       return false
     }
 
-    val selected = applicationContext.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, MODE_PRIVATE)
-      .getStringSet(NotificationBridgeConfig.KEY_CAPTURE_APP_PACKAGES, emptySet()) ?: emptySet()
-    if (selected.isNotEmpty()) return selected.contains(packageName)
-
-    return normalized.contains("santander") ||
-      normalized.contains("mercadopago") ||
-      (normalized.contains("mercado") && normalized.contains("pago")) ||
-      normalized.contains("google wallet") ||
-      normalized.contains("walletnfcrel") ||
-      normalized.contains("billetera")
+    val prefs = applicationContext.getSharedPreferences(NotificationBridgeConfig.PREFS_NAME, MODE_PRIVATE)
+    val consent = NotificationBridgeConfig.readCaptureConsent(prefs)
+    return NotificationBridgeConfig.shouldCapture(consent.configured, consent.packages, packageName)
   }
 
   private fun updateStatus(update: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -436,7 +426,7 @@ class NotificationBridgeService : NotificationListenerService() {
               NotificationListenerService.requestRebind(component)
               NotificationBridgeDiagnostics.record(context, "info", "rebind_cycle_dispatched", "Android listener unbind/rebind cycle was dispatched", JSONObject().put("attempt", attempts))
             } catch (error: Exception) {
-              Log.w(TAG, "Unable to complete notification-listener binding cycle", error)
+              Log.w(TAG, "Unable to complete notification-listener binding cycle")
               prefs.edit().putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Android rejected the listener reconnect request").apply()
               NotificationBridgeDiagnostics.record(context, "error", "rebind_cycle_rejected", "Android rejected the delayed listener rebind", JSONObject().put("attempt", attempts).put("errorType", error.javaClass.simpleName))
             }
@@ -446,7 +436,7 @@ class NotificationBridgeService : NotificationListenerService() {
         }
         true
       } catch (error: Exception) {
-        Log.w(TAG, "Unable to request notification-listener rebind", error)
+        Log.w(TAG, "Unable to request notification-listener rebind")
         prefs.edit().putString(NotificationBridgeConfig.KEY_LAST_ERROR, "Android rejected the listener reconnect request").apply()
         NotificationBridgeDiagnostics.record(context, "error", "rebind_rejected", "Android rejected notification-listener rebind", JSONObject().put("attempt", attempts).put("errorType", error.javaClass.simpleName))
         false

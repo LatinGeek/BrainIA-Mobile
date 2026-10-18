@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { ComponentProps } from 'react';
-import { ColorValue, View } from 'react-native';
+import { ColorValue, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppState } from '@/lib/app-state';
@@ -27,6 +27,7 @@ function TabIcon({ theme, name, focused, color }: { theme: ThemeTokens; name: Co
 export default function TabLayout() {
   const { theme } = useAppState();
   const insets = useSafeAreaInsets();
+  const {width}=useWindowDimensions();
 
   return (
     <Tabs
@@ -36,6 +37,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.colors.onAccent,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
+          display:width>=1024?'none':'flex',
           backgroundColor: theme.colors.background,
           borderTopColor: theme.depth.hairline,
           borderTopWidth: 1,
@@ -72,6 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="capture"
         options={{
+          href:null,
           title: 'Capturar',
           tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="plus-circle" focused={focused} color={color} />,
         }}

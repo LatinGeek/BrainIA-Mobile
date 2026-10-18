@@ -8,8 +8,6 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -97,19 +95,17 @@ internal object NotificationBridgeDiagnostics {
         connection.readTimeout = 10_000
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
         connection.setRequestProperty("Accept", "application/json")
-        preferences.getString(NotificationBridgeConfig.KEY_API_KEY, null)?.trim()?.takeIf { it.isNotEmpty() }
+        NotificationBridgeConfig.readCredential(context, NotificationBridgeConfig.KEY_API_KEY)?.trim()?.takeIf { it.isNotEmpty() }
           ?.let { connection.setRequestProperty("x-brainia-api-key", it) }
-        preferences.getString(NotificationBridgeConfig.KEY_CLIENT_ID, null)?.trim()?.takeIf { it.isNotEmpty() }
+        NotificationBridgeConfig.readCredential(context, NotificationBridgeConfig.KEY_CLIENT_ID)?.trim()?.takeIf { it.isNotEmpty() }
           ?.let { connection.setRequestProperty("x-brainia-client-id", it) }
         connection.outputStream.use { output ->
           output.write(JSONObject().put("logs", batch).toString().toByteArray(Charsets.UTF_8))
         }
         val status = connection.responseCode
         if (status !in 200..299) {
-          val body = connection.errorStream?.use { stream ->
-            BufferedReader(InputStreamReader(stream)).use { reader -> reader.readText().take(240) }
-          }
-          preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "Server rejected diagnostics ($status): ${body ?: "empty"}").apply()
+          connection.errorStream?.close()
+          preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "Server rejected diagnostics ($status)").apply()
           return@synchronized false
         }
 
@@ -131,7 +127,7 @@ internal object NotificationBridgeDiagnostics {
             .apply()
         }
       } catch (error: Exception) {
-        preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "${error.javaClass.simpleName}: ${error.message?.take(180) ?: "upload failed"}").apply()
+        preferences.edit().putString(NotificationBridgeConfig.KEY_DIAGNOSTIC_LAST_UPLOAD_ERROR, "Diagnostics upload failed; check your connection and sign-in").apply()
         return@synchronized false
       } finally {
         connection.disconnect()

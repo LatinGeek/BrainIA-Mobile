@@ -34,7 +34,7 @@ try {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ categories: { expense: ['Home'], income: ['Salary'] } }),
+      body: JSON.stringify({ categories: { expense: ['Inicio'], income: ['Salary'] } }),
     });
   });
 
@@ -48,39 +48,39 @@ try {
   }
   await categoriesResponse;
 
-  await page.getByText('Capture a thought', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('Capture note', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByLabel('Voice capture is available on Android', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Captura una idea', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Capturar nota', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByLabel('La captura de voz está disponible en Android', { exact: true }).waitFor({ timeout: 120000 });
   for (const removedLabel of ['Alert', 'Email', 'Event', 'Optional capture details']) {
     if (await page.getByText(removedLabel, { exact: true }).count()) {
       throw new Error(`${removedLabel} unexpectedly rendered in the note capture flow.`);
     }
   }
 
-  await page.getByText('Money', { exact: true }).first().click();
-  await page.getByText('Transfer', { exact: true }).first().click();
-  await page.getByLabel('Source transfer amount', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('From account', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('To account', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Dinero', { exact: true }).first().click();
+  await page.getByText('Transferir', { exact: true }).first().click();
+  await page.getByLabel('Monto de origen de la transferencia', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Cuenta de origen', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Cuenta destino', { exact: true }).waitFor({ timeout: 120000 });
 
-  if (await page.getByText('Category', { exact: true }).count()) {
+  if (await page.getByText('Categoría', { exact: true }).count()) {
     throw new Error('Transfer mode unexpectedly rendered the transaction category selector.');
   }
   if (await page.getByText('Merchant or payee', { exact: true }).count()) {
     throw new Error('Transfer mode unexpectedly rendered the merchant input.');
   }
 
-  await page.getByLabel('Source transfer amount', { exact: true }).fill('1250.50');
-  await page.getByText('Save transfer', { exact: true }).click();
-  await page.getByText('Choose the account the transfer is coming from.', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('Try again', { exact: true }).click();
+  await page.getByLabel('Monto de origen de la transferencia', { exact: true }).fill('1250.50');
+  await page.getByText('Guardar transferencia', { exact: true }).click();
+  await page.getByText('Elegí la cuenta desde la que sale la transferencia.', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Reintentar', { exact: true }).click();
 
-  await page.getByText('From account', { exact: true }).click();
+  await page.getByText('Cuenta de origen', { exact: true }).click();
   await page.getByText('UYU Checking', { exact: true }).click();
-  await page.getByText('To account', { exact: true }).click();
+  await page.getByText('Cuenta destino', { exact: true }).click();
   await page.getByText('USD Credit', { exact: true }).click();
-  await page.getByLabel('Source transfer amount', { exact: true }).fill('4000');
-  await page.getByLabel('Destination transfer amount').fill('100');
+  await page.getByLabel('Monto de origen de la transferencia', { exact: true }).fill('4000');
+  await page.getByLabel('Monto de destino de la transferencia').fill('100');
   await page.getByText('1 UYU = 0.025 USD', { exact: true }).waitFor({ timeout: 120000 });
 
   if (runtimeErrors.length) {

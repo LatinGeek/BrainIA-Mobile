@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { IntelligenceOverview } from '@/components/intelligence';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Text, View } from 'react-native';
@@ -17,12 +18,12 @@ import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
 
 export default function HomeScreen() {
-  const { client, settings, theme } = useAppState();
+  const { client, financialDataRevision, settings, theme } = useAppState();
   const loader = useMemo(
     () => () => loadDashboardBundle(client, settings.financialPeriodStartDay),
     [client, settings.financialPeriodStartDay],
   );
-  const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
+  const { data, loading, error, refresh } = useAsyncResource(loader, [financialDataRevision, loader]);
   const reviewLoader = useMemo(() => () => client.listReviews('pending'), [client]);
   const { data: pendingReviews, refresh: refreshReviews } = useAsyncResource(reviewLoader, [reviewLoader]);
   useFocusEffect(useCallback(() => {
@@ -46,8 +47,8 @@ export default function HomeScreen() {
   const briefItems = [
     pendingReviews?.length ? {
       id: 'review-pending',
-      title: `${pendingReviews.length} data decision${pendingReviews.length === 1 ? '' : 's'} need review`,
-      summary: 'Reviewing them can improve future search and graph connections.',
+      title: `${pendingReviews.length} ${pendingReviews.length === 1 ? 'decisión de datos necesita' : 'decisiones de datos necesitan'} revisión`,
+      summary: 'Revisarlas puede mejorar búsquedas futuras y conexiones del conocimiento.',
       origin: 'pending' as const,
       onActionPress: () => router.push('/review'),
     } : undefined,
@@ -67,7 +68,7 @@ export default function HomeScreen() {
     })) : (primaryDigest ? [{ id: `digest:${primaryDigest.id}`, title: primaryDigest.title, summary: primaryDigest.summary, origin: 'model' as const, onActionPress: () => router.push(`/digest/${primaryDigest.id}`) }] : [])),
     topCategory ? {
       id: `category:${topCategory.label}`,
-      title: 'Largest spending area',
+      title: 'Principal área de gasto',
       summary: formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, summaryCurrency)),
       origin: 'captured' as const,
       onActionPress: () => {
@@ -84,23 +85,24 @@ export default function HomeScreen() {
   return (
     <AppScreen refreshing={loading} onRefresh={refresh}>
       <TopBar
-        title="Today"
-        subtitle={data?.cachedAt ? `Last refreshed ${formatDate(data.cachedAt)}` : 'What matters now across knowledge, money, and review.'}
+        title="Tu día, en perspectiva"
+        subtitle={data?.cachedAt ? `Actualizado ${formatDate(data.cachedAt)}` : 'Lo importante de tu conocimiento, tu dinero y tus decisiones.'}
         secondaryAction={
           <StatusBadge
-            label={loading ? 'Syncing' : error ? 'Offline' : data?.live ? 'Live' : 'Saved view'}
+            label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'}
             tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'}
           />
         }
       />
 
+      <IntelligenceOverview/>
       {error ? (
         <EmptyState
-          title="Live data unavailable"
+          title="Datos en vivo no disponibles"
           description={error}
-          primaryActionLabel="Retry"
+          primaryActionLabel="Reintentar"
           onPrimaryAction={refresh}
-          secondaryActionLabel="Settings"
+          secondaryActionLabel="Ajustes"
           onSecondaryAction={() => router.push('/settings')}
         />
       ) : null}
@@ -109,9 +111,10 @@ export default function HomeScreen() {
 
       {data ? (
         <>
-          {briefItems.length ? <DailyBrief items={briefItems} /> : null}
 
-          <Section title="Finance" actionLabel="Open Money" onActionPress={() => router.push('/financials')}>
+          {briefItems.length ? <DailyBrief items={briefItems.slice(0, 3)} /> : null}
+
+          <Section title="Finanzas" actionLabel="Abrir Dinero" onActionPress={() => router.push('/financials')}>
             <TodayFinanceSnapshot
               income={formatCurrency(financialSummary.income, summaryCurrency)}
               expenses={formatCurrency(financialSummary.expenses, summaryCurrency)}
@@ -120,26 +123,26 @@ export default function HomeScreen() {
             />
           </Section>
 
-          {pendingReviews?.length ? <Section title="Needs review" subtitle="Small decisions that improve future search and finance." actionLabel="Review" onActionPress={() => router.push('/review')}>
+          {pendingReviews?.length ? <Section title="Para revisar" subtitle="Decisiones pequeñas que mejoran las próximas interpretaciones." actionLabel="Revisar" onActionPress={() => router.push('/review')}>
             <Panel tone="review" style={{ gap: theme.spacing.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
                 <Feather name="shield" size={20} color={theme.status.review} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Merchant and category cleanup</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Comercios y categorías claros</Text>
                   <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                    Confirm friendly names so future searches and money summaries stay readable.
+                    Confirma nombres habituales para mejorar las búsquedas y los resúmenes.
                   </Text>
                 </View>
               </View>
-              <Button label="Open Review" onPress={() => router.push('/review')} variant="secondary" />
+              <Button label="Abrir Revisar" onPress={() => router.push('/review')} variant="secondary" />
             </Panel>
           </Section> : null}
 
-          <Section title="Recent activity" subtitle="Your latest money movement, with a clear path back to its evidence." actionLabel="Search all" onActionPress={() => router.push('/search')}>
+          <Section title="Actividad reciente" subtitle="Tus últimos movimientos, con acceso directo a su evidencia." actionLabel="Buscar todo" onActionPress={() => router.push('/search')}>
             {topTransaction ? (
               transactions.slice(0, 3).map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />)
             ) : (
-              <EmptyState title="No recent activity" description="Captured notes, notifications, emails, and wallet events will show up here." />
+              <EmptyState title="Sin actividad reciente" description="Aquí aparecerán tus notas, notificaciones, correos y movimientos." />
             )}
           </Section>
         </>

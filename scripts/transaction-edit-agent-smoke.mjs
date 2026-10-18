@@ -23,7 +23,7 @@ try {
     });
   });
   await page.route('**/api/v1/financial/categories**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ categories: { expense: ['Home'], income: ['Salary'] } }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ categories: { expense: ['Inicio'], income: ['Salary'] } }) });
   });
   await page.route('**/api/v1/entities/aliases**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
@@ -46,24 +46,24 @@ try {
   });
 
   await page.goto(`${baseUrl}/transaction/tx_reclassify?ux=edge`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  const editButton = page.getByText('Edit category and account', { exact: true });
+  const editButton = page.getByText('Editar categoría y cuenta', { exact: true });
   await editButton.waitFor({ timeout: 120000 });
   await page.waitForTimeout(250);
   const accountsResponse = page.waitForResponse((response) => response.url().includes('/api/v1/financial/accounts') && response.request().method() === 'GET');
   const categoriesResponse = page.waitForResponse((response) => response.url().includes('/api/v1/financial/categories') && response.request().method() === 'GET');
   await editButton.click();
   await Promise.all([accountsResponse, categoriesResponse]);
-  await page.getByText('Transaction type', { exact: true }).waitFor({ timeout: 120000 });
+  await page.getByText('Tipo de movimiento', { exact: true }).waitFor({ timeout: 120000 });
   await page.getByText('Transfer', { exact: true }).last().click();
   await page.getByText('From currency', { exact: true }).waitFor();
   await page.getByText('UYU', { exact: true }).first().click();
   await page.getByText('UYU Checking', { exact: true }).click();
-  await page.getByText('To currency', { exact: true }).waitFor();
+  await page.getByText('Moneda de destino', { exact: true }).waitFor();
   await page.getByText('USD', { exact: true }).last().click();
   await page.getByText('USD Credit', { exact: true }).click();
-  await page.getByLabel('Edited transfer destination amount', { exact: true }).fill('100');
-  await page.getByText('Save', { exact: true }).click();
-  await page.getByText('Transaction type', { exact: true }).waitFor({ state: 'hidden', timeout: 120000 });
+  await page.getByLabel('Monto de destino editado', { exact: true }).fill('100');
+  await page.getByText('Guardar', { exact: true }).click();
+  await page.getByText('Tipo de movimiento', { exact: true }).waitFor({ state: 'hidden', timeout: 120000 });
 
   if (savedPayload?.kind !== 'transfer'
     || savedPayload.accountId !== 'account_uyu'

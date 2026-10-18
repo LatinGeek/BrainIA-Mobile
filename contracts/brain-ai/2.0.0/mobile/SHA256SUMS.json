@@ -1,0 +1,11 @@
+{
+  "algorithm": "sha256",
+  "encoding": "exact UTF-8 file bytes; no newline normalization",
+  "files": {
+    "runtime.cjs": "92d5276f40790c68b83f113b7a4190cc76bb7513a842359d5088a9cdd0352733",
+    "runtime.d.cts": "52a7d2acd04d5730f02cb5e63c2e0a176eb40a605db9e0e9462724ffd1b15060",
+    "transport.cjs": "ae12aaf502d1d43faf214f8dfc92c87330a6ad37bbb79216e36f6d42fae5c397",
+    "transport.d.cts": "b87478824d12851ddf2d88ba288ad2980514bbf99e1cc22f4c61cdf4e0e920fc",
+    "verify.mjs": "a468d8815f53c5e50680d3523a259ffa48e2f2a9910a0450d6f99ff410c9e4d8"
+  }
+}

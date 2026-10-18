@@ -20,14 +20,15 @@ try {
   console.log('REVIEW_LOADING_OK');
 
   const emptyPage = await openReview(browser, 'empty');
-  await emptyPage.getByText('Nothing here', { exact: false }).first().waitFor({ timeout: 120000 });
+  await emptyPage.getByText('Todo al día', { exact: true }).first().waitFor({ timeout: 120000 });
   await emptyPage.close();
   console.log('REVIEW_EMPTY_OK');
 
   const reviewPage = await openReview(browser, 'edge');
-  await reviewPage.getByText('Reprocess', { exact: true }).first().waitFor({ timeout: 120000 });
-  await reviewPage.getByText('Resolved', { exact: true }).first().waitFor({ timeout: 120000 });
-  const input = reviewPage.getByLabel('Friendly name');
+  await reviewPage.getByText('Pendientes', { exact: true }).first().waitFor({ timeout: 120000 });
+  await reviewPage.getByText('Historial', { exact: true }).first().waitFor({ timeout: 120000 });
+  await reviewPage.getByRole('button', { name: 'Revisar ahora' }).first().click();
+  const input = reviewPage.getByLabel('Nombre principal');
   await input.waitFor({ timeout: 120000 });
   await input.fill('');
   await reviewPage.waitForTimeout(400);
@@ -39,7 +40,7 @@ try {
   if (await input.inputValue() !== 'La Casa Azul') {
     throw new Error('Review friendly name did not preserve the user-entered draft.');
   }
-  await reviewPage.getByText('Possible existing matches', { exact: false }).first().waitFor({ timeout: 120000 });
+  await reviewPage.getByText('Posibles coincidencias existentes', { exact: false }).first().waitFor({ timeout: 120000 });
   await reviewPage.close();
   console.log('REVIEW_EDITING_OK');
 

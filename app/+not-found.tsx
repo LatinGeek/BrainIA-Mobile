@@ -18,9 +18,9 @@ export default function NotFoundScreen() {
           backgroundColor: theme.colors.background,
         }}
       >
-        <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>This screen does not exist.</Text>
+        <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Esta pantalla no existe.</Text>
         <Link href="/" style={{ marginTop: 16 }}>
-          <Text style={[theme.typography.body, { color: theme.colors.accentStrong }]}>Go back home</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.accentStrong }]}>Volver al inicio</Text>
         </Link>
       </View>
     </>
