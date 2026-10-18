@@ -239,7 +239,15 @@ function assertV2AccessToken(value: unknown): string {
 
 function parseV2Expiry(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null;
-  const parsed = typeof value === 'number' ? value : Date.parse(value);
+  const trimmed = typeof value === 'string' ? value.trim() : value;
+  if (trimmed === '') return null;
+  // Numeric input is epoch milliseconds. Accepting it as a string lets settings
+  // paste `1767225600000` without guessing; ISO-8601 strings still use Date.parse.
+  const parsed = typeof trimmed === 'number'
+    ? trimmed
+    : /^\d+$/.test(trimmed)
+      ? Number(trimmed)
+      : Date.parse(trimmed);
   if (!Number.isFinite(parsed)) throw new Error('Invalid access token expiry');
   return parsed;
 }

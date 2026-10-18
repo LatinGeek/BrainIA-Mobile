@@ -178,7 +178,7 @@ export default function SettingsScreen() {
     setCredentialSheetOpen(true);
   };
 
-  const saveCredential = async () => {
+  const commitCredential = async () => {
     if (credentialBusy) return;
     setCredentialBusy(true);
     try {
@@ -191,10 +191,23 @@ export default function SettingsScreen() {
       Alert.alert('Sesión segura guardada', 'La credencial quedó cifrada en el almacén seguro del dispositivo.');
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      Alert.alert('No se guardó la credencial', message.includes('expired') ? 'La fecha de vencimiento ya pasó. Revisa el valor e intenta de nuevo.' : 'Revisa la credencial e intenta de nuevo. No se mostró ni se registró el valor.');
+      Alert.alert('No se guardó la credencial', /expir/i.test(message) ? 'La fecha de vencimiento no es válida o ya pasó. Usa ISO-8601 o epoch en milisegundos.' : 'Revisa la credencial e intenta de nuevo. No se mostró ni se registró el valor.');
     } finally {
       setCredentialBusy(false);
     }
+  };
+
+  const saveCredential = () => {
+    if (credentialBusy) return;
+    if (credentialTokenDraft.trim().length === 0) return;
+    if (credentialMode === 'rotate') {
+      Alert.alert('Rotar credencial v2', 'La credencial actual se reemplazará y la anterior dejará de usarse en este dispositivo. La entrega v2 continúa con la nueva generación.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Rotar', style: 'destructive', onPress: () => { void commitCredential(); } },
+      ]);
+      return;
+    }
+    void commitCredential();
   };
 
   const confirmRevokeCredential = () => {
@@ -451,14 +464,14 @@ export default function SettingsScreen() {
             onChangeText={setCredentialExpiryDraft}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="2027-01-31T00:00:00Z"
+            placeholder="2027-01-31T00:00:00Z o 1800000000000"
           />
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-            Sin vencimiento declarado, la credencial se usa hasta que la revoques o cierres sesión.
+            Acepta ISO-8601 o epoch en milisegundos. Sin vencimiento declarado, la credencial se usa hasta que la revoques o cierres sesión.
           </Text>
           <Button
             label={credentialBusy ? 'Guardando…' : credentialMode === 'rotate' ? 'Guardar rotación' : 'Guardar credencial'}
-            onPress={() => { void saveCredential(); }}
+            onPress={saveCredential}
             disabled={credentialBusy || credentialTokenDraft.trim().length === 0}
           />
         </View>

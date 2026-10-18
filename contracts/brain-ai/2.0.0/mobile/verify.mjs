@@ -8,11 +8,10 @@ import { canonical, sha256 } from '../canonical.mjs';
 
 const require = createRequire(import.meta.url);
 const runtime = require('./runtime.cjs');
-const { createV2Transport, parseStrict } = require('./transport.cjs');
+const { createV2Transport, parseStrict, PROVISIONAL_OPERATIONS } = require('./transport.cjs');
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mobileDir = path.join(dir, 'mobile');
 const read = name => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
-const readMobile = name => JSON.parse(fs.readFileSync(path.join(mobileDir, name), 'utf8'));
 
 // External trust anchors. The manifest hash is the G1 ledger value; the spec
 // hash is the approved normative document the bundle snapshot was copied from.
@@ -24,7 +23,14 @@ const SEALED_FILES = [
   'openapi.json', 'schema.json', 'seal.mjs', 'spec.md',
   'validator-provenance.json', 'validators.cjs', 'verify.mjs',
 ];
-const EXTENSION_FILES = ['runtime.cjs', 'runtime.d.cts', 'transport.cjs', 'transport.d.cts', 'verify.mjs'];
+const EXTENSION_FILES = ['runtime.cjs', 'runtime.d.cts', 'transport.cjs', 'transport.d.cts'];
+// mobile/SHA256SUMS.json is a LOCAL repository manifest: it records what this
+// working tree builds, not an external approval or a G1 ledger claim. Pinning
+// its exact bytes here turns an unnoticed manifest edit into a verifier failure.
+// verify.mjs is the trust root that performs the check, so it is deliberately
+// not covered by the manifest it authenticates; its integrity is anchored only
+// by the repository commit (see docs/reports/v2/M01-r2.md and M02-r3.md).
+const EXTENSION_MANIFEST_SHA256 = 'e4e30a1a662889d93fb3b4325c1c381a49bd88292e096821ecb592c5044c26e7';
 
 // 1. Pin the approved manifest and every sealed member independently.
 const manifestBytes = fs.readFileSync(path.join(dir, 'SHA256SUMS.json'));
@@ -45,7 +51,9 @@ assert.deepEqual(
 assert.equal(sha256(fs.readFileSync(path.join(dir, 'spec.md'))), NORMATIVE_SPEC_SHA256, 'spec.md is the approved normative snapshot');
 
 // 2. Independently pin the mobile extension before executing any of it.
-const extensionSums = readMobile('SHA256SUMS.json');
+const extensionManifestBytes = fs.readFileSync(path.join(mobileDir, 'SHA256SUMS.json'));
+assert.equal(sha256(extensionManifestBytes), EXTENSION_MANIFEST_SHA256, 'local extension manifest pin');
+const extensionSums = JSON.parse(extensionManifestBytes);
 assert.equal(extensionSums.algorithm, 'sha256', 'extension manifest algorithm');
 assert.deepEqual(Object.keys(extensionSums.files).sort(), [...EXTENSION_FILES].sort(), 'extension manifest covers exactly the extension');
 for (const name of EXTENSION_FILES) {
@@ -53,7 +61,7 @@ for (const name of EXTENSION_FILES) {
   assert.equal(sha256(fs.readFileSync(path.join(mobileDir, name))), extensionSums.files[name], 'extension bytes ' + name);
 }
 assert.deepEqual(
-  fs.readdirSync(mobileDir).filter(name => name !== 'SHA256SUMS.json').sort(),
+  fs.readdirSync(mobileDir).filter(name => name !== 'SHA256SUMS.json' && name !== 'verify.mjs').sort(),
   [...EXTENSION_FILES].sort(),
   'no unpinned extension files'
 );
@@ -313,5 +321,47 @@ for (const [receipt, expected] of [[ack.receipt, 'ACKNOWLEDGED'], [{ ok: true },
 await assert.rejects(createV2Transport('https://mobile.invalid', 'test-token', async () => response(ack.receipt)).request('POST', '/api/v2/deletions', {}));
 await assert.rejects(createV2Transport('https://mobile.invalid', 'test-token', async () => response(capabilities)).request('POST', '/api/v2/observations', { ...envelope, ownerId: 'forbidden' }));
 checks++;
+
+// 7. Provisional (implementationBlocked) operations fail closed by default.
+//    The local list must match the sealed open-items.json exactly, every listed
+//    operation must be refused before any network call, and an explicit local
+//    allowlist may enable only the named operation.
+{
+  const blocked = openItems.items.filter(item => item.implementationBlocked).map(item => item.name).sort();
+  assert.deepEqual([...PROVISIONAL_OPERATIONS].sort(), blocked, 'provisional operations match open-items.json');
+  checks++;
+  for (const name of PROVISIONAL_OPERATIONS) {
+    const [method, template] = name.split(' ');
+    const path = template.replace('{id}', 'fixture-id');
+    const calls = [];
+    const client = createV2Transport('https://mobile.invalid', 'test-token', async (...args) => {
+      calls.push(args);
+      return response(errorBody('unexpected'));
+    });
+    await assert.rejects(client.request(method, path), error => error.code === 'implementation_blocked', name);
+    assert.equal(calls.length, 0, 'no network for provisional ' + name);
+    checks++;
+  }
+  // An unknown gate value enables nothing.
+  await assert.rejects(
+    createV2Transport('https://mobile.invalid', 'test-token', async () => response(errorBody('unexpected')), { enabledProvisionalOperations: ['not-an-operation'] }).request('GET', '/api/v2/export'),
+    error => error.code === 'implementation_blocked'
+  );
+  checks++;
+  // The explicit local gate reaches the network for exactly that operation.
+  const exportResponse = fixtures.schemaCases.find(c => c.name === 'export-response' && c.valid).value;
+  const gatedCalls = [];
+  const gated = createV2Transport('https://mobile.invalid', 'test-token', async url => {
+    gatedCalls.push(url);
+    return response(exportResponse);
+  }, { enabledProvisionalOperations: ['GET /api/v2/export'] });
+  const gatedReply = await gated.request('GET', '/api/v2/export');
+  assert.equal(gatedReply.status, 200);
+  assert.deepEqual(gatedCalls, ['https://mobile.invalid/api/v2/export']);
+  checks++;
+  // The gate is per operation and does not spill into another provisional call.
+  await assert.rejects(gated.request('POST', '/api/v2/queries', {}), error => error.code === 'implementation_blocked');
+  checks++;
+}
 
 console.log(`PASS ${checks} mobile conformance checks; approved manifest ${MANIFEST_SHA256}; ${sealedNames.length} sealed files; ${EXTENSION_FILES.length} pinned extension files; ${Object.keys(schema.$defs).length} $defs; ${Object.keys(openapi.paths).length} OpenAPI paths.`);

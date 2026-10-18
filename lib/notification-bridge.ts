@@ -36,11 +36,12 @@ const nativeModule = NativeModules.BrainIANotificationBridge as NotificationBrid
 export async function syncNotificationBridgeConfig(config: {
   baseUrl: string;
   /**
-   * Accepted for compatibility with existing callers, never forwarded.
+   * @deprecated Accepted only for existing callers; the value is ignored.
    * Native capture reads the Keystore-backed SecureStore envelope directly, so
-   * no credential is duplicated into SharedPreferences.
+   * no credential is copied into SharedPreferences or sent through this bridge.
    */
   apiKey?: string;
+  /** @deprecated Accepted only for existing callers; the value is ignored. */
   clientId?: string;
 }) {
   if (Platform.OS !== 'android' || !nativeModule?.configure) {

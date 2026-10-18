@@ -56,6 +56,29 @@ function transportError(message, status, code) {
 // a server that advertises them as enabled is not a conforming 2.0.0 server.
 const CONTENT_FEATURE_GATES = { email: 'email', activity: 'activity', location: 'location' };
 
+// B02-r3 publishes strict schemas and fixtures for these thirteen operations but
+// marks every one implementationBlocked: true. The generic request() must not
+// become a bypass: each operation fails closed unless the caller passes an
+// explicit local feature gate. Server capabilities never authorize these, and
+// the application passes no gate by default. mobile/verify.mjs cross-checks this
+// list against open-items.json so the two cannot drift silently.
+const PROVISIONAL_OPERATIONS = [
+  'GET /api/v2/observations/{id}',
+  'GET /api/v2/observations/{id}/revisions',
+  'GET /api/v2/events/{id}',
+  'GET /api/v2/episodes',
+  'GET /api/v2/episodes/{id}',
+  'GET /api/v2/financial/transactions',
+  'POST /api/v2/corrections',
+  'GET /api/v2/export',
+  'POST /api/v2/queries',
+  'GET /api/v2/queries/{id}',
+  'POST /api/v2/connectors/email/authorize',
+  'GET /api/v2/connectors/email/callback',
+  'POST /api/v2/connectors/{id}/revoke',
+];
+const PROVISIONAL = new Set(PROVISIONAL_OPERATIONS);
+
 function isAuthFailure(error) {
   return !!error && (error.status === 401 || error.code === 'unauthenticated' || error.code === 'auth_missing');
 }
@@ -72,7 +95,14 @@ function capabilityHold(revision, error) {
 
 // accessToken is a string or a provider resolved for every request. A missing
 // credential fails closed: v2 is never sent unauthenticated and the queue holds.
-function createV2Transport(baseUrl, accessToken, fetcher = (...args) => fetch(...args)) {
+function createV2Transport(baseUrl, accessToken, fetcher = (...args) => fetch(...args), options = {}) {
+  // Fail closed: only an explicit caller-side allowlist can enable a
+  // provisional operation. Unknown or malformed gate values enable nothing.
+  const enabledProvisional = new Set(
+    Array.isArray(options.enabledProvisionalOperations)
+      ? options.enabledProvisionalOperations.filter(name => typeof name === 'string' && PROVISIONAL.has(name))
+      : []
+  );
   async function resolveToken() {
     return typeof accessToken === 'function' ? accessToken() : accessToken;
   }
@@ -81,16 +111,23 @@ function createV2Transport(baseUrl, accessToken, fetcher = (...args) => fetch(..
     const url = new URL(path, 'https://contract.invalid');
     if (!path.startsWith('/api/v2/') || url.origin !== 'https://contract.invalid' || url.hash) throw Error('Invalid v2 path');
     let operation;
+    let operationName;
     for (const [route, methods] of Object.entries(api.paths)) {
       const parts = route.split('/'), actual = url.pathname.split('/');
       if (parts.length !== actual.length) continue;
       if (!parts.every((part, i) => part.startsWith('{') || part === actual[i])) continue;
       operation = methods[method.toLowerCase()];
       if (!operation) continue;
+      operationName = method.toUpperCase() + ' ' + route;
       parts.forEach((part, i) => { if (part.startsWith('{')) assertContract('Id', decodeURIComponent(actual[i])); });
       break;
     }
     if (!operation) throw Error('Operation blocked by G1 contract');
+    // Refuse provisional operations before query/body validation, auth or any
+    // network call, so the guard cannot be skipped by malformed input.
+    if (PROVISIONAL.has(operationName) && !enabledProvisional.has(operationName)) {
+      throw transportError('Operation blocked pending contract review', undefined, 'implementation_blocked');
+    }
     const params = (operation.parameters || []).filter(p => p.in === 'query');
     for (const key of url.searchParams.keys()) {
       if (!params.some(p => p.name === key) || url.searchParams.getAll(key).length !== 1) throw Error('Invalid v2 query');
@@ -181,4 +218,4 @@ function createV2Transport(baseUrl, accessToken, fetcher = (...args) => fetch(..
   }
   return { request, deliverRevision };
 }
-module.exports = { createV2Transport, parseStrict };
+module.exports = { createV2Transport, parseStrict, PROVISIONAL_OPERATIONS };

@@ -7,5 +7,12 @@ export type V2Transport = {
   request(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<{ status: number; value: unknown }>;
   deliverRevision(revision: V2QueuedRevision): Promise<V2QueuedRevision>;
 };
-export function createV2Transport(baseUrl: string, accessToken?: V2AccessToken, fetcher?: (...args: any[]) => Promise<any>): V2Transport;
+
+/** Operations published with implementationBlocked: true; empty by default. */
+export type V2TransportOptions = {
+  enabledProvisionalOperations?: readonly string[];
+};
+
+export function createV2Transport(baseUrl: string, accessToken?: V2AccessToken, fetcher?: (...args: any[]) => Promise<any>, options?: V2TransportOptions): V2Transport;
+export const PROVISIONAL_OPERATIONS: readonly string[];
 export function parseStrict(text: string): unknown;
