@@ -211,7 +211,8 @@ export function SegmentedControl<T extends string>({
                   minWidth: size === 'mini' ? 42 : 64,
                   paddingHorizontal: size === 'mini' ? 8 : 12,
                   borderRadius: theme.radius.pill,
-                  flex: scrollable ? undefined : 1,
+                  // Mini segments size to their label so short tracks never truncate.
+                  flex: scrollable || size === 'mini' ? undefined : 1,
                 },
               ]}
             >

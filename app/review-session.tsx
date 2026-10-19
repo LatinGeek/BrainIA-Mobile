@@ -326,7 +326,8 @@ export default function ReviewSessionScreen() {
         {loading || !current ? (
           error ? <StateView kind="error" title="Review could not load" description={error} actionLabel="Retry" onAction={refresh} /> : <StateView kind="loading" title="Loading" skeleton="hero" skeletonCount={1} />
         ) : (
-          <View style={styles.cardArea}>
+          <View style={styles.cardStage}>
+          <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax }]}>
             {next ? (
               <View pointerEvents="none" style={[styles.cardLayer, { transform: [{ scale: 0.96 }, { translateY: 10 }], opacity: 0.5 }]}>
                 <DecisionCard decision={next} variant="compact" />
@@ -351,6 +352,7 @@ export default function ReviewSessionScreen() {
                 </ScrollView>
               </Animated.View>
             </GestureDetector>
+          </View>
           </View>
         )}
 
@@ -387,6 +389,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
+  },
+  cardStage: {
+    flex: 1,
+    justifyContent: 'center',
   },
   cardArea: {
     flex: 1,

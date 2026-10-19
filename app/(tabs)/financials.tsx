@@ -554,17 +554,19 @@ export default function FinancialsScreen() {
 
               <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Net movement</Text>
                     <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>{period === 'year' ? 'Proyección anual basada en los datos del ciclo actual.' : cycleLabel}</Text>
                   </View>
-                  <SegmentedControl
-                    role="radio"
-                    items={periods.map((item) => ({ ...item, accessibilityLabel: `Período financiero: ${item.value === 'year' ? 'Año' : 'Ciclo'}` }))}
-                    value={period}
-                    onChange={setPeriod}
-                    size="mini"
-                  />
+                  <View style={{ flexShrink: 0 }}>
+                    <SegmentedControl
+                      role="radio"
+                      items={periods.map((item) => ({ ...item, accessibilityLabel: `Período financiero: ${item.value === 'year' ? 'Año' : 'Ciclo'}` }))}
+                      value={period}
+                      onChange={setPeriod}
+                      size="mini"
+                    />
+                  </View>
                 </View>
                 <Amount value={periodNet} currency={displayCurrency} tone={periodNet >= 0 ? 'positive' : 'expense'} size="hero" signed />
                 <View style={{ flexDirection: 'row', gap: 18 }}>

@@ -175,22 +175,28 @@ export function Amount({
         : theme.colors.textPrimary;
   const largeText = fontScale >= 1.3;
   const heroSize = (width < 360 ? 28 : 36) * (largeText ? 0.85 : 1);
-  const fontSize = size === 'hero' ? heroSize : size === 'tile' ? 24 : 15;
-  const lineHeight = size === 'hero' ? Math.round(heroSize * 1.17) : size === 'tile' ? 30 : 20;
   const shown = animated ? display : target;
   const formatted = currency
     ? formatCurrency(Math.abs(shown), currency.toUpperCase())
     : new Intl.NumberFormat('es-UY', { maximumFractionDigits: 0 }).format(Math.abs(shown));
   const sign = prefix ?? (signed ? (target < 0 ? '−' : '+') : target < 0 ? '−' : '');
+  // adjustsFontSizeToFit is native-only, so size tile numerals from the final
+  // value's length against a half-width tile's inner width. The currency code
+  // wraps under the value when they do not fit on one line.
+  const finalLength = sign.length + (currency ? formatCurrency(Math.abs(target), currency.toUpperCase()) : String(Math.round(Math.abs(target)))).length;
+  const tileWidth = largeText ? width - 72 : (Math.min(width, 520) - 48) / 2 - 28;
+  const tileSize = Math.max(14, Math.min(24, tileWidth / (finalLength * 0.62)));
+  const fontSize = size === 'hero' ? heroSize : size === 'tile' ? tileSize : 15;
+  const lineHeight = size === 'hero' ? Math.round(heroSize * 1.17) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
   return (
-    <View style={styles.amountRow} accessibilityLabel={`${sign}${formatted}`}>
+    <View style={[styles.amountRow, size === 'tile' ? { flexWrap: 'wrap' } : null]} accessibilityLabel={`${sign}${formatted}`}>
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.55}
         style={[
           theme.typography.numeral,
-          { color, fontSize, lineHeight, letterSpacing: size === 'row' ? -0.2 : -1.2 },
+          { color, fontSize, lineHeight, letterSpacing: size === 'row' ? -0.2 : size === 'tile' ? -0.6 : -1.2, flexShrink: 1 },
         ]}
       >
         {sign}{formatted}

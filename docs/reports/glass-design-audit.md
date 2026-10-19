@@ -45,3 +45,15 @@ The data comes from the app's built-in `?ux=edge` local preview fixtures; no bac
 - On Money, the mini segmented control truncates "Ciclo" to "Ci…" at 390pt (`money-390-scrolled.png`). This is left for a copy or width decision.
 - Some hex-alpha tint suffixes (`${color}1F`-style) are still used for tints computed from data. They are hex strings, so native colour handling is fine, but they are not named tokens.
 - No copy, API, product model or routing changes, and no test assertions changed.
+
+## Follow-up pass (task_d8a8824c1d9e)
+
+| # | Issue | Change | Evidence |
+|---|---|---|---|
+| F1 | Today Finance StatTiles truncated currency values at 390 and 320 (`$ 393.60…`). | `Amount size="tile"` now sizes its numeral from the final value's length against the half-tile's inner width (between 14 and 24pt). Native `adjustsFontSizeToFit` does not work on web. The currency code wraps under the value when the two do not fit on one line. | `today-320-scrolled.png`, `today-390-scrolled.png` |
+| F2 | The Money mini period toggle truncated "Ciclo" to "Ci…". | Mini segments size to their label instead of `flex: 1`. The Net movement title column is `flex: 1` and the toggle no longer shrinks. Both labels are fully visible. | `money-390-scrolled.png`, `money-320-scrolled.png` |
+| F3 | The review decision card filled almost the full height, leaving a large blank gap above the answers. | The card is capped at the new `theme.layout.reviewCardMax` (540) and centred in the available space. The single 52pt answer row stays at the card's base, in the lower half. Swipe and the button paths are unchanged. | `review-session-390.png`, `review-session-320.png` |
+
+Gates passed again: `npx tsc --noEmit`, `npm run lint` (0 problems) and `npm run agent:harness -- --full` (`AGENT_HARNESS_OK`). Today, Money and Review session were recaptured at 390×844 and 320×844, with scrolled variants. Horizontal overflow was 0 and there were 0 console errors on every capture.
+
+With the short `?ux=edge` fixture content, about 200pt of empty space is still left inside the 540pt card at 390. Cards with batch variants, category tiles or "Why?" open fill that space.

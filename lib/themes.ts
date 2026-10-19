@@ -110,7 +110,7 @@ export type ThemeTokens = {
     numeral: TextStyle;
     overline: TextStyle;
   };
-  layout: { minTarget: number; answerTarget: number; dockHeight: number; dockMinScale: number };
+  layout: { minTarget: number; answerTarget: number; dockHeight: number; dockMinScale: number; reviewCardMax: number };
   spacing: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number; xxxl: number };
   radius: { sm: number; md: number; lg: number; xl: number; sheet: number; pill: number };
   shadow: { card: ViewStyle; floating: ViewStyle };
@@ -208,7 +208,7 @@ export const brainiaTheme: ThemeTokens = {
     numeral: { fontFamily: 'Inter_700Bold', fontSize: 34, lineHeight: 40, letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
     overline: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
   },
-  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86 },
+  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86, reviewCardMax: 540 },
   spacing,
   radius,
   shadow: {
