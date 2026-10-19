@@ -54,13 +54,13 @@ try {
   await editButton.click();
   await Promise.all([accountsResponse, categoriesResponse]);
   await page.getByText('Tipo de movimiento', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('Transfer', { exact: true }).last().click();
+  await page.getByText('Transfer', { exact: true }).filter({ visible: true }).first().click();
   await page.getByText('From currency', { exact: true }).waitFor();
-  await page.getByText('UYU', { exact: true }).first().click();
-  await page.getByText('UYU Checking', { exact: true }).click();
+  await page.locator('[role="tab"][aria-label="UYU"]:visible').first().click();
+  await page.getByText('UYU Checking', { exact: true }).filter({ visible: true }).first().click();
   await page.getByText('Moneda de destino', { exact: true }).waitFor();
-  await page.getByText('USD', { exact: true }).last().click();
-  await page.getByText('USD Credit', { exact: true }).click();
+  await page.locator('[role="tab"][aria-label="USD"]:visible').last().click();
+  await page.getByText('USD Credit', { exact: true }).filter({ visible: true }).first().click();
   await page.getByLabel('Monto de destino editado', { exact: true }).fill('100');
   await page.getByText('Guardar', { exact: true }).click();
   await page.getByText('Tipo de movimiento', { exact: true }).waitFor({ state: 'hidden', timeout: 120000 });

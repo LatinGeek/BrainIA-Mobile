@@ -76,3 +76,33 @@ Solo debe depender de:
 ## Implementation note
 
 Si el producto termina requiriendo SSO real con un proveedor externo, esta capa de autenticacion deberia actuar como adaptador y no como una dependencia acoplada a una sola tecnologia.
+
+## Review session additions (additive, optional)
+
+The glass review session works without these fields using the fallbacks shown.
+Nothing here changes an existing endpoint or the product model.
+
+| Field / endpoint | Purpose | Client fallback without it |
+| --- | --- | --- |
+| `ReviewItem.confidence: number` | Order the queue, show “93% sure”, gate auto-handle | `0.5`; the value pill is hidden |
+| `ReviewItem.impact: { transactions: number; amount: number; currency: string }` | “Tidies 14 transactions”, ordering | Count matching transactions in the cached Money bundle |
+| `ReviewItem.suggestions: { value: string; categoryPath?: string[]; score: number }[]` | One-tap answer and alternatives | Use `normalizedValue` and `categoryPath` |
+| `ReviewItem.rationale: string` | “Why?” text | Use the existing `reason` |
+| `ReviewItem.groupKey: string` | Batch variants | Group by `normalizedValue` |
+| `GET /api/v1/review/auto?since=` | “Handled for you” list | Hide the card |
+| `POST /api/v1/review/{id}/undo` (24h) | Undo from the summary and the auto list | Undo only inside the 5-second toast window |
+| Server-side auto-resolve at confidence ≥ 0.95 for names and duplicate merchants | Remove obvious items from the queue | Off |
+
+Mapping used by the client for answers (all existing endpoints):
+
+- Name / batch accept → `resolveAlias(id, { alias, categoryPath })` per alias.
+- Category / label accept → `resolveAlias(id, { alias, categoryPath: [choice] })`.
+- Same company → `resolveAlias(..., targetEntityId)` then `mergeEntity(...)`.
+- Connection yes/no → `resolveSemanticCandidate(id, { action, createRule })`.
+- Different / not transport → `ignoreAlias(id)`.
+- Skip → local only.
+
+`settings.reviewSession` was removed in the cleanup phase. The session is the
+only review surface and works with the fallbacks above; auto-handle stays off
+until the backend fields exist.
+

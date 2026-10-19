@@ -77,9 +77,11 @@ export default function GraphForceCanvas({
   focusedEntityId,
   onFocus,
   dom,
+  background = '#090F1D',
 }: {
   nodes: GraphNode[];
   relations: GraphRelation[];
+  background?: string;
   communities: Community[];
   focusedEntityId?: string;
   onFocus: (id: string) => Promise<void>;
@@ -150,14 +152,14 @@ export default function GraphForceCanvas({
   const selectedLinks = new Set(graphData.links.filter((link) => endpointId(link.source) === focusedEntityId || endpointId(link.target) === focusedEntityId).map((link) => link.id));
 
   if (!ForceGraph2D) {
-    return <div aria-label="graph loading state" style={{ width: '100%', height: '100%', background: '#090F1D' }} />;
+    return <div aria-label="graph loading state" style={{ width: '100%', height: '100%', background }} />;
   }
 
-  return <div style={{ width: '100%', height: '100%', background: '#090F1D', overflow: 'hidden', touchAction: 'none' }}>
+  return <div style={{ width: '100%', height: '100%', background, overflow: 'hidden', touchAction: 'none' }}>
     <ForceGraph2D
       ref={graphRef}
       graphData={graphData}
-      backgroundColor="#090F1D"
+      backgroundColor={background}
       nodeId="id"
       linkSource="source"
       linkTarget="target"

@@ -2,331 +2,87 @@
 
 ## Goal
 
-BrainIA-Mobile debe poder cambiar de lenguaje visual sin reescribir pantallas ni componentes.
-
-La app tendra una capa de tema base y varias variantes intercambiables:
-
-- Editorial Minimal
-- Intelligence Console
-- Warm Knowledge
-
-La referencia visual activa para refinamientos actuales es `docs/bibiz-reference-brief.md`.
-
-## Design principle
-
-Los componentes no deben conocer colores o tipografias concretas.
-
-Solo deben consumir tokens semanticos:
-
-- `background`
-- `surface`
-- `surfaceRaised`
-- `border`
-- `textPrimary`
-- `textSecondary`
-- `textMuted`
-- `accent`
-- `accentSoft`
-- `success`
-- `warning`
-- `danger`
-- `chartPrimary`
-- `chartSecondary`
-- `chartTertiary`
-
-El tema decide como se ven esos tokens.
-
-## Architecture
-
-### 1. Base tokens
-
-Tokens comunes para toda la app:
-
-- spacing scale
-- radius scale
-- shadow scale
-- motion scale
-- typography roles
-- icon sizing
-- chart sizing
-
-### 2. Semantic tokens
-
-Mapean la intencion de UI a color y tipografia.
-
-Ejemplo:
-
-- `surface` es la tarjeta principal
-- `surfaceRaised` es una tarjeta o sheet secundaria
-- `textPrimary` es el texto principal
-- `accent` es la accion principal
-- `border` es la separacion visual entre bloques
-
-### 3. Theme variants
-
-Cada variante redefine solo el mapeo de tokens semanticos y algunos estilos de componentes.
-
-### 4. Component recipes
-
-Los componentes usan los tokens semanticos y no valores hardcodeados.
-
-## Theme registry
-
-La app deberia tener un registro central de temas.
-
-Ejemplo conceptual:
-
-```ts
-type ThemeId = "editorial-minimal" | "intelligence-console" | "warm-knowledge";
-
-type Theme = {
-  id: ThemeId;
-  name: string;
-  colors: Record<string, string>;
-  typography: Record<string, string>;
-  radius: Record<string, number>;
-  shadows: Record<string, object>;
-};
-```
-
-## Theme selection
-
-El tema activo se resuelve en este orden:
-
-1. preferencia del usuario
-2. override de preview o experimentacion
-3. tema por defecto del producto
-
-Para BrainIA-Mobile el default sera:
-
-- `Intelligence Console`
-
-## Concrete theme definitions
-
-### Editorial Minimal
-
-### Intent
-
-Calma, precision y densidad legible.
-
-### Color system
-
-- `background`: `#F7F5F0`
-- `surface`: `#FFFFFF`
-- `surfaceRaised`: `#F1EDE5`
-- `surfaceSubtle`: `#ECE7DD`
-- `border`: `#D8D2C7`
-- `textPrimary`: `#111111`
-- `textSecondary`: `#444444`
-- `textMuted`: `#6C675F`
-- `accent`: `#00B8E6`
-- `accentSoft`: `#D7F5FB`
-- `success`: `#1D7A54`
-- `warning`: `#A86B00`
-- `danger`: `#C23A3A`
-
-### Typography
-
-- `display`: `Sora`
-- `headline`: `Sora`
-- `body`: `Manrope`
-- `caption`: `Manrope`
-- `mono`: `IBM Plex Mono`
-
-### Shape and motion
-
-- radius: medium to rounded, but disciplined
-- shadows: soft and minimal
-- motion: short and subtle
-
-### Component feel
-
-- cards are compact and structured
-- dividers are thin and visible
-- charts are understated
-- action buttons are crisp and minimal
-
-### Intelligence Console
-
-### Intent
-
-Premium, tecnologica y de alta densidad visual. Esta variante debe acercarse al lenguaje Bibiz: finanzas oscuras, seguras, compactas y con lima electrica como senal principal.
-
-### Color system
-
-- `background`: `#000000`
-- `surface`: `#161616`
-- `surfaceRaised`: `#1E1E1E`
-- `surfaceSubtle`: `#2C2C2C`
-- `border`: `#3A3A3A`
-- `textPrimary`: `#F2F2F2`
-- `textSecondary`: `#D7D7D7`
-- `textMuted`: `#8E8E8E`
-- `accent`: `#BBFF00`
-- `accentSoft`: `#263600`
-- `success`: `#51D17F`
-- `warning`: `#FFB84D`
-- `danger`: `#FF6B6B`
-
-### Typography
-
-- `display`: `Poppins`
-- `headline`: `Poppins`
-- `body`: `Inter`
-- `caption`: `Inter`
-- `mono`: `JetBrains Mono`
-
-### Shape and motion
-
-- radius: slightly sharper
-- shadows: controlled glow and depth
-- motion: a little more pronounced than Editorial Minimal
-
-### Component feel
-
-- cards are compact, dark, and layered with minimal borders
-- lime is reserved for primary actions, active selections, live/safe status, and key chart strokes
-- charts are thin, sparse, and data-first
-- numeric values can be large and confident, with compact supporting labels
-- avoid decorative glow, crypto imagery, and wallet-specific metaphors unless the product surface genuinely needs them
-
-### Warm Knowledge
-
-### Intent
-
-Editorial, calm and human.
-
-### Color system
-
-- `background`: `#F5EBDD`
-- `surface`: `#FFF9F1`
-- `surfaceRaised`: `#F0E0CB`
-- `surfaceSubtle`: `#E5D3B8`
-- `border`: `#D4C0A5`
-- `textPrimary`: `#1F1B16`
-- `textSecondary`: `#51473F`
-- `textMuted`: `#75695E`
-- `accent`: `#D88A2B`
-- `accentSoft`: `#F7E3BE`
-- `success`: `#2C7A59`
-- `warning`: `#C17C12`
-- `danger`: `#B84A3A`
-
-### Typography
-
-- `display`: `Fraunces`
-- `headline`: `Fraunces`
-- `body`: `Manrope`
-- `caption`: `Manrope`
-- `mono`: `IBM Plex Mono`
-
-### Shape and motion
-
-- radius: softer and more organic
-- shadows: warm, paper-like
-- motion: slow and gentle
-
-### Component feel
-
-- cards feel like paper sheets
-- sections have more breathing room
-- charts are softer and less technical
-- navigation feels less sharp and more editorial
-
-## Layout tokens
-
-### Spacing
-
-- `xs`: 4
-- `sm`: 8
-- `md`: 12
-- `lg`: 16
-- `xl`: 24
-- `2xl`: 32
-- `3xl`: 40
-
-### Radius
-
-- `sm`: 10
-- `md`: 14
-- `lg`: 18
-- `xl`: 24
-
-### Elevation
-
-- `flat`
-- `raised`
-- `floating`
-
-## Core component system
-
-The first shared components should be implemented as theme-aware recipes:
-
-- `AppShell`
-- `TopBar`
-- `BottomTabs`
-- `SummaryCard`
-- `MetricCard`
-- `InsightCard`
-- `DigestCard`
-- `FinancialSnapshotCard`
-- `ChartCard`
-- `ListRow`
-- `FilterChip`
-- `EntityPill`
-- `SectionHeader`
-- `DetailBlock`
-- `ActionRow`
-- `EmptyState`
-- `ErrorState`
-- `LoadingSkeleton`
-
-## Component rules
-
-- cards read from semantic tokens only
-- chart colors come from theme palettes, not hardcoded values
-- typography variants map to tokens, not raw font names in components
-- spacing must come from the spacing scale only
-- icon colors must follow semantic meaning
-
-## Theme switching
-
-The app should support theme switching without code changes in screens.
-
-Recommended mechanism:
-
-- store selected theme id in user settings
-- load theme from registry at app bootstrap
-- allow preview mode for testing
-- keep the default theme aligned with the current premium dark direction unless changed deliberately
-
-## Future proofing
-
-To support future themes safely:
-
-- keep token names stable
-- version the theme contract
-- avoid using color literals in feature code
-- add contrast checks for text and surfaces
-- define chart and status palettes per theme
-- keep component recipes theme-neutral
-
-## Implementation order
-
-1. define token types
-2. define semantic theme registry
-3. implement shared primitives
-4. wire Intelligence Console as default
-5. add theme switch settings
-6. add Intelligence Console and Warm Knowledge variants
-
-## Recommendation
-
-Build the app on top of the semantic token layer from day one.
-
-That gives us:
-
-- a stable product shell
-- easy theme swaps
-- less UI rewrite cost later
-- room for visual experimentation without affecting behavior
+Every screen reads the same dark glass material. Components never hardcode a
+colour, radius or duration; they consume `theme.glass`, `theme.motion`,
+`theme.ambient`, the semantic `colors` and `status` blocks, and the typography
+roles in `lib/themes.ts`.
+
+The app is dark-only. There is one theme id, `intelligence-console`.
+
+## Material tokens
+
+`theme.glass` is additive. Old tokens keep their names until the migration is
+complete, so screens that still read `theme.colors.surface` continue to work.
+
+| Token | Values |
+| --- | --- |
+| `blur` | thin 12, regular 22, strong 36 |
+| `fill` | thin `white .065 → .03`, regular `.11 → .035`, strong `.17 → .06` |
+| `edge` | `rgba(255,255,255,.32)` → `rgba(255,255,255,.05)` |
+| `inner` | `rgba(255,255,255,.06)` |
+| `chromeBase` | `0.74` |
+| `selected` | `rgba(246,249,248,.95)` |
+| `onSelected` | `#0B1113` |
+| `solid` | `#142124 / #1A2B2F / #22363B` |
+| `divider` | `rgba(255,255,255,.08)` |
+
+Rules:
+
+- Real blur is reserved for `strong`/chrome on Android; other levels use the
+  translucent fill.
+- With Reduce Transparency on, every level uses `glass.solid` and no blur.
+- No nested `BlurView` and no more than ~6 live blurs per screen.
+- The specular edge is a one-pixel SVG stroke, not a second border.
+
+## Motion tokens
+
+`theme.motion` exposes four durations, a 45ms stagger and three curves:
+
+| Token | Value |
+| --- | --- |
+| `duration.press` | 140 |
+| `duration.quick` | 240 |
+| `duration.enter` | 420 |
+| `duration.count` | 800 |
+| `stagger` | 45 |
+| `spring.thumb` | damping 16, stiffness 220, mass .9 |
+| `spring.press` | damping 18, stiffness 320 |
+| `easing.out / in / soft` | `[.2,.8,.2,1] / [.4,0,1,1] / [.25,1.1,.4,1]` |
+
+Legacy `fast`, `base`, `slow` and `spring` remain as aliases.
+
+## Ambient field
+
+`theme.ambient` defines the teal base (`#091315`), the second base
+(`#0D1C1F`), three orbs (`#1F6E78`, `#24465A`, `#B9E85A`) and the ring
+(`#5BB3BE`). `AmbientBackground` renders one field per screen. Drift is enabled
+only on Today and stops when Reduce Motion is on.
+
+## Colour
+
+- Accent/live/positive: lime `#C4F54A`; `onAccent` is `#0B1205`.
+- Income `#9FE870`, expense `#FF8E85`, transfer/user `#B5A8FF`, model
+  `#74D7EE`, pending/review `#F6C65B`, captured `#AFBBC2`.
+- Text: primary `#F4F7F6`, secondary 76% white, muted 58% white.
+- Chart palette: lime, model, transfer, expense, pending, `#8FA3AD`.
+- Selection is an opaque white pill, never lime. Lime is reserved for the
+  primary action, live state, positive net and capture.
+
+## Type
+
+- Display and headlines: Poppins 600 (28/34 display, 17/23 headline).
+- Body and captions: Inter 400/500/600.
+- Numerals: Inter 700 with tabular figures, so counts do not jitter.
+- Mono and overline: JetBrains Mono 500.
+
+## Shape
+
+Radius scale is 10 / 14 / 20 / 28, sheet 34, pill 999. Minimum target 44×44,
+review answers at least 50. Dock height is 68 and scales to .86 while scrolling.
+
+## Accessibility
+
+- Reduce Transparency → solid material.
+- Reduce Motion → no drift, presses resolve instantly, charts skip draw-in.
+- Selected states change fill and text and set `accessibilityState.selected`.
+- Font scale ≥ 1.3 reflows stat grids to one column and steps hero numerals down.

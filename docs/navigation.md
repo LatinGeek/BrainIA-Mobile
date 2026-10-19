@@ -2,100 +2,47 @@
 
 ## Main navigation
 
-La navegacion principal debe ser por tabs inferiores.
+The app uses expo-router tabs with a custom glass `Dock` on phones. On widths
+≥ 1024 the dock is replaced by a fixed `NavigationRail`.
 
-## Recommended tabs
+## Tabs
 
-### 1. Dashboard
+| Route | Label | Notes |
+| --- | --- | --- |
+| `index` | Hoy | Ambient drift, review highlight |
+| `search` | Explorar | Search + knowledge graph |
+| `capture` | Capturar | Centre action in the dock; hidden from the tab list |
+| `financials` | Dinero | Resumen / Cuentas / Movimientos |
+| `review` | Revisar | Review home; badge shows pending count |
 
-Pantalla principal del second-brain.
+The dock is floating glass, keeps labels, glides a white selection pill, shows a
+centre lime capture button, and scales to .86 while scrolling down. It never
+covers content because every `Screen` reserves `dock height + inset` at the
+bottom.
 
-Debe mostrar:
+## Stack routes
 
-- insights destacados
-- actividad reciente relevante
-- accesos rapidos a entidades, digests y finanzas
+- `settings` (modal)
+- `transaction/[id]`
+- `entity/[id]`
+- `insight/[id]`
+- `digest/[id]`
+- `event/[id]`
+- `email/[id]`
+- `intelligence/index`, `intelligence/[id]`
+- `learning`
+- `review-session` (`presentation: 'fullScreenModal'`, hides the dock)
 
-### 2. Search
+## Detail navigation
 
-Busqueda textual y exploracion.
+- Transaction → origin event, linked insight, portfolio.
+- Entity → event evidence, entity graph, organize sheet.
+- Insight → supporting references, search, Today.
+- Event → email view, linked transaction, reprocess/correct.
+- Digest → search, Money.
 
-Debe permitir:
+## Deep links and preview states
 
-- buscar eventos
-- buscar entidades
-- buscar relaciones
-- aplicar filtros
-
-### 3. Capture
-
-Entrada rapida de informacion.
-
-Debe ofrecer atajos para:
-
-- note
-- email
-- notification
-- wallet
-- event generico
-
-### 4. Financials
-
-Dashboard financiero.
-
-Debe mostrar:
-
-- resumen mensual
-- resumen anual
-- distribucion por categoria
-- distribucion por cuenta
-- lista de transacciones agrupadas
-
-### 5. Review
-
-Cola operativa.
-
-Debe incluir:
-
-- aliases pendientes
-- merges sugeridos
-- reprocess de eventos
-
-## Secondary surfaces
-
-- detalle de entidad
-- detalle de transaccion
-- detalle de insight
-- detalle de digest
-- grafo expandido
-
-## Depth rules
-
-La app debe poder navegar hasta profundidad configurable en el detalle de entidad.
-
-Por defecto:
-
-- grafo de 2 saltos
-- limites de nodos y relaciones para evitar pantallas pesadas
-
-## Search behavior
-
-Search no debe ser solo un shortcut.
-
-Debe funcionar como superficie secundaria fuerte para encontrar:
-
-- entidades
-- transacciones
-- eventos
-- relaciones
-
-## Dashboard behavior
-
-El dashboard es la pantalla inicial.
-
-Debe funcionar como resumen ejecutivo del usuario:
-
-- que paso
-- que es relevante
-- que se debe revisar
-- como va el frente financiero
+Local web previews accept `?ux=loading|empty|error|edge` on the dashboard,
+search, Money, review and detail bundles. The review session reads the same
+preview fixtures, so `?ux=edge` exercises a real two-card queue.

@@ -1,16 +1,16 @@
-import { useLocalSearchParams, router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 
-import { FinancialSnapshotCard } from '@/components/cards';
-import { EvidenceRow } from '@/components/finance';
-import { AccountIcon } from '@/components/finance/AccountIcon';
-import { CategoryPicker } from '@/components/review';
-import { AppScreen, SectionHeader, TopBar } from '@/components/layout';
-import { BottomSheet, Button, FilterChip, IconButton, Input, ListRow, Surface } from '@/components/primitives';
-import { EmptyState, LoadingSkeleton } from '@/components/states';
-import { MoneyAmount, ProvenanceMark } from '@/components/trust';
+import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
+import { Amount, IconTile, Row } from '@/components/data/Row';
+import { StateView } from '@/components/data/StateView';
+import { Timeline } from '@/components/data/Timeline';
+import { GlassPressable } from '@/components/glass/GlassPressable';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { BottomSheet } from '@/components/layout/BottomSheet';
+import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadTransactionBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -54,14 +54,10 @@ export default function TransactionDetailScreen() {
       ? [{ id: `${transaction.id}_primary-source`, rawEventId: undefined, source: transaction.primarySource, kind: transaction.kind, amount: transaction.amount, merchantLabel: transaction.merchantLabel, observedAt: transaction.observedAt, matchReason: 'Primary source for this transaction.' }]
       : [];
   const originEventId = evidenceItems.find((item) => item.rawEventId)?.rawEventId;
-  const originLoader = useMemo(
-    () => async () => originEventId ? client.getEvent(originEventId) : undefined,
-    [client, originEventId]
-  );
+  const originLoader = useMemo(() => async () => originEventId ? client.getEvent(originEventId) : undefined, [client, originEventId]);
   const { data: originEvent } = useAsyncResource(originLoader, [originLoader]);
   const originSource = originEvent?.source ?? evidenceItems[0]?.source ?? transaction?.primarySource;
-  const displayMerchantLabel = transaction?.displayMerchantLabel
-    ?? transaction?.merchantLabel;
+  const displayMerchantLabel = transaction?.displayMerchantLabel ?? transaction?.merchantLabel;
   const [title, setTitle] = useState('');
   const [titleSaving, setTitleSaving] = useState(false);
   const [titleMessage, setTitleMessage] = useState<string | null>(null);
@@ -98,8 +94,8 @@ export default function TransactionDetailScreen() {
 
   async function saveContext() {
     if (!transaction) return;
-    const parsedAmount = Number(amount.replace(',', '.'));
-    const parsedDestinationAmount = Number(destinationAmount.replace(',', '.'));
+    const parsedAmount = parseCurrency(amount);
+    const parsedDestinationAmount = parseCurrency(destinationAmount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setSaveError('Agrega un monto enviado válido.');
       return;
@@ -181,9 +177,7 @@ export default function TransactionDetailScreen() {
     const promotion = kind === 'promotion';
     Alert.alert(
       promotion ? '¿No fue un movimiento?' : '¿Eliminar movimiento financiero?',
-      promotion
-        ? 'Se quitará de Dinero y se recordará que esta notificación es promocional.'
-        : 'Se quitará de Dinero y de los informes. El registro de origen se conservará.',
+      promotion ? 'Se quitará de Dinero y se recordará que esta notificación es promocional.' : 'Se quitará de Dinero y de los informes. El registro de origen se conservará.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -209,174 +203,169 @@ export default function TransactionDetailScreen() {
     );
   }
 
+  const evidenceCount = transaction?.evidenceCount ?? evidenceItems.length;
 
   return (
-    <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar
-        showBack
-        title={displayMerchantLabel ?? 'Transacción'}
-        subtitle="Movimiento de dinero con el contexto de origen disponible detrás del resumen."
-        secondaryAction={<IconButton icon={<Feather name="edit-2" size={18} color={theme.colors.textPrimary} />} label="Editar título del movimiento" onPress={openTitleEditor} />}
-      />
+    <Screen
+      title={displayMerchantLabel ?? 'Transacción'}
+      overline="Movement"
+      subtitle="Movimiento de dinero con el contexto de origen detrás del resumen."
+      back
+      refreshing={loading}
+      onRefresh={refresh}
+      actions={<GlassPressable accessibilityRole="button" accessibilityLabel="Editar título del movimiento" onPress={openTitleEditor} hitSlop={10} scaleTo={0.9} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}><Feather name="edit-2" size={18} color={theme.colors.textPrimary} /></GlassPressable>}
+    >
+      {error ? <StateView kind="error" title="No se pudo cargar el movimiento" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
+      {loading && !transaction ? <StateView kind="loading" title="Loading" skeleton="detail" skeletonCount={2} /> : null}
 
-      {error ? <EmptyState title="No se pudo cargar el movimiento" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
-
-      {loading && !transaction ? (
-        <LoadingSkeleton variant="detail" count={2} />
-      ) : transaction ? (
+      {transaction ? (
         <>
-          <FinancialSnapshotCard
-            title={displayMerchantLabel ?? transaction.merchantLabel}
-            periodLabel={`${transaction.excludedFromReports ? 'Balance adjustment · excluded from reports' : transaction.kind === 'income' ? 'Ingresos' : formatCategoryLabel(transaction.category)} · ${transaction.currency}`}
-            amount={formatCurrency(parseCurrency(transaction.amount), transaction.currency)}
-            onBadgePress={() => setBadgeExplanationOpen(true)}
-          />
+          <GlassSurface level="strong" tone={transaction.kind === 'income' ? 'finance' : 'neutral'} padding="lg" contentStyle={{ gap: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Tag label={transaction.excludedFromReports ? 'Balance adjustment' : transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Transfer' : 'Expense'} tone={transaction.kind === 'income' ? 'positive' : transaction.kind === 'transfer' ? 'info' : 'danger'} icon={transaction.kind === 'income' ? 'arrow-down-left' : transaction.kind === 'transfer' ? 'repeat' : 'arrow-up-right'} />
+              <GlassPressable accessibilityRole="button" accessibilityLabel="Sobre esta señal" onPress={() => setBadgeExplanationOpen(true)} hitSlop={8} scaleTo={0.92} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
+                <Feather name="info" size={15} color={theme.colors.textMuted} />
+              </GlassPressable>
+            </View>
+            <Amount value={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} size="hero" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <Fact label="Category" value={transaction.excludedFromReports ? 'Balance adjustment' : formatCategoryLabel(transaction.category)} />
+              <Fact label="Account" value={maskAccount(transaction.account, settings.dataVisibility)} />
+              <Fact label="Time" value={transaction.observedAt ?? 'Unknown'} />
+              <Fact label="Sources" value={`${evidenceCount} ${evidenceCount === 1 ? 'source' : 'sources'}`} />
+            </View>
+          </GlassSurface>
 
-          <SectionHeader title="Origen" subtitle={transaction.excludedFromReports ? 'Created manually to reconcile an account balance.' : 'The captured record that created this transaction.'} />
-          <Surface variant="raised" style={{ gap: theme.spacing.xs, borderColor: theme.colors.accent + '55' }}>
-            <ProvenanceMark origin={transaction.excludedFromReports ? 'user' : 'captured'} />
-            <ListRow
-              title={originEvent?.title ?? (transaction.excludedFromReports ? 'Manual balance adjustment' : formatSourceLabel(originSource))}
-              subtitle={originEvent ? `${formatSourceLabel(originEvent.source)} · ${originEvent.kind}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
-              description={originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Open the original captured event to inspect its contents.' : transaction.excludedFromReports ? 'This record changes the account balance but is not counted as income or spending.' : 'No linked captured event is available yet.'}
-              trailing={originEventId ? <Text style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Abrir</Text> : undefined}
-              onPress={originEventId ? () => router.push({ pathname: '/event/[id]', params: { id: originEventId! } }) : undefined}
-            />
-          </Surface>
+          <Section title="Origin" subtitle={transaction.excludedFromReports ? 'Created manually to reconcile an account balance.' : 'The captured record that created this transaction.'}>
+            <GlassSurface level="thin" padding="md" contentStyle={{ gap: 8 }}>
+              <Row
+                title={originEvent?.title ?? (transaction.excludedFromReports ? 'Manual balance adjustment' : formatSourceLabel(originSource))}
+                subtitle={originEvent ? `${formatSourceLabel(originEvent.source)} · ${originEvent.kind}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
+                description={originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Open the original captured event to inspect its contents.' : transaction.excludedFromReports ? 'This record changes the account balance but is not counted as income or spending.' : 'No linked captured event is available yet.'}
+                leading={<IconTile icon={transaction.excludedFromReports ? 'user' : 'inbox'} color={transaction.excludedFromReports ? theme.colors.user : theme.colors.captured} />}
+                trailing={originEventId ? <Tag label="Open" tone="info" /> : undefined}
+                onPress={originEventId ? () => router.push({ pathname: '/event/[id]', params: { id: originEventId } }) : undefined}
+                accessory="none"
+              />
+            </GlassSurface>
+          </Section>
 
-          <SectionHeader title="Resumen del movimiento" />
-          <View style={{ gap: 8 }}>
-            <ListRow title={formatCurrency(parseCurrency(transaction.amount), transaction.currency)} subtitle={transaction.excludedFromReports ? `Ajuste de saldo (${transaction.kind})` : transaction.kind === 'income' ? 'Ingreso' : transaction.kind === 'transfer' ? 'Monto enviado' : 'Gasto'} description={transaction.observedAt} trailing={<MoneyAmount amount={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} compact />} />
-            {transaction.kind === 'transfer' ? <>
-              <ListRow title={maskAccount(transaction.account, settings.dataVisibility)} subtitle="Cuenta de origen" />
-              {transaction.destinationAmount && transaction.destinationCurrency ? <ListRow title={formatCurrency(parseCurrency(transaction.destinationAmount), transaction.destinationCurrency)} subtitle="Importe recibido" /> : null}
-              <ListRow title={maskAccount(transaction.destinationAccount, settings.dataVisibility)} subtitle="Cuenta de destino" />
-            </> : <ListRow title={formatCategoryLabel(transaction.category)} subtitle="Categoría" />}
-            <ListRow title={maskAccount(transaction.account, settings.dataVisibility)} subtitle={`Account · ${transaction.currency}`} />
-          </View>
+          {transaction.kind === 'transfer' ? (
+            <Section title="Transfer">
+              <Row title={maskAccount(transaction.account, settings.dataVisibility)} subtitle="From account" leading={<IconTile icon="credit-card" />} accessory="none" />
+              <Row title={maskAccount(transaction.destinationAccount, settings.dataVisibility)} subtitle="To account" leading={<IconTile icon="credit-card" />} accessory="none" />
+              {transaction.destinationAmount && transaction.destinationCurrency ? <Row title={formatCurrency(parseCurrency(transaction.destinationAmount), transaction.destinationCurrency)} subtitle="Amount received" leading={<IconTile icon="repeat" />} accessory="none" /> : null}
+            </Section>
+          ) : null}
 
-          <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Contexto del movimiento</Text>
-            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Categorize this movement and associate it with an account in your portfolio.</Text>
-            <Button label="Editar categoría y cuenta" onPress={openEditor} variant="secondary" />
-          </Surface>
+          <Section title="Context" subtitle="Categorize this movement and associate it with an account in your portfolio.">
+            <Button label="Editar categoría y cuenta" variant="secondary" onPress={openEditor} icon={<Feather name="edit-2" size={14} color={theme.colors.textPrimary} />} />
+          </Section>
 
-          <Surface variant="subtle" style={{ gap: theme.spacing.sm }}>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>¿Hay un error?</Text>
-            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Podés quitar este registro de Dinero o indicar que la notificación era una promoción.</Text>
-            {!transaction.excludedFromReports ? <Button label="Marcar como promoción, no movimiento" onPress={() => confirmRemoveTransaction('promotion')} variant="secondary" disabled={removingTransaction} /> : null}
-            <Button label="Eliminar movimiento" onPress={() => confirmRemoveTransaction('delete')} variant="danger" disabled={removingTransaction} />
-          </Surface>
-
-          <SectionHeader title="Explicación" />
-          <Surface variant="subtle">
-            <ListRow
-              title={`Built from ${transaction.evidenceCount ?? evidenceItems.length} source${(transaction.evidenceCount ?? evidenceItems.length) === 1 ? '' : 's'}`}
-              subtitle="Las fuentes aparecen debajo en las vistas Equilibrada y Detallada."
-              description={transaction.status ? `Status: ${transaction.status}` : undefined}
-            />
-          </Surface>
+          <Section title="Explanation">
+            <GlassSurface level="thin" padding="md" contentStyle={{ gap: 6 }}>
+              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Built from {evidenceCount} source{evidenceCount === 1 ? '' : 's'}</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Las fuentes aparecen debajo en las vistas Balanced y Detailed.</Text>
+              {transaction.status ? <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>Status: {transaction.status}</Text> : null}
+            </GlassSurface>
+          </Section>
 
           {shouldShowEvidenceDetail(settings.dataVisibility) ? (
-            <>
-              <SectionHeader title="Fuentes" subtitle={transaction.observedWindow ?? 'Linked observations'} />
-              {evidenceItems.length ? evidenceItems.map((item) => <EvidenceRow key={item.id} source={item.source} kind={item.kind} amount={item.amount} merchantLabel={item.merchantLabel} observedAt={item.observedAt} matchReason={item.matchReason} onPress={item.rawEventId ? () => router.push({ pathname: '/event/[id]', params: { id: item.rawEventId! } }) : undefined} />) : <EmptyState title="Todavía no hay fuentes vinculadas" description="Esta transacción aún no está vinculada con un correo, notificación, recibo o registro de billetera capturado." />}
-            </>
-          ) : (
-            <EmptyState title="Evidencia oculta" description="Cambia Fuentes de datos a Equilibrado o Detallado en Ajustes para inspeccionar las observaciones vinculadas." />
-          )}
+            <Section title="Sources" subtitle={transaction.observedWindow ?? 'Linked observations'}>
+              {evidenceItems.length ? (
+                <Timeline items={evidenceItems.map((item) => ({
+                  id: item.id,
+                  icon: item.source.toLowerCase().includes('mail') || item.source.toLowerCase().includes('gmail') ? 'mail' : item.source.toLowerCase().includes('wallet') ? 'credit-card' : 'bell',
+                  title: item.source,
+                  subtitle: item.kind,
+                  amount: item.amount ? `${item.amount} ${item.currency ?? ''}`.trim() : undefined,
+                  time: item.observedAt,
+                  reason: item.matchReason,
+                  onPress: item.rawEventId ? () => router.push({ pathname: '/event/[id]', params: { id: item.rawEventId! } }) : undefined,
+                }))} />
+              ) : <StateView title="Todavía no hay fuentes vinculadas" description="Esta transacción aún no está vinculada con un correo, notificación, recibo o registro de billetera capturado." />}
+            </Section>
+          ) : <StateView title="Evidencia oculta" description="Cambia Fuentes de datos a Balanced o Detailed en Ajustes para inspeccionar las observaciones vinculadas." />}
 
-          <EmptyState
-            title="Acciones relacionadas"
-            description="Abre Dinero para ver tendencias o Explorar para encontrar este comercio en tu conocimiento y tus finanzas."
-            primaryActionLabel="Dinero"
-            onPrimaryAction={() => router.push('/financials')}
-            secondaryActionLabel="Buscar comercio"
-            onSecondaryAction={() => router.push('/search')}
-          />
+          <Section title="¿Hay un error?" subtitle="Podés quitar este registro de Dinero o indicar que la notificación era una promoción.">
+            {!transaction.excludedFromReports ? <Button label="Marcar como promoción" variant="secondary" onPress={() => confirmRemoveTransaction('promotion')} disabled={removingTransaction} /> : null}
+            <Button label="Eliminar movimiento" variant="danger" onPress={() => confirmRemoveTransaction('delete')} disabled={removingTransaction} />
+          </Section>
         </>
       ) : (
-        <EmptyState title="Movimiento no disponible" description="Todavía no hay detalles de este movimiento." />
+        <StateView title="Movimiento no disponible" description="Todavía no hay detalles de este movimiento." />
       )}
 
       <BottomSheet visible={editorOpen} title="Contexto del movimiento" onClose={() => setEditorOpen(false)}>
-        <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Tipo de movimiento</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            {(['expense', 'income', 'transfer'] as const).map((kind) => (
-              <FilterChip
-                key={kind}
-                label={kind === 'expense' ? 'Expense' : kind === 'income' ? 'Ingresos' : 'Transfer'}
-                selected={transactionKind === kind}
-                onPress={() => {
-                  setTransactionKind(kind);
-                  setCategory('');
-                  setSaveError(null);
-                  if (kind === 'transfer' && !destinationAmount) setDestinationAmount(transaction?.amount ?? '');
-                }}
-              />
-            ))}
-          </View>
-          {transactionKind === 'transfer'
-            ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Es una transferencia entre cuentas. No se suma a gastos ni ingresos.</Text>
-            : <><Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text><CategoryPicker categories={[category, ...categories[transactionKind]]} selectedCategory={category} onSelect={setCategory} /></>}
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{transactionKind === 'transfer' ? 'From currency' : 'Transaction currency'}</Text>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <FilterChip label="UYU" selected={currency === 'UYU'} onPress={() => { setCurrency('UYU'); setAccountId(null); setFromAccountName(''); if (transactionKind === 'transfer' && destinationCurrency === 'UYU') setDestinationAmount(transaction?.amount ?? ''); }} />
-            <FilterChip label="USD" selected={currency === 'USD'} onPress={() => { setCurrency('USD'); setAccountId(null); setFromAccountName(''); if (transactionKind === 'transfer' && destinationCurrency === 'USD') setDestinationAmount(transaction?.amount ?? ''); }} />
-          </View>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{transactionKind === 'transfer' ? 'Cuenta de origen' : 'Portfolio account'}</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Only {currency} accounts can be linked to this transaction.</Text>
-          {accounts.filter((account) => account.currency === currency).map((account) => (
-            <ListRow key={account.id} title={account.name} subtitle={`${account.type} · ${account.currency}`} leading={<AccountIcon color={account.color} />} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setAccountId(account.id); if (destinationAccountId === account.id) setDestinationAccountId(null); setFromAccountName(''); }} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo de movimiento</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {(['expense', 'income', 'transfer'] as const).map((kind) => (
+            <Chip key={kind} label={kind === 'expense' ? 'Expense' : kind === 'income' ? 'Ingreso' : 'Transfer'} selected={transactionKind === kind} onPress={() => { setTransactionKind(kind); setCategory(''); setSaveError(null); if (kind === 'transfer' && !destinationAmount) setDestinationAmount(transaction?.amount ?? ''); }} />
           ))}
-          <Input label={transactionKind === 'transfer' ? 'Nueva cuenta de origen' : 'Nombre de la nueva cuenta'} value={fromAccountName} onChangeText={(value) => { setFromAccountName(value); setAccountId(null); }} placeholder="Cuenta bancaria principal" />
-          <Input label={transactionKind === 'transfer' ? `Monto enviado (${currency})` : `Monto (${currency})`} accessibilityLabel="Monto de origen editado" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" />
-          {transactionKind === 'transfer' ? <>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Moneda de destino</Text>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <FilterChip label="UYU" selected={destinationCurrency === 'UYU'} onPress={() => { setDestinationCurrency('UYU'); setDestinationAccountId(null); setToAccountName(''); setDestinationAmount(currency === 'UYU' ? transaction?.amount ?? '' : ''); }} />
-              <FilterChip label="USD" selected={destinationCurrency === 'USD'} onPress={() => { setDestinationCurrency('USD'); setDestinationAccountId(null); setToAccountName(''); setDestinationAmount(currency === 'USD' ? transaction?.amount ?? '' : ''); }} />
+        </View>
+        {transactionKind === 'transfer' ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Es una transferencia entre cuentas. No se suma a gastos ni ingresos.</Text> : (
+          <>
+            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {Array.from(new Set([category, ...categories[transactionKind]])).filter(Boolean).map((option) => (
+                <Chip key={option} label={option} selected={category === option} onPress={() => setCategory(option)} />
+              ))}
             </View>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Cuenta de destino</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Only {destinationCurrency} accounts can receive this transfer.</Text>
+          </>
+        )}
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transactionKind === 'transfer' ? 'From currency' : 'Transaction currency'}</Text>
+        <SegmentedControl items={[{ value: 'UYU', label: 'UYU' }, { value: 'USD', label: 'USD' }]} value={currency} onChange={(value) => { setCurrency(value as 'UYU' | 'USD'); setAccountId(null); setFromAccountName(''); }} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transactionKind === 'transfer' ? 'Cuenta de origen' : 'Portfolio account'}</Text>
+        {accounts.filter((account) => account.currency === currency).map((account) => (
+          <Row key={account.id} title={account.name} subtitle={`${account.type} · ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setAccountId(account.id); if (destinationAccountId === account.id) setDestinationAccountId(null); setFromAccountName(''); }} />
+        ))}
+        <Field label={transactionKind === 'transfer' ? 'Nueva cuenta de origen' : 'Nombre de la nueva cuenta'} value={fromAccountName} onChangeText={(value) => { setFromAccountName(value); setAccountId(null); }} placeholder="Cuenta bancaria principal" />
+        <Field label={transactionKind === 'transfer' ? `Monto enviado (${currency})` : `Monto (${currency})`} accessibilityLabel="Monto de origen editado" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" variant="amount" />
+        {transactionKind === 'transfer' ? (
+          <>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda de destino</Text>
+            <SegmentedControl items={[{ value: 'UYU', label: 'UYU' }, { value: 'USD', label: 'USD' }]} value={destinationCurrency} onChange={(value) => { setDestinationCurrency(value as 'UYU' | 'USD'); setDestinationAccountId(null); setToAccountName(''); }} />
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cuenta de destino</Text>
             {accounts.filter((account) => account.currency === destinationCurrency && account.id !== accountId).map((account) => (
-              <ListRow key={`destination_${account.id}`} title={account.name} subtitle={`${account.type} / ${account.currency}`} leading={<AccountIcon color={account.color} />} trailing={<Text style={{ color: destinationAccountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{destinationAccountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setDestinationAccountId(account.id); setToAccountName(''); }} />
+              <Row key={`destination_${account.id}`} title={account.name} subtitle={`${account.type} / ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: destinationAccountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{destinationAccountId === account.id ? 'Selected' : 'Use'}</Text>} onPress={() => { setDestinationAccountId(account.id); setToAccountName(''); }} />
             ))}
-            <Input label="Nombre de la cuenta de destino" value={toAccountName} onChangeText={(value) => { setToAccountName(value); setDestinationAccountId(null); }} placeholder="Cuenta bancaria de destino" />
-            <Input label={`Monto recibido (${destinationCurrency})`} accessibilityLabel="Monto de destino editado" value={destinationAmount} onChangeText={setDestinationAmount} placeholder="0.00" keyboardType="decimal-pad" />
-          </> : null}
-          {!accounts.some((account) => account.currency === currency) ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>No compatible account exists yet. Create a {currency} account below.</Text> : null}
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>New source account currency: {currency}{transactionKind === 'transfer' ? ` · New destination account currency: ${destinationCurrency}` : ''}</Text>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button label="Guardar" onPress={saveContext} loading={saving} />
-            <Button label="Cancelar" onPress={() => setEditorOpen(false)} variant="secondary" disabled={saving} />
-          </View>
-          {saveError ? <Text style={{ color: theme.colors.danger }}>{saveError}</Text> : null}
+            <Field label="Nombre de la cuenta de destino" value={toAccountName} onChangeText={(value) => { setToAccountName(value); setDestinationAccountId(null); }} placeholder="Cuenta bancaria de destino" />
+            <Field label={`Monto recibido (${destinationCurrency})`} accessibilityLabel="Monto de destino editado" value={destinationAmount} onChangeText={setDestinationAmount} placeholder="0.00" keyboardType="decimal-pad" variant="amount" />
+          </>
+        ) : null}
+        {saveError ? <Text style={{ color: theme.colors.danger }}>{saveError}</Text> : null}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button label="Guardar" onPress={saveContext} loading={saving} />
+          <Button label="Cancelar" onPress={() => setEditorOpen(false)} variant="secondary" disabled={saving} />
         </View>
       </BottomSheet>
 
       <BottomSheet visible={titleEditorOpen} title="Editar título del movimiento" onClose={() => !titleSaving && setTitleEditorOpen(false)}>
-        <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. This changes only this transaction and keeps the original captured record unchanged.</Text>
-          <Input label="Título" value={title} onChangeText={setTitle} placeholder={transaction?.merchantLabel ?? 'Transaction title'} autoFocus />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button label="Guardar título" onPress={saveTitle} disabled={!title.trim() || titleSaving} loading={titleSaving} />
-            <Button label="Cancelar" onPress={() => setTitleEditorOpen(false)} variant="secondary" disabled={titleSaving} />
-          </View>
-          {titleMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{titleMessage}</Text> : null}
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. This changes only this transaction and keeps the original captured record unchanged.</Text>
+        <Field label="Título" value={title} onChangeText={setTitle} placeholder={transaction?.merchantLabel ?? 'Transaction title'} autoFocus />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button label="Guardar título" onPress={saveTitle} disabled={!title.trim() || titleSaving} loading={titleSaving} />
+          <Button label="Cancelar" onPress={() => setTitleEditorOpen(false)} variant="secondary" disabled={titleSaving} />
         </View>
+        {titleMessage ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{titleMessage}</Text> : null}
       </BottomSheet>
 
       <BottomSheet visible={badgeExplanationOpen} title="Sobre esta señal" onClose={() => setBadgeExplanationOpen(false)}>
-        <View style={{ gap: theme.spacing.sm }}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Movimiento detectado</Text>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>BrainIA recognized this captured activity as a money movement and created this transaction from its source event.</Text>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Todavía puede necesitar revisión. Comprueba la fuente, la categoría y la cuenta antes de usarla en tu vista financiera.</Text>
-        </View>
+        <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Movimiento detectado</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>BrainIA recognized this captured activity as a money movement and created this transaction from its source event.</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Todavía puede necesitar revisión. Comprueba la fuente, la categoría y la cuenta antes de usarla en tu vista financiera.</Text>
       </BottomSheet>
+    </Screen>
+  );
+}
 
-    </AppScreen>
+function Fact({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
+  return (
+    <View style={{ width: '48%', flexGrow: 1, padding: 10, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider, gap: 2 }}>
+      <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{value}</Text>
+    </View>
   );
 }
 

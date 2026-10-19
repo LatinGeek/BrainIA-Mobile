@@ -1,0 +1,194 @@
+import { Feather } from '@expo/vector-icons';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { Button, Chip, ConfidenceMeter, Field, Tag } from '@/components/controls';
+import { IconTile } from '@/components/data/Row';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { useTheme } from '@/lib/app-state';
+import { cleanDisplayText, formatCurrency } from '@/lib/format';
+import { describeDecision, ReviewDecision } from '@/lib/review-session';
+
+export function DecisionCard({
+  decision,
+  onAnswer,
+  onSkip,
+  onWhy,
+  whyOpen = false,
+  variant = 'full',
+}: {
+  decision: ReviewDecision;
+  onAnswer?: (choice: 'accept' | 'skip' | 'different' | 'no', value?: string, rule?: boolean) => void;
+  onSkip?: () => void;
+  onWhy?: () => void;
+  whyOpen?: boolean;
+  variant?: 'full' | 'compact';
+}) {
+  const theme = useTheme();
+  const [customValue, setCustomValue] = useState('');
+  const [createRule, setCreateRule] = useState(false);
+  const [showCustom, setShowCustom] = useState(false);
+  const impact = decision.impact.transactions > 0
+    ? `Tidies ${decision.impact.transactions} transaction${decision.impact.transactions === 1 ? '' : 's'}${decision.impact.amount ? ` · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : ''}`
+    : 'No matching transactions in the cached cycle';
+
+  return (
+    <GlassSurface level="strong" tone={decision.kind === 'relation' ? 'model' : 'review'} padding="lg" style={{ flex: 1 }} contentStyle={{ gap: 14 }}>
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Tag label={kindLabel(decision.kind)} tone="warning" />
+          <ConfidenceMeter value={decision.confidence} showValue />
+        </View>
+        <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{cleanDisplayText(decision.topic)}</Text>
+      </View>
+
+      <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, fontSize: 22, lineHeight: 28 }]}>
+        {describeDecision(decision)}
+      </Text>
+      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{impact}</Text>
+
+      {decision.kind === 'batch' ? (
+        <View style={{ gap: 6 }}>
+          {(decision.variants ?? []).slice(0, 8).map((variantLabel) => (
+            <View key={variantLabel} style={[styles.evidenceRow, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+              <IconTile icon="check" size="sm" color={theme.colors.accent} />
+              <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(variantLabel)}</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>→ {cleanDisplayText(decision.suggestion)}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {decision.kind === 'name' || decision.kind === 'label' ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={[styles.compare, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+            <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Raw</Text>
+            <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.raw)}</Text>
+          </View>
+          <Feather name="arrow-right" size={15} color={theme.colors.textMuted} />
+          <View style={[styles.compare, { backgroundColor: `${theme.colors.accent}1A`, borderColor: `${theme.colors.accent}47` }]}>
+            <Text style={[theme.typography.overline, { color: theme.colors.accent }]}>Becomes</Text>
+            <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.suggestion)}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {decision.kind === 'same' ? (
+        <View style={{ gap: 8 }}>
+          <View style={styles.duo}>
+            <View style={[styles.person, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+              <IconTile icon="user" size="sm" />
+              <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.raw)}</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>From this review</Text>
+            </View>
+            <View style={[styles.person, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+              <IconTile icon="check-circle" size="sm" color={theme.colors.accent} />
+              <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.suggestion)}</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Existing entity</Text>
+            </View>
+          </View>
+          {onWhy ? (
+            <Button label={whyOpen ? 'Hide why' : 'Why these match?'} variant="ghost" size="sm" onPress={onWhy} icon={<Feather name="help-circle" size={14} color={theme.colors.textMuted} />} />
+          ) : null}
+          {whyOpen ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.rationale)}</Text> : null}
+        </View>
+      ) : null}
+
+      {decision.kind === 'category' || decision.kind === 'label' ? (
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {decision.alternatives.slice(0, 3).map((option, index) => (
+              <Chip key={option} label={`${index + 1}. ${option}`} selected={decision.suggestion === option} onPress={() => onAnswer?.('accept', option)} />
+            ))}
+          </View>
+          {showCustom ? (
+            <View style={{ gap: 8 }}>
+              <Field label="Something else" value={customValue} onChangeText={setCustomValue} placeholder="Type a category or label" autoFocus />
+              <Button label="Use this" size="sm" disabled={!customValue.trim()} onPress={() => onAnswer?.('accept', customValue.trim())} />
+            </View>
+          ) : (
+            <Button label="Something else…" variant="ghost" size="sm" onPress={() => setShowCustom(true)} />
+          )}
+        </View>
+      ) : null}
+
+      {decision.kind === 'relation' ? (
+        <View style={{ gap: 8 }}>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.rationale)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 6 }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>Apply this automatically next time</Text>
+            <Chip label={createRule ? 'Rule on' : 'Once'} selected={createRule} onPress={() => setCreateRule((value) => !value)} icon={createRule ? 'repeat' : 'check'} />
+          </View>
+        </View>
+      ) : null}
+
+      {variant === 'full' ? (
+        <View style={{ gap: 10, marginTop: 'auto' }}>
+          {decision.kind === 'relation' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button label="No" variant="secondary" onPress={() => onAnswer?.('no', undefined, false)} /></View>
+              <View style={{ flex: 1 }}><Button label="Yes, connect" onPress={() => onAnswer?.('accept', undefined, createRule)} /></View>
+            </View>
+          ) : decision.kind === 'category' || decision.kind === 'label' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button label="Not this" variant="secondary" onPress={() => onAnswer?.('different')} /></View>
+              <View style={{ flex: 1 }}><Button label="Use suggestion" onPress={() => onAnswer?.('accept', decision.suggestion)} /></View>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button label="Skip" variant="secondary" onPress={onSkip ?? (() => onAnswer?.('skip'))} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
+              <View style={{ flex: 1 }}><Button label={decision.kind === 'batch' ? `Unify ${decision.variants?.length ?? decision.reviewIds.length}` : 'Accept'} onPress={() => onAnswer?.('accept')} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
+            </View>
+          )}
+        </View>
+      ) : null}
+    </GlassSurface>
+  );
+}
+
+function kindLabel(kind: ReviewDecision['kind']) {
+  if (kind === 'name') return 'Name';
+  if (kind === 'batch') return 'Batch';
+  if (kind === 'category') return 'Category';
+  if (kind === 'same') return 'Same company';
+  if (kind === 'relation') return 'Connection';
+  return 'Label';
+}
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  evidenceRow: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  compare: {
+    flex: 1,
+    gap: 3,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 62,
+  },
+  duo: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  person: {
+    flex: 1,
+    gap: 6,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+});

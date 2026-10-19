@@ -1,4 +1,5 @@
 import { DependencyList, useCallback, useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 export function useDebouncedValue<T>(value: T, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -11,8 +12,7 @@ export function useDebouncedValue<T>(value: T, delay = 300) {
   return debouncedValue;
 }
 
-export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyList = []) {
-  const [data, setData] = useState<T | null>(null);
+export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyList = []) {  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshIndex, setRefreshIndex] = useState(0);
@@ -63,4 +63,41 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
   }, [loader, refreshIndex, ...deps]);
 
   return { data, loading, error, refresh, reload };
+}
+
+function useAccessibilityFlag(check: (() => Promise<boolean>) | undefined, event: 'reduceMotionChanged' | 'reduceTransparencyChanged') {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    try {
+      if (typeof check === 'function') {
+        void check().then((value) => { if (active) setEnabled(value); }).catch(() => undefined);
+      }
+    } catch {
+      // Platform does not implement this accessibility query (for example web).
+    }
+    let subscription: { remove: () => void } | undefined;
+    try {
+      subscription = AccessibilityInfo.addEventListener(event, (value: boolean) => setEnabled(value));
+    } catch {
+      subscription = undefined;
+    }
+    return () => {
+      active = false;
+      subscription?.remove();
+    };
+  }, [check, event]);
+
+  return enabled;
+}
+
+/** True when the OS asks apps to avoid transparency and blur. */
+export function useReduceTransparency() {
+  return useAccessibilityFlag(AccessibilityInfo.isReduceTransparencyEnabled, 'reduceTransparencyChanged');
+}
+
+/** True when the OS asks apps to reduce non-essential motion. */
+export function useReduceMotion() {
+  return useAccessibilityFlag(AccessibilityInfo.isReduceMotionEnabled, 'reduceMotionChanged');
 }

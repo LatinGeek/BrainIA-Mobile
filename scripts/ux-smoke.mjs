@@ -24,20 +24,12 @@ async function checkReviewDraft(page, navigate = true) {
   if (navigate) {
     await page.goto(`${baseUrl}/review?ux=edge`, { waitUntil: 'commit', timeout: 120000 });
   }
-  const input = page.getByLabel('Nombre principal');
-  await input.waitFor({ timeout: 120000 });
-  await input.fill('');
-  await page.waitForTimeout(400);
-  if (await input.inputValue() !== '') {
-    throw new Error('Review friendly name repopulated after being intentionally cleared.');
-  }
-  await input.fill('La Casa Azul');
-  await page.waitForTimeout(400);
-  if (await input.inputValue() !== 'La Casa Azul') {
-    throw new Error('Review friendly name did not preserve the user-entered draft.');
-  }
-  await page.getByText('Posibles coincidencias existentes', { exact: false }).first().waitFor({ timeout: 120000 });
-  console.log('REVIEW_DRAFT_OK');
+  await page.getByText('Continue ·', { exact: false }).first().waitFor({ timeout: 120000 });
+  await page.getByText('Continue ·', { exact: false }).first().click();
+  await page.getByText('ACCEPT', { exact: true }).first().waitFor({ timeout: 120000 });
+  await page.keyboard.press('Escape');
+  await page.getByText('Continue ·', { exact: false }).first().waitFor({ timeout: 120000 });
+  console.log('REVIEW_SESSION_OK');
 }
 
 async function checkProposalInteractions(page) {
@@ -54,8 +46,8 @@ async function checkProposalInteractions(page) {
   console.log('FINANCE_PERIODS_OK');
 
   await page.goto(`${baseUrl}/review?ux=edge`, { waitUntil: 'commit', timeout: 120000 });
-  await page.getByText('Reinterpretar', { exact: true }).first().waitFor({ timeout: 120000 });
-  await page.getByText('Resuelto', { exact: true }).first().waitFor({ timeout: 120000 });
+  await page.getByText('Continue ·', { exact: false }).first().waitFor({ timeout: 120000 });
+  await page.getByText('This week', { exact: true }).first().waitFor({ timeout: 120000 });
   console.log('REVIEW_LANES_OK');
 
   await page.goto(`${baseUrl}/insight/insight_spotify?ux=edge`, { waitUntil: 'commit', timeout: 120000 });
@@ -71,7 +63,7 @@ async function checkPreviewStates(page) {
   console.log('EMPTY_MONEY_OK');
 
   await page.goto(`${baseUrl}/review?ux=empty`, { waitUntil: 'commit', timeout: 120000 });
-  await page.getByText('Todavía no hay elementos', { exact: false }).first().waitFor({ timeout: 120000 });
+  await page.getByText('All clear', { exact: true }).first().waitFor({ timeout: 120000 });
   console.log('EMPTY_REVIEW_OK');
 
   await page.goto(`${baseUrl}/review?ux=loading`, { waitUntil: 'commit', timeout: 120000 });

@@ -101,7 +101,8 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
           communities={visualGraph.communities}
           focusedEntityId={focusedEntityId}
           onFocus={focusById}
-          dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: '#090F1D' } }}
+          dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: theme.ambient.base } }}
+          background={theme.ambient.base}
         />
       </View>
 

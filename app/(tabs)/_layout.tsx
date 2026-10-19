@@ -1,98 +1,30 @@
 import { Tabs } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { ComponentProps } from 'react';
-import { ColorValue, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions } from 'react-native';
 
-import { useAppState } from '@/lib/app-state';
-import { ThemeTokens, makeShadow } from '@/lib/themes';
-
-function TabIcon({ theme, name, focused, color }: { theme: ThemeTokens; name: ComponentProps<typeof Feather>['name']; focused: boolean; color: ColorValue }) {
-  return (
-    <View
-      style={{
-        width: 52,
-        height: 34,
-        borderRadius: theme.radius.pill,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: focused ? theme.colors.accent : 'transparent',
-      }}
-    >
-      <Feather name={name} size={20} color={focused ? theme.colors.onAccent : color} />
-    </View>
-  );
-}
+import { Dock } from '@/components/layout/Dock';
 
 export default function TabLayout() {
-  const { theme } = useAppState();
-  const insets = useSafeAreaInsets();
-  const {width}=useWindowDimensions();
+  const { width } = useWindowDimensions();
 
   return (
     <Tabs
+      tabBar={(props) => (
+        <Dock
+          state={props.state as unknown as { index: number; routes: { key: string; name: string }[] }}
+          navigation={props.navigation as unknown as { navigate: (name: string) => void; emit: (event: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean } }}
+        />
+      )}
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: theme.colors.onAccent,
-        tabBarInactiveTintColor: theme.colors.textMuted,
-        tabBarStyle: {
-          display:width>=1024?'none':'flex',
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.depth.hairline,
-          borderTopWidth: 1,
-          height: 72 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: 6 + insets.bottom,
-          ...makeShadow({
-            color: theme.isDark ? '#000000' : '#101820',
-            opacity: theme.isDark ? 0.6 : 0.08,
-            blur: 20,
-            offsetY: -8,
-            elevation: 8,
-          }),
-        },
-        tabBarItemStyle: {
-          minHeight: 44,
-        },
+        tabBarStyle: { display: width >= 1024 ? 'none' : undefined },
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Hoy',
-          tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="home" focused={focused} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: 'Explorar',
-          tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="search" focused={focused} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="capture"
-        options={{
-          href:null,
-          title: 'Capturar',
-          tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="plus-circle" focused={focused} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="financials"
-        options={{
-          title: 'Dinero',
-          tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="credit-card" focused={focused} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="review"
-        options={{
-          title: 'Revisar',
-          tabBarIcon: ({ color, focused }) => <TabIcon theme={theme} name="shield" focused={focused} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Hoy' }} />
+      <Tabs.Screen name="search" options={{ title: 'Explorar' }} />
+      <Tabs.Screen name="capture" options={{ href: null, title: 'Capturar' }} />
+      <Tabs.Screen name="financials" options={{ title: 'Dinero' }} />
+      <Tabs.Screen name="review" options={{ title: 'Revisar' }} />
     </Tabs>
   );
 }

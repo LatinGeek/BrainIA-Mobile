@@ -29,6 +29,10 @@ export function makeShadow({ color, opacity, blur, offsetY, elevation }: {
   };
 }
 
+export type GlassLevel = 'thin' | 'regular' | 'strong';
+
+export type MotionEasing = readonly [number, number, number, number];
+
 export type ThemeTokens = {
   id: ThemeId;
   name: string;
@@ -64,12 +68,34 @@ export type ThemeTokens = {
     warning: string;
   };
   depth: { overlay: string; glow: string; hairline: string };
+  glass: {
+    blur: Record<GlassLevel, number>;
+    fill: Record<GlassLevel, readonly [string, string]>;
+    edge: readonly [string, string];
+    inner: string;
+    chromeBase: number;
+    selected: string;
+    onSelected: string;
+    solid: Record<GlassLevel, string>;
+    divider: string;
+  };
   motion: {
+    /** Legacy aliases kept until the glass cleanup phase. */
     fast: number;
     base: number;
     slow: number;
-    spring: { damping: number; stiffness: number; mass: number };
+    spring: {
+      damping: number;
+      stiffness: number;
+      mass: number;
+      thumb: { damping: number; stiffness: number; mass: number };
+      press: { damping: number; stiffness: number; mass: number };
+    };
+    duration: { press: number; quick: number; enter: number; count: number };
+    stagger: number;
+    easing: { out: MotionEasing; in: MotionEasing; soft: MotionEasing };
   };
+  ambient: { base: string; base2: string; orbs: readonly [string, string, string]; ring: string };
   typography: {
     display: TextStyle;
     headline: TextStyle;
@@ -81,77 +107,105 @@ export type ThemeTokens = {
     overline: TextStyle;
   };
   spacing: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number; xxxl: number };
-  radius: { sm: number; md: number; lg: number; xl: number; pill: number };
+  radius: { sm: number; md: number; lg: number; xl: number; sheet: number; pill: number };
   shadow: { card: ViewStyle; floating: ViewStyle };
 };
 
 const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 40 };
-const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 };
-const motion = {
-  fast: 110,
-  base: 180,
-  slow: 260,
-  spring: { damping: 22, stiffness: 260, mass: 0.8 },
-};
+const radius = { sm: 10, md: 14, lg: 20, xl: 28, sheet: 34, pill: 999 };
+const springPress = { damping: 18, stiffness: 320, mass: 1 };
 
 /**
- * Precision graphite: ice-blue actions, platinum content and semantic money colors.
+ * Teal ambient field, lime signal, specular glass. The only app theme.
  */
 export const brainiaTheme: ThemeTokens = {
   id: 'intelligence-console',
-  name: 'Precisión grafito',
+  name: 'Glass',
   isDark: true,
   colors: {
-    background: '#101214',
-    surface: '#171A1E',
-    surfaceRaised: '#1D2126',
-    surfaceSubtle: '#242A30',
-    border: '#343D46',
-    textPrimary: '#F1F3F5',
-    textSecondary: '#B4BDC7',
-    textMuted: '#929EAC',
-    accent: '#A5D8FA',
-    accentSoft: '#253C4B',
-    accentStrong: '#BDE7FF',
-    onAccent: '#102332',
-    success: '#42D59A',
-    warning: '#F4B942',
-    danger: '#FF6B7A',
-    model: '#44C7E8',
-    captured: '#8A97AA',
-    user: '#9BC7DF',
-    pending: '#F4B942',
-    chart: ['#A5D8FA', '#44C7E8', '#42D59A', '#FF6B7A', '#F4B942', '#929EAC'],
+    background: '#091315',
+    surface: '#142124',
+    surfaceRaised: '#1A2B2F',
+    surfaceSubtle: '#22363B',
+    border: 'rgba(255,255,255,0.12)',
+    textPrimary: '#F4F7F6',
+    textSecondary: 'rgba(236,243,241,0.76)',
+    textMuted: 'rgba(236,243,241,0.58)',
+    accent: '#C4F54A',
+    accentSoft: 'rgba(196,245,74,0.14)',
+    accentStrong: '#D6FF6B',
+    onAccent: '#0B1205',
+    success: '#7EE0A6',
+    warning: '#F6C65B',
+    danger: '#FF7B7B',
+    model: '#74D7EE',
+    captured: '#AFBBC2',
+    user: '#B5A8FF',
+    pending: '#F6C65B',
+    chart: ['#C4F54A', '#74D7EE', '#B5A8FF', '#FF8E85', '#F6C65B', '#8FA3AD'],
   },
   status: {
-    income: '#42D59A',
-    expense: '#FF6B7A',
-    transfer: '#9BC7DF',
-    insight: '#44C7E8',
-    review: '#F4B942',
-    warning: '#F4B942',
+    income: '#9FE870',
+    expense: '#FF8E85',
+    transfer: '#B5A8FF',
+    insight: '#74D7EE',
+    review: '#F6C65B',
+    warning: '#F6C65B',
   },
   depth: {
-    overlay: 'rgba(3,6,12,0.84)',
-    glow: 'rgba(165,216,250,0.08)',
-    hairline: 'rgba(174,185,203,0.16)',
+    overlay: 'rgba(3,8,9,0.86)',
+    glow: 'rgba(196,245,74,0.10)',
+    hairline: 'rgba(255,255,255,0.12)',
   },
-  motion,
+  glass: {
+    blur: { thin: 12, regular: 22, strong: 36 },
+    fill: {
+      thin: ['rgba(255,255,255,0.065)', 'rgba(255,255,255,0.03)'],
+      regular: ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.035)'],
+      strong: ['rgba(255,255,255,0.17)', 'rgba(255,255,255,0.06)'],
+    },
+    edge: ['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.05)'],
+    inner: 'rgba(255,255,255,0.06)',
+    chromeBase: 0.74,
+    selected: 'rgba(246,249,248,0.95)',
+    onSelected: '#0B1113',
+    solid: { thin: '#142124', regular: '#1A2B2F', strong: '#22363B' },
+    divider: 'rgba(255,255,255,0.08)',
+  },
+  motion: {
+    fast: 140,
+    base: 240,
+    slow: 420,
+    spring: {
+      ...springPress,
+      thumb: { damping: 16, stiffness: 220, mass: 0.9 },
+      press: springPress,
+    },
+    duration: { press: 140, quick: 240, enter: 420, count: 800 },
+    stagger: 45,
+    easing: { out: [0.2, 0.8, 0.2, 1], in: [0.4, 0, 1, 1], soft: [0.25, 1.1, 0.4, 1] },
+  },
+  ambient: {
+    base: '#091315',
+    base2: '#0D1C1F',
+    orbs: ['#1F6E78', '#24465A', '#B9E85A'],
+    ring: '#5BB3BE',
+  },
   typography: {
-    display: { fontFamily: 'Inter_700Bold', fontSize: 26, lineHeight: 32, letterSpacing: -0.45 },
-    headline: { fontFamily: 'Inter_600SemiBold', fontSize: 17, lineHeight: 23, letterSpacing: -0.1 },
+    display: { fontFamily: 'Poppins_600SemiBold', fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
+    headline: { fontFamily: 'Poppins_600SemiBold', fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
     body: { fontFamily: 'Inter_400Regular', fontSize: 15, lineHeight: 21 },
     bodyStrong: { fontFamily: 'Inter_600SemiBold', fontSize: 15, lineHeight: 21 },
     caption: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 16 },
-    mono: { fontFamily: 'JetBrainsMono_600SemiBold', fontSize: 11, lineHeight: 15, letterSpacing: 0.45 },
-    numeral: { fontFamily: 'JetBrainsMono_600SemiBold', fontSize: 27, lineHeight: 33, letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
-    overline: { fontFamily: 'JetBrainsMono_600SemiBold', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
+    mono: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 11, lineHeight: 15, letterSpacing: 0.45 },
+    numeral: { fontFamily: 'Inter_700Bold', fontSize: 34, lineHeight: 40, letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
+    overline: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
   },
   spacing,
   radius,
   shadow: {
-    card: makeShadow({ color: '#000000', opacity: 0.18, blur: 8, offsetY: 2, elevation: 1 }),
-    floating: makeShadow({ color: '#000000', opacity: 0.36, blur: 18, offsetY: 8, elevation: 5 }),
+    card: makeShadow({ color: '#000000', opacity: 0.22, blur: 36, offsetY: 16, elevation: 3 }),
+    floating: makeShadow({ color: '#000000', opacity: 0.4, blur: 28, offsetY: 10, elevation: 8 }),
   },
 };
 
@@ -162,5 +216,5 @@ export const themeRegistry: Record<ThemeId, ThemeTokens> = {
 export const themeOptions = [{
   id: brainiaTheme.id,
   name: brainiaTheme.name,
-  description: 'Restrained dark surfaces with explicit trust and money semantics.',
+  description: 'Ambient teal glass, lime signal and a single dark material system.',
 }];

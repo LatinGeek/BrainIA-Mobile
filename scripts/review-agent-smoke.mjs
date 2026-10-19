@@ -20,29 +20,34 @@ try {
   console.log('REVIEW_LOADING_OK');
 
   const emptyPage = await openReview(browser, 'empty');
-  await emptyPage.getByText('Todo al día', { exact: true }).first().waitFor({ timeout: 120000 });
+  await emptyPage.getByText('All clear', { exact: true }).first().waitFor({ timeout: 120000 });
   await emptyPage.close();
   console.log('REVIEW_EMPTY_OK');
 
   const reviewPage = await openReview(browser, 'edge');
-  await reviewPage.getByText('Pendientes', { exact: true }).first().waitFor({ timeout: 120000 });
-  await reviewPage.getByText('Historial', { exact: true }).first().waitFor({ timeout: 120000 });
-  await reviewPage.getByRole('button', { name: 'Revisar ahora' }).first().click();
-  const input = reviewPage.getByLabel('Nombre principal');
-  await input.waitFor({ timeout: 120000 });
-  await input.fill('');
+  await reviewPage.getByText('Continue ·', { exact: false }).first().waitFor({ timeout: 120000 });
+  await reviewPage.getByText('Continue ·', { exact: false }).first().click();
+  await reviewPage.getByText('ACCEPT', { exact: true }).first().waitFor({ timeout: 120000 });
+
+  // Accept with a tap, then undo from the toast.
+  await reviewPage.getByRole('button', { name: 'Accept', exact: true }).first().click();
+  await reviewPage.getByRole('button', { name: 'Undo', exact: true }).first().waitFor({ timeout: 60000 });
+  await reviewPage.getByRole('button', { name: 'Undo', exact: true }).first().click();
+  console.log('REVIEW_ACCEPT_UNDO_OK');
+
+  // Skip with the keyboard, then accept the remaining cards with keys.
+  await reviewPage.keyboard.press('ArrowLeft');
   await reviewPage.waitForTimeout(400);
-  if (await input.inputValue() !== '') {
-    throw new Error('Review friendly name repopulated after being intentionally cleared.');
-  }
-  await input.fill('La Casa Azul');
-  await reviewPage.waitForTimeout(400);
-  if (await input.inputValue() !== 'La Casa Azul') {
-    throw new Error('Review friendly name did not preserve the user-entered draft.');
-  }
-  await reviewPage.getByText('Posibles coincidencias existentes', { exact: false }).first().waitFor({ timeout: 120000 });
+  await reviewPage.keyboard.press('Enter');
+  await reviewPage.waitForTimeout(600);
+  await reviewPage.keyboard.press('Enter');
+  await reviewPage.getByText(/Nice work|All clear/).first().waitFor({ timeout: 60000 });
+  console.log('REVIEW_KEYBOARD_OK');
+
+  await reviewPage.getByRole('button', { name: 'Done', exact: true }).first().click();
+  await reviewPage.getByText('Continue ·', { exact: false }).first().waitFor({ timeout: 60000 });
   await reviewPage.close();
-  console.log('REVIEW_EDITING_OK');
+  console.log('REVIEW_SUMMARY_OK');
 
   if (runtimeErrors.length) {
     throw new Error(`Review runtime errors:\n${runtimeErrors.map((error) => error.stack || error.message).join('\n\n')}`);
