@@ -18,6 +18,13 @@ const toneTint: Record<GlassTone, (theme: ReturnType<typeof useTheme>) => string
   danger: (theme) => `${theme.colors.danger}12`,
 };
 
+function svgStop(value: string) {
+  const match = value.match(/^rgba?\(([^)]+)\)$/i);
+  if (!match) return { color: value, opacity: 1 };
+  const [r, g, b, a] = match[1].split(',').map((part) => Number(part.trim()));
+  return { color: `rgb(${r},${g},${b})`, opacity: Number.isFinite(a) ? a : 1 };
+}
+
 export function GlassSurface({
   children,
   level = 'regular',
@@ -88,8 +95,8 @@ export function GlassSurface({
         <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={fill[0]} />
-              <Stop offset="1" stopColor={fill[1]} />
+              <Stop offset="0" stopColor={svgStop(fill[0]).color} stopOpacity={svgStop(fill[0]).opacity} />
+              <Stop offset="1" stopColor={svgStop(fill[1]).color} stopOpacity={svgStop(fill[1]).opacity} />
             </LinearGradient>
           </Defs>
           <Rect x="0.5" y="0.5" width="99.7%" height="99.7%" rx={borderRadius} fill={`url(#${gradientId})`} />
@@ -100,9 +107,9 @@ export function GlassSurface({
         <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`${gradientId}-stroke`} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={theme.glass.edge[0]} />
-              <Stop offset="0.55" stopColor={theme.glass.edge[1]} />
-              <Stop offset="1" stopColor={theme.glass.edge[1]} />
+              <Stop offset="0" stopColor={svgStop(theme.glass.edge[0]).color} stopOpacity={svgStop(theme.glass.edge[0]).opacity} />
+              <Stop offset="0.55" stopColor={svgStop(theme.glass.edge[1]).color} stopOpacity={svgStop(theme.glass.edge[1]).opacity} />
+              <Stop offset="1" stopColor={svgStop(theme.glass.edge[1]).color} stopOpacity={svgStop(theme.glass.edge[1]).opacity} />
             </LinearGradient>
           </Defs>
           <Rect x="0.5" y="0.5" width="99.7%" height="99.7%" rx={borderRadius} fill="none" stroke={`url(#${gradientId}-stroke)`} strokeWidth={1} />
