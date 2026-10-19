@@ -1,4 +1,4 @@
-import { ReactNode, useId } from 'react';
+import { createContext, ReactNode, useContext, useId } from 'react';
 import { Platform, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -24,6 +24,12 @@ function svgStop(value: string) {
   const [r, g, b, a] = match[1].split(',').map((part) => Number(part.trim()));
   return { color: `rgb(${r},${g},${b})`, opacity: Number.isFinite(a) ? a : 1 };
 }
+
+/**
+ * True inside a GlassSurface. Nested surfaces keep their fill and edge but skip
+ * their own BlurView: a blur over a blur costs a second pass and reads muddy.
+ */
+const InsideGlass = createContext(false);
 
 export function GlassSurface({
   children,
@@ -54,6 +60,7 @@ export function GlassSurface({
 }) {
   const theme = useTheme();
   const reduceTransparency = useReduceTransparency();
+  const nested = useContext(InsideGlass);
   const gradientId = `glass-edge-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const paddingValue = padding === 'none' ? 0 : padding === 'sm' ? theme.spacing.sm : padding === 'lg' ? theme.spacing.lg : theme.spacing.md;
   const borderRadius = theme.radius[radius];
@@ -62,11 +69,11 @@ export function GlassSurface({
 
   // Android blur is expensive. Keep real blur for floating chrome and strong
   // panels only; everything else uses the translucent fill.
-  const useBlur = !reduceTransparency && !(Platform.OS === 'android' && !chrome && level !== 'strong');
+  const useBlur = !reduceTransparency && !nested && !(Platform.OS === 'android' && !chrome && level !== 'strong');
   const backgroundColor = reduceTransparency
     ? theme.glass.solid[level]
     : chrome
-      ? `${theme.ambient.base}BD`
+      ? theme.glass.chrome
       : fill[0];
 
   return (
@@ -92,7 +99,7 @@ export function GlassSurface({
         />
       ) : null}
       {!reduceTransparency ? (
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor={svgStop(fill[0]).color} stopOpacity={svgStop(fill[0]).opacity} />
@@ -104,7 +111,7 @@ export function GlassSurface({
       ) : null}
       {tint ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} /> : null}
       {!reduceTransparency ? (
-        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`${gradientId}-stroke`} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor={svgStop(theme.glass.edge[0]).color} stopOpacity={svgStop(theme.glass.edge[0]).opacity} />
@@ -116,6 +123,7 @@ export function GlassSurface({
         </Svg>
       ) : null}
 
+      <InsideGlass.Provider value>
       <View style={[{ padding: paddingValue, gap: theme.spacing.md }, contentStyle]}>
         {title || subtitle || action ? (
           <View style={styles.header}>
@@ -128,6 +136,7 @@ export function GlassSurface({
         ) : null}
         {children}
       </View>
+      </InsideGlass.Provider>
     </View>
   );
 }

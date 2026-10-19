@@ -683,11 +683,11 @@ export default function FinancialsScreen() {
             <>
               <GlassSurface level="thin" padding="sm" contentStyle={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver ciclo anterior" onPress={() => { setHistoricalTransactionsLoading(true); setTransactionCycleOffset((offset) => offset + 1); }} hitSlop={8} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver ciclo anterior" onPress={() => { setHistoricalTransactionsLoading(true); setTransactionCycleOffset((offset) => offset + 1); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center' }}>
                     <Feather name="chevron-left" size={18} color={theme.colors.textPrimary} />
                   </GlassPressable>
                   <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, minWidth: 40, textAlign: 'center' }]}>{selectedTransactionCycleMonth}</Text>
-                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver próximo ciclo" disabled={transactionCycleOffset === 0} onPress={() => { setHistoricalTransactionsLoading(transactionCycleOffset > 1); setTransactionCycleOffset((offset) => Math.max(0, offset - 1)); }} hitSlop={8} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.35 : 1 }}>
+                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver próximo ciclo" disabled={transactionCycleOffset === 0} onPress={() => { setHistoricalTransactionsLoading(transactionCycleOffset > 1); setTransactionCycleOffset((offset) => Math.max(0, offset - 1)); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.35 : 1 }}>
                     <Feather name="chevron-right" size={18} color={theme.colors.textPrimary} />
                   </GlassPressable>
                 </View>
@@ -773,7 +773,7 @@ export default function FinancialsScreen() {
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Color de la cuenta</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {FINANCIAL_ACCOUNT_COLORS.map((option) => (
-            <Pressable key={option.value} accessibilityRole="radio" accessibilityLabel={option.label} accessibilityState={{ selected: accountColor === option.value }} onPress={() => setAccountColor(option.value)} style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: option.value, borderWidth: accountColor === option.value ? 3 : 0, borderColor: theme.colors.textPrimary }}>
+            <Pressable key={option.value} accessibilityRole="radio" accessibilityLabel={option.label} accessibilityState={{ selected: accountColor === option.value }} onPress={() => setAccountColor(option.value)} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: option.value, borderWidth: accountColor === option.value ? 3 : 0, borderColor: theme.colors.textPrimary }}>
               {accountColor === option.value ? <Feather name="check" size={18} color={theme.colors.onAccent} /> : null}
             </Pressable>
           ))}
@@ -888,7 +888,7 @@ function AccountRow({
           <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textMuted} />
         </GlassPressable>
         {expanded ? (
-          <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOutUp.duration(150)} style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
+          <Animated.View entering={FadeInDown.duration(theme.motion.duration.quick)} exiting={FadeOutUp.duration(theme.motion.duration.press)} style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.glass.divider }} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1, padding: 10, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, gap: 2 }}>

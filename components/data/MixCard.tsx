@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   legendRow: {
-    minHeight: 36,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,

@@ -74,6 +74,10 @@ export type ThemeTokens = {
     edge: readonly [string, string];
     inner: string;
     chromeBase: number;
+    /** Ambient base at chromeBase opacity: dock, compact header and sheet backing. */
+    chrome: string;
+    /** Denser chrome for the pinned action bar so fields never show through. */
+    chromeStrong: string;
     selected: string;
     onSelected: string;
     solid: Record<GlassLevel, string>;
@@ -106,6 +110,7 @@ export type ThemeTokens = {
     numeral: TextStyle;
     overline: TextStyle;
   };
+  layout: { minTarget: number; answerTarget: number; dockHeight: number; dockMinScale: number };
   spacing: { xs: number; sm: number; md: number; lg: number; xl: number; xxl: number; xxxl: number };
   radius: { sm: number; md: number; lg: number; xl: number; sheet: number; pill: number };
   shadow: { card: ViewStyle; floating: ViewStyle };
@@ -167,6 +172,8 @@ export const brainiaTheme: ThemeTokens = {
     edge: ['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.05)'],
     inner: 'rgba(255,255,255,0.06)',
     chromeBase: 0.74,
+    chrome: hexToRgba('#091315', 0.74),
+    chromeStrong: hexToRgba('#091315', 0.86),
     selected: 'rgba(246,249,248,0.95)',
     onSelected: '#0B1113',
     solid: { thin: '#142124', regular: '#1A2B2F', strong: '#22363B' },
@@ -201,6 +208,7 @@ export const brainiaTheme: ThemeTokens = {
     numeral: { fontFamily: 'Inter_700Bold', fontSize: 34, lineHeight: 40, letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
     overline: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
   },
+  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86 },
   spacing,
   radius,
   shadow: {

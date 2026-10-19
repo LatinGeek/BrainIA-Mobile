@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Chip, ConfidenceMeter, Field, Tag } from '@/components/controls';
 import { IconTile } from '@/components/data/Row';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText, formatCurrency } from '@/lib/format';
@@ -33,7 +34,7 @@ export function DecisionCard({
     : 'No matching transactions in the cached cycle';
 
   return (
-    <GlassSurface level="strong" tone={decision.kind === 'relation' ? 'model' : 'review'} padding="lg" style={{ flex: 1 }} contentStyle={{ gap: 14 }}>
+    <GlassSurface level="strong" tone={decision.kind === 'relation' ? 'model' : 'review'} padding="lg" style={{ flex: 1 }} contentStyle={{ gap: 14, flexGrow: 1 }}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Tag label={kindLabel(decision.kind)} tone="warning" />
@@ -96,10 +97,26 @@ export function DecisionCard({
 
       {decision.kind === 'category' || decision.kind === 'label' ? (
         <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {decision.alternatives.slice(0, 3).map((option, index) => (
-              <Chip key={option} label={`${index + 1}. ${option}`} selected={decision.suggestion === option} onPress={() => onAnswer?.('accept', option)} />
-            ))}
+          <View style={{ gap: 8 }}>
+            {decision.alternatives.slice(0, 3).map((option, index) => {
+              const selected = decision.suggestion === option;
+              return (
+                <GlassPressable
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${option}${selected ? ', suggested' : ''}`}
+                  accessibilityState={{ selected }}
+                  haptic="selection"
+                  scaleTo={0.97}
+                  onPress={() => onAnswer?.('accept', option)}
+                  style={[styles.answerTile, { minHeight: theme.layout.answerTarget, borderRadius: theme.radius.md, backgroundColor: selected ? theme.glass.selected : theme.glass.inner, borderColor: selected ? theme.glass.selected : theme.glass.divider }]}
+                >
+                  <Text style={[theme.typography.mono, { color: selected ? theme.glass.onSelected : theme.colors.textMuted }]}>{index + 1}</Text>
+                  <Text numberOfLines={2} style={[theme.typography.bodyStrong, { flex: 1, color: selected ? theme.glass.onSelected : theme.colors.textPrimary }]}>{cleanDisplayText(option)}</Text>
+                  {selected ? <Feather name="check" size={16} color={theme.glass.onSelected} /> : null}
+                </GlassPressable>
+              );
+            })}
           </View>
           {showCustom ? (
             <View style={{ gap: 8 }}>
@@ -126,18 +143,18 @@ export function DecisionCard({
         <View style={{ gap: 10, marginTop: 'auto' }}>
           {decision.kind === 'relation' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}><Button label="No" variant="secondary" onPress={() => onAnswer?.('no', undefined, false)} /></View>
-              <View style={{ flex: 1 }}><Button label="Yes, connect" onPress={() => onAnswer?.('accept', undefined, createRule)} /></View>
+              <View style={{ flex: 1 }}><Button label="No" variant="secondary" size="lg" onPress={() => onAnswer?.('no', undefined, false)} /></View>
+              <View style={{ flex: 1 }}><Button label="Yes, connect" size="lg" onPress={() => onAnswer?.('accept', undefined, createRule)} /></View>
             </View>
           ) : decision.kind === 'category' || decision.kind === 'label' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}><Button label="Not this" variant="secondary" onPress={() => onAnswer?.('different')} /></View>
-              <View style={{ flex: 1 }}><Button label="Use suggestion" onPress={() => onAnswer?.('accept', decision.suggestion)} /></View>
+              <View style={{ flex: 1 }}><Button label="Not this" variant="secondary" size="lg" onPress={() => onAnswer?.('different')} /></View>
+              <View style={{ flex: 1 }}><Button label="Use suggestion" size="lg" onPress={() => onAnswer?.('accept', decision.suggestion)} /></View>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}><Button label="Skip" variant="secondary" onPress={onSkip ?? (() => onAnswer?.('skip'))} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
-              <View style={{ flex: 1 }}><Button label={decision.kind === 'batch' ? `Unify ${decision.variants?.length ?? decision.reviewIds.length}` : 'Accept'} onPress={() => onAnswer?.('accept')} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
+              <View style={{ flex: 1 }}><Button label="Skip" variant="secondary" size="lg" onPress={onSkip ?? (() => onAnswer?.('skip'))} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
+              <View style={{ flex: 1 }}><Button label={decision.kind === 'batch' ? `Unify ${decision.variants?.length ?? decision.reviewIds.length}` : 'Accept'} size="lg" onPress={() => onAnswer?.('accept')} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
             </View>
           )}
         </View>
@@ -169,14 +186,22 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 10,
+    borderRadius: 10, // theme.radius.sm
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  answerTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: StyleSheet.hairlineWidth,
   },
   compare: {
     flex: 1,
     gap: 3,
     padding: 10,
-    borderRadius: 12,
+    borderRadius: 14, // theme.radius.md
     borderWidth: StyleSheet.hairlineWidth,
     minHeight: 62,
   },
@@ -188,7 +213,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
     padding: 10,
-    borderRadius: 14,
+    borderRadius: 14, // theme.radius.md
     borderWidth: StyleSheet.hairlineWidth,
   },
 });

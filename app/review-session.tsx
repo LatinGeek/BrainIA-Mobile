@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Tag } from '@/components/controls';
+import { Tag } from '@/components/controls';
 import { StateView } from '@/components/data/StateView';
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
 import { GlassPressable } from '@/components/glass/GlassPressable';
@@ -236,6 +236,8 @@ export default function ReviewSessionScreen() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [answer, close, current, undoLast]);
 
+  const exitDuration = theme.motion.duration.quick;
+  const settleSpring = theme.motion.spring.thumb;
   const pan = Gesture.Pan()
     .activeOffsetX([-16, 16])
     .onUpdate((event) => {
@@ -245,14 +247,14 @@ export default function ReviewSessionScreen() {
     .onEnd((event) => {
       const threshold = width * 0.3;
       if (x.value > threshold || event.velocityX > 800) {
-        x.set(withTiming(width * 1.2, { duration: 260 }));
+        x.set(withTiming(width * 1.2, { duration: exitDuration }));
         runOnJS(answer)(current, 'accept');
       } else if (x.value < -threshold || event.velocityX < -800) {
-        x.set(withTiming(-width * 1.2, { duration: 260 }));
+        x.set(withTiming(-width * 1.2, { duration: exitDuration }));
         runOnJS(answer)(current, 'skip');
       } else {
-        x.set(withSpring(0, { damping: 18, stiffness: 220 }));
-        y.set(withSpring(0));
+        x.set(withSpring(0, settleSpring));
+        y.set(withSpring(0, settleSpring));
       }
     });
 
@@ -354,10 +356,6 @@ export default function ReviewSessionScreen() {
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Swipe right to accept · left to skip · every gesture has a button</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}><Button label="Skip" variant="secondary" onPress={() => current && void answer(current, 'skip')} disabled={!current} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
-            <View style={{ flex: 1 }}><Button label="Accept" onPress={() => current && void answer(current, 'accept')} disabled={!current} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
-          </View>
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>{`About ${formatCurrency(decisions.slice(index).reduce((sum, decision) => sum + decision.impact.amount, 0), 'UYU')} in movement to tidy`}</Text>
         </View>
       </View>
@@ -375,9 +373,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

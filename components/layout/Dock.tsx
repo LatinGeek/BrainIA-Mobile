@@ -62,13 +62,19 @@ export function Dock({
   }, [activeVisibleIndex, barWidth, pillX, theme.motion.spring.thumb, visibleTabs.length]);
 
   const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: pillX.value }] }));
+  const minScale = theme.layout.dockMinScale;
   const dockStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(dockScroll.value, [0, 1], [1, 0.86]) },
+      { scale: interpolate(dockScroll.value, [0, 1], [1, minScale]) },
       { translateY: interpolate(dockScroll.value, [0, 1], [0, 4]) },
     ],
   }));
-  const labelStyle = useAnimatedStyle(() => ({ opacity: interpolate(dockScroll.value, [0, 0.6], [1, 0]), height: interpolate(dockScroll.value, [0, 1], [14, 0]) }));
+  // Opacity and transform only: animating height relayouts every tab per frame.
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(dockScroll.value, [0, 0.6], [1, 0]),
+    transform: [{ translateY: interpolate(dockScroll.value, [0, 1], [0, 4]) }],
+  }));
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(dockScroll.value, [0, 1], [0, 7]) }] }));
 
   if (compactDock) return null;
 
@@ -76,7 +82,7 @@ export function Dock({
     <View pointerEvents="box-none" style={[styles.host, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <Animated.View style={[styles.dockWrap, dockStyle]}>
         <GlassSurface level="strong" chrome padding="none" radius="xl" style={styles.dock}>
-          <View style={styles.dockInner} onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}>
+          <View style={[styles.dockInner, { height: theme.layout.dockHeight }]} onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}>
             {visibleTabs.length ? (
               <Animated.View pointerEvents="none" style={[styles.pill, { width: (barWidth - 12) / visibleTabs.length, backgroundColor: theme.glass.selected }, pillStyle]} />
             ) : null}
@@ -109,14 +115,14 @@ export function Dock({
                     </View>
                   ) : (
                     <>
-                      <View>
+                      <Animated.View style={iconStyle}>
                         <Feather name={tab.icon} size={19} color={selected ? theme.glass.onSelected : theme.colors.textMuted} />
                         {tab.key === 'review' && reviewCount ? (
                           <View style={[styles.badge, { backgroundColor: theme.colors.accent, borderColor: theme.colors.background }]}>
                             <Text style={[theme.typography.caption, { color: theme.colors.onAccent, fontSize: 9, lineHeight: 11 }]}>{reviewCount > 9 ? '9+' : reviewCount}</Text>
                           </View>
                         ) : null}
-                      </View>
+                      </Animated.View>
                       <Animated.View style={labelStyle}>
                         <Text numberOfLines={1} style={[theme.typography.caption, { color: selected ? theme.glass.onSelected : theme.colors.textMuted, fontSize: 9, textAlign: 'center' }]}>{tab.label}</Text>
                       </Animated.View>
@@ -149,7 +155,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   dockInner: {
-    height: 68,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 6,

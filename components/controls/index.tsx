@@ -41,7 +41,8 @@ export function Button({
   label?: string;
   onPress: () => void;
   variant?: ButtonVariant;
-  size?: 'sm' | 'md';
+  /** sm and md meet the 44pt minimum; lg is the 52pt review answer size. */
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
@@ -51,7 +52,7 @@ export function Button({
   style?: ViewStyle;
 }) {
   const theme = useTheme();
-  const height = size === 'sm' ? 40 : 48;
+  const height = size === 'sm' ? theme.layout.minTarget : size === 'lg' ? theme.layout.answerTarget : 48;
   const isDisabled = disabled || loading;
   const palette: Record<ButtonVariant, { background: string; color: string; border: string }> = {
     primary: { background: theme.colors.accent, color: theme.colors.onAccent, border: theme.colors.accent },
@@ -70,7 +71,6 @@ export function Button({
       disabled={isDisabled}
       haptic="light"
       scaleTo={0.94}
-      hitSlop={iconOnly && size === 'sm' ? 6 : undefined}
       onPress={onPress}
       style={[
         styles.button,
@@ -195,6 +195,8 @@ export function SegmentedControl<T extends string>({
               accessibilityState={{ selected }}
               haptic="selection"
               scaleTo={0.96}
+              // The track's padding completes the 44pt target around a 38pt segment.
+              hitSlop={size === 'mini' ? 8 : 4}
               onLayout={(event) => {
                 const { x, width } = event.nativeEvent.layout;
                 setLayouts((current) => current[item.value]?.x === x && current[item.value]?.width === width
@@ -309,6 +311,8 @@ export function Chip({
       disabled={disabled}
       haptic="selection"
       scaleTo={0.94}
+      // 34pt visual chip, 44pt touch target.
+      hitSlop={5}
       onPress={onPress}
       style={[
         styles.chip,

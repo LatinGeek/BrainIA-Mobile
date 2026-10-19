@@ -213,7 +213,7 @@ export default function TransactionDetailScreen() {
       back
       refreshing={loading}
       onRefresh={refresh}
-      actions={<GlassPressable accessibilityRole="button" accessibilityLabel="Editar título del movimiento" onPress={openTitleEditor} hitSlop={10} scaleTo={0.9} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}><Feather name="edit-2" size={18} color={theme.colors.textPrimary} /></GlassPressable>}
+      actions={<GlassPressable accessibilityRole="button" accessibilityLabel="Editar título del movimiento" onPress={openTitleEditor} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}><Feather name="edit-2" size={18} color={theme.colors.textPrimary} /></GlassPressable>}
     >
       {error ? <StateView kind="error" title="No se pudo cargar el movimiento" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
       {loading && !transaction ? <StateView kind="loading" title="Loading" skeleton="detail" skeletonCount={2} /> : null}
@@ -223,7 +223,7 @@ export default function TransactionDetailScreen() {
           <GlassSurface level="strong" tone={transaction.kind === 'income' ? 'finance' : 'neutral'} padding="lg" contentStyle={{ gap: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <Tag label={transaction.excludedFromReports ? 'Balance adjustment' : transaction.kind === 'income' ? 'Income' : transaction.kind === 'transfer' ? 'Transfer' : 'Expense'} tone={transaction.kind === 'income' ? 'positive' : transaction.kind === 'transfer' ? 'info' : 'danger'} icon={transaction.kind === 'income' ? 'arrow-down-left' : transaction.kind === 'transfer' ? 'repeat' : 'arrow-up-right'} />
-              <GlassPressable accessibilityRole="button" accessibilityLabel="Sobre esta señal" onPress={() => setBadgeExplanationOpen(true)} hitSlop={8} scaleTo={0.92} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
+              <GlassPressable accessibilityRole="button" accessibilityLabel="Sobre esta señal" onPress={() => setBadgeExplanationOpen(true)} scaleTo={0.92} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
                 <Feather name="info" size={15} color={theme.colors.textMuted} />
               </GlassPressable>
             </View>

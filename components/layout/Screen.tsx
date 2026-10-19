@@ -24,13 +24,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
 import { GlassPressable } from '@/components/glass/GlassPressable';
+import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Tag } from '@/components/controls';
 import { NavigationRail } from '@/components/layout/NavigationRail';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
 import { dockScroll } from '@/lib/dock-scroll';
-
-const DOCK_HEIGHT = 68;
 
 export function Screen({
   title,
@@ -107,7 +106,7 @@ export function Screen({
   );
 
   const contentPaddingTop = desktop ? 32 : 16;
-  const bottomPadding = DOCK_HEIGHT + insets.bottom + (bar ? 92 : 24);
+  const bottomPadding = theme.layout.dockHeight + insets.bottom + (bar ? 92 : 24);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.flex, { backgroundColor: theme.colors.background }]}>
@@ -153,20 +152,20 @@ export function Screen({
 
             <Animated.View pointerEvents="box-none" style={[styles.compactBarWrap, compactStyle]}>
               {compactVisible ? (
-                <View style={[styles.compactBar, { borderColor: theme.glass.edge[0], backgroundColor: `${theme.ambient.base}BD` }]}>
+                <GlassSurface chrome level="regular" padding="none" radius="md" contentStyle={styles.compactBar}>
                   {back ? (
-                    <GlassPressable accessibilityRole="button" accessibilityLabel={backLabel} onPress={goBack} hitSlop={10} scaleTo={0.92} style={styles.iconButton}>
+                    <GlassPressable accessibilityRole="button" accessibilityLabel={backLabel} onPress={goBack} hitSlop={4} scaleTo={0.92} style={[styles.iconButton, { width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill }]}>
                       <Feather name="arrow-left" size={18} color={theme.colors.textPrimary} />
                     </GlassPressable>
                   ) : null}
-                  <Text numberOfLines={1} style={[theme.typography.headline, { color: theme.colors.textPrimary, flex: 1, fontSize: 16 }]}>{cleanDisplayText(title)}</Text>
+                  <Text accessibilityRole="header" numberOfLines={1} style={[theme.typography.headline, { color: theme.colors.textPrimary, flex: 1, fontSize: 16 }]}>{cleanDisplayText(title)}</Text>
                   {actions}
-                </View>
+                </GlassSurface>
               ) : null}
             </Animated.View>
 
             {bar ? (
-              <View style={[styles.actionBar, { borderTopColor: theme.glass.divider, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: `${theme.ambient.base}DB` }]}>
+              <View style={[styles.actionBar, { bottom: theme.layout.dockHeight, borderTopColor: theme.glass.divider, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: theme.glass.chromeStrong }]}>
                 {bar}
               </View>
             ) : null}
@@ -277,18 +276,13 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   compactBar: {
-    minHeight: 44,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 6,
   },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,7 +290,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: DOCK_HEIGHT,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -308,7 +301,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionAction: {
-    minHeight: 32,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,

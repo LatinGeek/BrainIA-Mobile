@@ -51,8 +51,8 @@ function ToastView({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(240)}
-      exiting={FadeOutDown.duration(180)}
+      entering={FadeInDown.duration(theme.motion.duration.quick)}
+      exiting={FadeOutDown.duration(theme.motion.duration.quick)}
       pointerEvents="box-none"
       style={[styles.wrap, { bottom: 84 + insets.bottom }]}
     >
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   action: {
-    minHeight: 32,
+    minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 4,
   },

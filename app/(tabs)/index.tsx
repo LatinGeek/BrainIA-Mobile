@@ -121,7 +121,7 @@ export default function HomeScreen() {
       actions={
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'} tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'} live={Boolean(data?.live)} />
-          <GlassPressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} hitSlop={10} scaleTo={0.9} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
+          <GlassPressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
             <Feather name="settings" size={18} color={theme.colors.textPrimary} />
           </GlassPressable>
         </View>
@@ -144,7 +144,7 @@ export default function HomeScreen() {
               <Tag label={net >= 0 ? 'Positive' : 'Overspent'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
             </View>
             <Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.income }} />
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Income {formatCurrency(financialSummary.income, 'UYU')}</Text>

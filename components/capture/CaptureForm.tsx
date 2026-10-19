@@ -72,13 +72,13 @@ function VoiceRecordButton({ state, label, onPressIn, onPressOut }: { state: Voi
   const disabled = !voiceModule || state === 'transcribing';
 
   useEffect(() => {
-    if (recording) pulse.value = withRepeat(withSequence(withTiming(1, { duration: 720 }), withTiming(0, { duration: 720 })), -1);
+    if (recording) pulse.value = withRepeat(withSequence(withTiming(1, { duration: theme.motion.duration.count }), withTiming(0, { duration: theme.motion.duration.count })), -1);
     else {
       cancelAnimation(pulse);
       pulse.value = withTiming(0, { duration: theme.motion.duration.press });
     }
     return () => cancelAnimation(pulse);
-  }, [pulse, recording, theme.motion.duration.press]);
+  }, [pulse, recording, theme.motion.duration.count, theme.motion.duration.press]);
 
   const pulseStyle = useAnimatedStyle(() => ({
     opacity: 0.28 * (1 - pulse.value),
@@ -397,7 +397,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       />
 
       {kind === 'wallet' ? (
-        <Animated.View key="money" entering={FadeInDown.duration(260)} style={{ gap: theme.spacing.md }}>
+        <Animated.View key="money" entering={FadeInDown.duration(theme.motion.duration.quick)} style={{ gap: theme.spacing.md }}>
           <SegmentedControl
             items={[
               { value: 'expense', label: 'Gasto', icon: 'arrow-up-right' },
@@ -490,7 +490,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
           )}
         </Animated.View>
       ) : (
-        <Animated.View key="note" entering={FadeInDown.duration(260)} style={{ gap: theme.spacing.md }}>
+        <Animated.View key="note" entering={FadeInDown.duration(theme.motion.duration.quick)} style={{ gap: theme.spacing.md }}>
           <GlassSurface level="regular" tone="finance" padding="lg" contentStyle={{ gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <IconTile icon="edit-3" size="lg" color={theme.status.income} tint={`${theme.status.income}1F`} />
@@ -508,7 +508,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
               <VoiceRecordButton state={voiceState} label={voiceStatus} onPressIn={() => { void startVoiceNote(); }} onPressOut={stopVoiceNote} />
             </View>
             {voiceState !== 'idle' || voicePreview || voiceError ? (
-              <Animated.View entering={FadeInUp.duration(180)} exiting={FadeOut.duration(140)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+              <Animated.View entering={FadeInUp.duration(theme.motion.duration.quick)} exiting={FadeOut.duration(theme.motion.duration.press)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 5, backgroundColor: voiceState === 'error' || voiceState === 'recording' ? theme.colors.danger : theme.status.income }} />
                 <Text numberOfLines={2} accessibilityLiveRegion="polite" style={[theme.typography.caption, { flex: 1, color: voiceState === 'error' ? theme.colors.danger : theme.colors.textSecondary }]}>{voiceError || voicePreview || voiceStatus}</Text>
               </Animated.View>
