@@ -68,9 +68,14 @@ export function formatMonthLabel(value?: string) {
 }
 
 export function formatCurrency(value: number, currency = 'USD') {
+  // Hermes throws "Malformed currency code" for empty or unknown codes.
+  // Keep the formatter defensive because API payloads may omit currency.
+  const normalized = /^[A-Za-z]{3}$/.test((currency ?? '').trim())
+    ? currency.trim().toUpperCase()
+    : 'UYU';
   return new Intl.NumberFormat('es-UY', {
     style: 'currency',
-    currency,
+    currency: normalized,
     maximumFractionDigits: 2,
   }).format(value);
 }

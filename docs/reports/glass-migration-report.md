@@ -68,3 +68,13 @@ review surface.
 - Some migrated labels remain English where the glass prototype used English.
   The pre-existing Spanish copy is preserved in the flows covered by smoke tests.
 - No PR was opened; the branch is local and unpushed.
+
+## Native follow-up (device)
+
+- expo-blur 55+ requires a `BlurTargetView` on Android; the earlier
+  `experimentalBlurMethod` without `blurTarget` fell back to a plain translucent
+  view. `Screen` now registers its content target and floating chrome blurs it.
+  Verified on the connected Android device (compact header blur visible).
+- `formatCurrency` now rejects empty or malformed currency codes instead of
+  letting Hermes throw `Malformed currency code` during render.
+

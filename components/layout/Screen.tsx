@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { ReactNode, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { ReactNode, useCallback, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -21,6 +21,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurTargetView } from 'expo-blur';
 
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
 import { GlassPressable } from '@/components/glass/GlassPressable';
@@ -28,6 +29,7 @@ import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Tag } from '@/components/controls';
 import { NavigationRail } from '@/components/layout/NavigationRail';
 import { useTheme } from '@/lib/app-state';
+import { useBlurTarget } from '@/lib/blur-target';
 import { cleanDisplayText } from '@/lib/format';
 import { dockScroll } from '@/lib/dock-scroll';
 
@@ -68,6 +70,16 @@ export function Screen({
   const desktop = width >= 1024;
   const scrollY = useSharedValue(0);
   const [compactVisible, setCompactVisible] = useState(false);
+  const targetRef = useRef<View | null>(null);
+  const blurTarget = useBlurTarget();
+
+  const registerTarget = useCallback(() => {
+    if (targetRef.current) blurTarget?.setTarget(targetRef.current);
+  }, [blurTarget]);
+
+  useFocusEffect(useCallback(() => {
+    registerTarget();
+  }, [registerTarget]));
 
   const handleScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -110,12 +122,13 @@ export function Screen({
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <AmbientBackground animated={ambientAnimated} />
       <View style={[styles.flex, desktop ? styles.desktopRow : null]}>
         {desktop ? <NavigationRail /> : null}
         <KeyboardAvoidingView style={styles.flex} behavior="padding" enabled={Platform.OS === 'ios'}>
           <View style={styles.flex}>
-            {scrollable ? (
+            <BlurTargetView ref={targetRef} onLayout={registerTarget} style={styles.flex}>
+              <AmbientBackground animated={ambientAnimated} />
+              {scrollable ? (
               <Animated.ScrollView
                 style={[styles.flex, contentStyle]}
                 onScroll={handleScroll}
@@ -149,6 +162,7 @@ export function Screen({
                 </ScrollView>
               </View>
             )}
+            </BlurTargetView>
 
             <Animated.View pointerEvents="box-none" style={[styles.compactBarWrap, compactStyle]}>
               {compactVisible ? (

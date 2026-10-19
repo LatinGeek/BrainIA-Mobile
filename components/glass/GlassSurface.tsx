@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/lib/app-state';
+import { useBlurTarget } from '@/lib/blur-target';
 import { useReduceTransparency } from '@/lib/hooks';
 import { GlassLevel } from '@/lib/themes';
 
@@ -44,6 +45,7 @@ export function GlassSurface({
   style,
   contentStyle,
   bordered = true,
+  disableBlur = false,
 }: {
   children?: ReactNode;
   level?: GlassLevel;
@@ -57,19 +59,23 @@ export function GlassSurface({
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   bordered?: boolean;
+  disableBlur?: boolean;
 }) {
   const theme = useTheme();
   const reduceTransparency = useReduceTransparency();
   const nested = useContext(InsideGlass);
+  const blurTarget = useBlurTarget();
   const gradientId = `glass-edge-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const paddingValue = padding === 'none' ? 0 : padding === 'sm' ? theme.spacing.sm : padding === 'lg' ? theme.spacing.lg : theme.spacing.md;
   const borderRadius = theme.radius[radius];
   const fill = theme.glass.fill[level];
   const tint = toneTint[tone](theme);
 
-  // Android blur is expensive. Keep real blur for floating chrome and strong
-  // panels only; everything else uses the translucent fill.
-  const useBlur = !reduceTransparency && !nested && !(Platform.OS === 'android' && !chrome && level !== 'strong');
+  // expo-blur SDK 55+ requires a BlurTargetView on Android. The focused Screen
+  // registers its content here; floating chrome blurs that content. Non-chrome
+  // surfaces stay translucent to avoid blurring themselves inside the target.
+  const canBlurAndroid = chrome && Boolean(blurTarget?.targetRef.current);
+  const useBlur = !disableBlur && !reduceTransparency && !nested && (Platform.OS === 'android' ? canBlurAndroid : true);
   const backgroundColor = reduceTransparency
     ? theme.glass.solid[level]
     : chrome
@@ -92,9 +98,11 @@ export function GlassSurface({
     >
       {useBlur ? (
         <BlurView
+          key={`blur-${blurTarget?.version ?? 0}-${level}`}
           intensity={theme.glass.blur[level]}
           tint="dark"
-          experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+          blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+          blurTarget={Platform.OS === 'android' ? blurTarget?.targetRef : undefined}
           style={StyleSheet.absoluteFill}
         />
       ) : null}

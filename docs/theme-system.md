@@ -30,6 +30,11 @@ Rules:
 
 - Real blur is reserved for `strong`/chrome on Android; other levels use the
   translucent fill.
+- Android needs a real blur target: expo-blur 55+ renders only a translucent
+  view unless the `BlurView` receives `blurTarget`. `Screen` wraps its content
+  in a `BlurTargetView` and registers it; the dock, compact header and action
+  bar blur that content. Non-chrome surfaces keep the fill to avoid blurring
+  themselves inside the target.
 - With Reduce Transparency on, every level uses `glass.solid` and no blur.
 - No nested `BlurView` and no more than ~6 live blurs per screen.
 - The specular edge is a one-pixel SVG stroke, not a second border.
