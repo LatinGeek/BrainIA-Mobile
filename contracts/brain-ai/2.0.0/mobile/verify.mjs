@@ -13,10 +13,11 @@ const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mobileDir = path.join(dir, 'mobile');
 const read = name => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
 
-// External trust anchors. The manifest hash is the G1 ledger value; the spec
-// hash is the approved normative document the bundle snapshot was copied from.
-const MANIFEST_SHA256 = '666af99fd84d08d43217c380993abcd1540dac66e9a99f618b43a79b2bebfb55';
-const NORMATIVE_SPEC_SHA256 = '461864a300fd3eb6a611f6f911ef5d111a8ba4e2e013b458858cf08ed31769f1';
+// External trust anchors. The manifest hash is the B02-r4 metadata reseal of the
+// G1-approved bundle (open-items.json records the G1 value this supersedes); the
+// spec hash is the approved normative document the bundle snapshot was copied from.
+const MANIFEST_SHA256 = 'da2a989f6a607439bec3dabc21fbb4331efa58b2765f94e71a6b213ed2fd621c';
+const NORMATIVE_SPEC_SHA256 = 'ee74de0eb890b4acf69b4356daef978934c8553731636093184fb14aae3022a1';
 const SEALED_FILES = [
   'README.md', 'ajv-formats.LICENSE', 'ajv.LICENSE', 'build-bundle.mjs',
   'build-fixtures.mjs', 'canonical.mjs', 'fixtures.json', 'open-items.json',
@@ -34,7 +35,7 @@ const EXTENSION_MANIFEST_SHA256 = 'e4e30a1a662889d93fb3b4325c1c381a49bd88292e096
 
 // 1. Pin the approved manifest and every sealed member independently.
 const manifestBytes = fs.readFileSync(path.join(dir, 'SHA256SUMS.json'));
-assert.equal(sha256(manifestBytes), MANIFEST_SHA256, 'approved G1 manifest');
+assert.equal(sha256(manifestBytes), MANIFEST_SHA256, 'resealed G1 manifest');
 const manifest = JSON.parse(manifestBytes);
 assert.equal(manifest.algorithm, 'sha256', 'manifest algorithm');
 const sealedNames = Object.keys(manifest.files).sort();
