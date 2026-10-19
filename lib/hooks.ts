@@ -1,4 +1,5 @@
 import { DependencyList, useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, Platform } from 'react-native';
 
 export function useDebouncedValue<T>(value: T, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -50,3 +51,51 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
   return { data, loading, error, refresh };
 }
 
+
+function useAccessibilityFlag(
+  read: () => Promise<boolean>,
+  eventName: 'reduceMotionChanged' | 'reduceTransparencyChanged',
+  webQuery: string
+) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const media = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(webQuery) : null;
+      if (!media) return;
+      setEnabled(media.matches);
+      const onChange = (event: MediaQueryListEvent) => setEnabled(event.matches);
+      media.addEventListener?.('change', onChange);
+      return () => media.removeEventListener?.('change', onChange);
+    }
+
+    let active = true;
+    read()
+      .then((value) => {
+        if (active) setEnabled(value);
+      })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener(eventName, setEnabled);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [eventName, read, webQuery]);
+
+  return enabled;
+}
+
+const readReduceMotion = () => AccessibilityInfo.isReduceMotionEnabled();
+// Android has no reduce-transparency setting; the promise resolves false there.
+const readReduceTransparency = () =>
+  Platform.OS === 'ios' ? AccessibilityInfo.isReduceTransparencyEnabled() : Promise.resolve(false);
+
+/** True when the user asked the OS to reduce motion. */
+export function useReduceMotion() {
+  return useAccessibilityFlag(readReduceMotion, 'reduceMotionChanged', '(prefers-reduced-motion: reduce)');
+}
+
+/** True when the user asked the OS to reduce transparency; glass then renders as `theme.glass.solid`. */
+export function useReduceTransparency() {
+  return useAccessibilityFlag(readReduceTransparency, 'reduceTransparencyChanged', '(prefers-reduced-transparency: reduce)');
+}
