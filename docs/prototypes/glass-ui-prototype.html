@@ -605,8 +605,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
 .tl-body { display: grid; gap: 3px; min-width: 0; }
 .tl-body .t { font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
 .tl-body .s { font-size: 12.5px; color: var(--t3); }
-.tl-body .why { font-size: 12px; color: var(--t2); padding: 6px 10px; border-radius: 10px; background: var(--g-inner); border: 1px solid var(--g-inner-stroke); width: fit-content; display: flex; gap: 6px; align-items: center; margin-top: 2px; }
-
+.tl-body 
 /* Accounts */
 .acct-strip { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-padding: 0 16px; }
 .acct-strip::-webkit-scrollbar { display: none; }
@@ -725,20 +724,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
 .gx-info.swap { animation: in-rise var(--d3) var(--ease-out); }
 
 /* Decision */
-.rel-path { display: grid; gap: 4px; }
-.rel-node { padding: 10px 12px; border-radius: 14px; background: var(--g-inner); border: 1px solid var(--g-inner-stroke); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
-.rel-node .t { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
-.rel-node .s { font-size: 11px; color: var(--t3); }
-.rel-edge { display: flex; align-items: center; gap: 6px; padding: 2px 12px; font: 600 10px var(--f-mono); color: var(--lime); text-transform: uppercase; letter-spacing: .06em; }
-.rel-edge .ic { animation: nudge 1.8s var(--ease-soft) infinite; }
-@keyframes nudge { 50% { transform: translateY(3px); } }
 .why { font-size: 13px; color: var(--t2); line-height: 1.5; padding: 10px 12px; border-radius: 14px; background: var(--g-inner); border: 1px solid var(--g-inner-stroke); }
-.leaving { animation: leave 300ms var(--ease-in) forwards; }
-@keyframes leave { to { opacity: 0; transform: translateX(40px) scale(.96); } }
-.stepper { display: grid; gap: 10px; padding: 14px; }
-.progress { height: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
-.progress i { display: block; height: 100%; border-radius: 2px; background: var(--lime); box-shadow: 0 0 10px rgba(196,245,74,.6); transition: width 600ms var(--ease-spring); }
-.raw { font: 600 13.5px var(--f-mono); overflow-wrap: anywhere; }
 .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
 .swatch { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; border: 2px solid transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
 .swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.18); }
@@ -800,6 +786,185 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
 .stack { display: grid; gap: 10px; }
 .stack-sm { display: grid; gap: 6px; }
 
+/* ==========================================================================
+   Review session (one question per card)
+   ========================================================================== */
+.pring { position: relative; flex: none; display: grid; place-items: center; }
+.pring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.pring .trk { fill: none; stroke: rgba(255,255,255,.08); }
+.pring .val { fill: none; stroke: var(--lime); stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(196,245,74,.5)); transition: stroke-dashoffset 900ms var(--ease-out); }
+.pring .in { position: relative; text-align: center; display: grid; }
+.pring .in b { font: 650 26px/1 var(--f-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pring .in b small { font-size: 15px; color: var(--t3); letter-spacing: 0; }
+.pring .in span { font: 600 10px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--t3); margin-top: 4px; }
+.intro .pring .val { animation: ring-in 1100ms var(--ease-out) both 200ms; }
+@keyframes ring-in { from { stroke-dashoffset: var(--len); } }
+.start { padding: 18px; display: grid; gap: 16px; }
+.start-top { display: flex; gap: 16px; align-items: center; }
+.start h3 { margin: 0; font: 600 21px/1.2 var(--f-display); letter-spacing: -.01em; }
+.start .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.topic { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.topic button { padding: 14px; border-radius: 18px; display: grid; gap: 10px; text-align: left; min-height: 104px; align-content: space-between; transition: transform var(--d2) var(--ease-spring); }
+.topic button:active { transform: scale(.97); }
+.topic button[disabled] { opacity: .55; cursor: default; }
+.topic b { font-size: 14px; }
+.topic .s { font-size: 12px; color: var(--t3); }
+.topic .done-t { color: var(--lime); }
+.rauto { padding: 14px; display: flex; gap: 12px; align-items: center; text-align: left; width: 100%; }
+.rauto b { font-size: 14px; }
+
+.screen.focus::after, .screen.focus .topfade { display: none; }
+.sess-h { position: absolute; z-index: 6; top: 54px; left: 16px; right: 16px; display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; }
+.segs { display: flex; gap: 4px; }
+.segs i { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; position: relative; }
+.segs i::after { content: ""; position: absolute; inset: 0; border-radius: inherit; transform: scaleX(0); transform-origin: left; transition: transform 500ms var(--ease-out), background var(--d2); }
+.segs i.ok::after { transform: none; background: var(--lime); box-shadow: 0 0 8px rgba(196,245,74,.6); }
+.segs i.skip::after { transform: none; background: rgba(255,255,255,.4); }
+.segs i.now::after { transform: scaleX(.35); background: rgba(255,255,255,.55); }
+.sess-n { font: 600 12px var(--f-mono); color: var(--t2); font-variant-numeric: tabular-nums; }
+.cstack { position: absolute; z-index: 3; top: 104px; left: 14px; right: 14px; height: 548px; }
+.rcard { --under: color-mix(in srgb, var(--base) 93%, transparent); position: absolute; inset: 0; border-radius: 30px; padding: 20px; display: flex; flex-direction: column; gap: 14px; touch-action: pan-y; user-select: none; transform-origin: 50% 100%; will-change: transform; }
+.rcard.static { position: relative; inset: auto; height: 548px; will-change: auto; }
+.rcard.peek1 { transform: translateY(14px) scale(.95); opacity: .55; filter: saturate(.7); pointer-events: none; }
+.rcard.peek2 { transform: translateY(27px) scale(.9); opacity: .25; pointer-events: none; }
+.rcard.peek2 > * { visibility: hidden; }
+.rcard.top { cursor: grab; }
+.rcard.top.dragging { cursor: grabbing; transition: none; }
+.rcard.top.settle { transition: transform 460ms var(--ease-spring); }
+.rcard.top.fly { transition: transform 300ms var(--ease-in), opacity 300ms var(--ease-in); opacity: 0; }
+.rcard.promote { animation: promote 420ms var(--ease-spring) both; }
+@keyframes promote { from { transform: translateY(14px) scale(.95); opacity: .55; } }
+.rcard.return-r { animation: return-r 460ms var(--ease-spring) both; }
+.rcard.return-l { animation: return-l 460ms var(--ease-spring) both; }
+.rcard.return-u { animation: return-u 460ms var(--ease-spring) both; }
+@keyframes return-r { from { transform: translateX(420px) rotate(22deg); opacity: 0; } }
+@keyframes return-l { from { transform: translateX(-420px) rotate(-22deg); opacity: 0; } }
+@keyframes return-u { from { transform: translateY(-520px); opacity: 0; } }
+.rcard.first { animation: deal 520ms var(--ease-spring) both 120ms; }
+@keyframes deal { from { transform: translateY(80px) scale(.94); opacity: 0; } }
+.swipe-stamp { position: absolute; top: 22px; padding: 6px 12px; border-radius: 10px; font: 700 13px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; opacity: 0; pointer-events: none; border: 2px solid; }
+.swipe-stamp.yes { right: 20px; color: var(--lime); border-color: var(--lime); transform: rotate(8deg); background: rgba(196,245,74,.08); }
+.swipe-stamp.no { left: 20px; color: var(--t1); border-color: rgba(255,255,255,.6); transform: rotate(-8deg); background: rgba(255,255,255,.06); }
+.rc-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rc-type { display: inline-flex; align-items: center; gap: 8px; font: 600 10.5px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--t2); }
+.impact { font-size: 12px; font-weight: 600; color: var(--t2); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.rc-q { margin: 0; font: 600 22px/1.22 var(--f-display); letter-spacing: -.015em; }
+.rc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; scrollbar-width: none; margin: 0 -4px; padding: 0 4px 8px; -webkit-mask-image: linear-gradient(#000 calc(100% - 14px), transparent); mask-image: linear-gradient(#000 calc(100% - 14px), transparent); }
+.rc-body::-webkit-scrollbar { display: none; }
+.rc-body > * { flex: none; }
+.rc-ans { display: grid; gap: 8px; }
+.rc-ans .btn-row { flex-wrap: nowrap; }
+.screen.no-dock::after { display: none; }
+.rc-ans .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px; }
+.rc-ans .chips::-webkit-scrollbar { display: none; }
+.whylink { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--model); min-height: 28px; }
+.why-txt { font-size: 12.5px; color: var(--t2); line-height: 1.45; padding: 10px 12px; border-radius: 14px; background: rgba(116,215,238,.07); border: 1px solid rgba(116,215,238,.2); animation: in-rise 300ms var(--ease-out); }
+.rraw { font: 600 13px var(--f-mono); color: var(--t2); padding: 9px 12px; border-radius: 12px; background: rgba(0,0,0,.25); border: 1px dashed rgba(255,255,255,.14); overflow-wrap: anywhere; width: fit-content; max-width: 100%; }
+.becomes { display: flex; align-items: center; gap: 8px; color: var(--t3); font: 600 10.5px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; }
+.becomes .ic { color: var(--lime); }
+.sug { font: 650 28px/1.1 var(--f-num); letter-spacing: -.03em; display: flex; align-items: center; gap: 10px; }
+.sug .conf-pill { font: 600 11px var(--f-body); letter-spacing: 0; color: var(--income); padding: 3px 8px; border-radius: 99px; background: rgba(159,232,112,.1); }
+.prev { display: grid; padding: 4px 10px; }
+.prev-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 0; font-size: 13px; }
+.prev-r + .prev-r { border-top: 1px solid var(--divider); }
+.prev-r s { color: var(--t3); font: 500 11px var(--f-mono); text-decoration-color: rgba(255,142,133,.7); grid-column: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prev-r .sub { color: var(--t3); font-size: 12px; text-decoration: none; font-family: var(--f-body); grid-column: 1; }
+.prev-r b { grid-column: 1; font-weight: 600; }
+.prev-r .a { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.batch { display: flex; flex-wrap: wrap; gap: 6px; }
+.batch button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px 0 8px; border-radius: 10px; font: 600 11.5px var(--f-mono); color: var(--t1); background: var(--g1); border: 1px solid var(--g-stroke); transition: opacity var(--d2), background var(--d2); }
+.batch button .box { width: 16px; height: 16px; border-radius: 5px; display: grid; place-items: center; background: var(--lime); color: var(--on-lime); }
+.batch button[aria-pressed="false"] { opacity: .5; }
+.batch button[aria-pressed="false"] .box { background: transparent; border: 1.5px solid rgba(255,255,255,.4); color: transparent; }
+.opts { display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; min-height: 60px; border-radius: 18px; background: var(--g1); border: 1px solid var(--g-stroke); text-align: left; transition: transform var(--d2) var(--ease-spring), background var(--d2); position: relative; overflow: hidden; }
+.opt:hover { background: var(--g2); }
+.opt:active { transform: scale(.97); }
+.opt b { font-size: 15px; }
+.opt .likely { display: grid; gap: 4px; justify-items: end; font: 600 10.5px var(--f-mono); color: var(--t3); }
+.opt .lk { width: 54px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+.opt .lk i { display: block; height: 100%; background: var(--lime); border-radius: 2px; }
+.opt.best { border-color: rgba(196,245,74,.5); background: linear-gradient(150deg, rgba(196,245,74,.14), rgba(196,245,74,.03)); }
+.opt kbd { position: absolute; top: 6px; right: 8px; font-size: 9px; padding: 0 4px; opacity: .55; }
+.vs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 8px; }
+.vs .ent { padding: 12px; display: grid; gap: 8px; align-content: start; border-radius: 18px; background: var(--g1); border: 1px solid var(--g-stroke); min-width: 0; }
+.vs .ent b { font-size: 14px; overflow-wrap: anywhere; line-height: 1.25; }
+.vs .ent span { font-size: 11.5px; color: var(--t3); }
+.vs .eq { align-self: center; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--selected); color: var(--on-white); font: 700 16px var(--f-body); }
+.checks { display: grid; gap: 6px; }
+.checks span { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--t2); }
+.checks .ic { color: var(--lime); }
+.chain { display: grid; gap: 4px; }
+.chain .n { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--g1); border: 1px solid var(--g-stroke); font-weight: 600; }
+.chain .n span { font-size: 11.5px; color: var(--t3); font-weight: 500; }
+.chain .e { display: flex; align-items: center; gap: 6px; padding: 0 14px; font: 600 10.5px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--lime); }
+.rrule { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--g-inner); border: 1px solid var(--g-inner-stroke); }
+.rrule .txt { flex: 1; display: grid; gap: 1px; }
+.rrule b { font-size: 13.5px; } .rrule span { font-size: 12px; color: var(--t3); }
+.sess-f { position: absolute; z-index: 6; left: 16px; right: 16px; bottom: 34px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.swipe-hint { font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 6px; transition: opacity var(--d3); }
+.swipe-hint .ic { animation: hint-nudge 1.8s var(--ease-soft) infinite; }
+@keyframes hint-nudge { 50% { transform: translateX(4px); } }
+.utoast { position: absolute; z-index: 30; left: 16px; right: 16px; bottom: 78px; display: flex; gap: 10px; align-items: center; padding: 8px 8px 8px 10px; border-radius: 20px; font-size: 13.5px; font-weight: 600; overflow: hidden; animation: utoast-in 480ms var(--ease-spring) both; }
+.utoast .ok { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--lime); color: var(--on-lime); flex: none; }
+.utoast .ok.neutral { background: var(--g3); color: var(--t1); }
+.utoast .msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.utoast .btn { min-height: 36px; padding: 0 14px; font-size: 13px; }
+.utoast .timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--lime); transform-origin: left; animation: utimer 5s linear forwards; opacity: .8; }
+.utoast.static .timer { animation: none; transform: scaleX(.6); }
+.utoast.out { animation: utoast-out 240ms var(--ease-in) forwards; }
+@keyframes utoast-in { from { opacity: 0; transform: translateY(20px) scale(.94); } }
+@keyframes utoast-out { to { opacity: 0; transform: translateY(12px) scale(.96); } }
+@keyframes utimer { to { transform: scaleX(0); } }
+.rdone { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding-top: 24px; }
+.rdone h2 { margin: 0; font: 600 30px/1.1 var(--f-display); letter-spacing: -.02em; }
+.rdone .sub { color: var(--t2); margin: -8px 0 0; font-size: 14px; }
+.burst { position: relative; width: 150px; height: 150px; display: grid; place-items: center; }
+.burst .core { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #EAFFA3, var(--lime)); color: var(--on-lime); box-shadow: 0 0 0 10px rgba(196,245,74,.1), 0 0 60px rgba(196,245,74,.5); animation: pop 700ms var(--ease-spring) both 150ms; }
+.burst i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: var(--c); opacity: 0; animation: spark 1100ms var(--ease-out) both; animation-delay: calc(300ms + var(--k) * 18ms); }
+@keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(.6); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-86px) scale(1); } }
+.dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.dstat { padding: 12px 8px; border-radius: 18px; display: grid; gap: 2px; }
+.dstat b { font: 650 24px/1.1 var(--f-num); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.dstat > span { font-size: 11px; color: var(--t3); }
+.changes { width: 100%; text-align: left; }
+.chg { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 10px; }
+.chg + .chg { border-top: 1px solid var(--divider); }
+.chg .t { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chg .s { font-size: 12px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cat-grid button { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 16px; background: var(--g1); border: 1px solid var(--g-stroke); font-size: 13.5px; font-weight: 600; text-align: left; transition: transform var(--d2) var(--ease-spring), background var(--d2); }
+.cat-grid button:hover { background: var(--g2); }
+.cat-grid button:active { transform: scale(.96); }
+
+/* Review section on the page */
+kbd { font: 600 11px var(--f-mono); padding: 2px 7px; border-radius: 6px; background: var(--g2); border: 1px solid var(--g-stroke); border-bottom-width: 2px; color: var(--t1); white-space: nowrap; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 32px; }
+.kpi { padding: 16px; display: grid; gap: 4px; }
+.kpi .v { font: 650 30px/1 var(--f-num); letter-spacing: -.03em; color: var(--lime); }
+.kpi .l { font-size: 13px; color: var(--t2); }
+.kpi .w { font-size: 12px; color: var(--t3); }
+.rv-side { display: grid; gap: 14px; min-width: 0; width: 100%; }
+.rv-side > .glass { padding: 18px; display: grid; gap: 12px; }
+.rv-side h3 { margin: 0; font: 600 16px var(--f-body); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; font-size: 14px; color: var(--t2); }
+.keys > span:nth-child(odd) { display: flex; gap: 6px; }
+.princ { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 12px; }
+.princ .glass { padding: 16px; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; min-width: 0; }
+.princ .pi { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--g2); color: var(--lime); }
+.princ b { font-size: 14.5px; }
+.princ p { margin: 3px 0 0; font-size: 13px; color: var(--t2); }
+.sub-h { margin: 40px 0 14px; font: 600 20px var(--f-display); letter-spacing: -.01em; }
+.tbl-wrap { overflow-x: auto; border-radius: var(--r-xl); }
+.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.tbl th, .tbl td { text-align: left; padding: 14px 16px; vertical-align: top; border-bottom: 1px solid var(--divider); }
+.tbl th { font: 600 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--t3); }
+.tbl td:first-child { color: var(--t1); font-weight: 600; white-space: nowrap; }
+.tbl td:nth-child(2) { color: var(--t3); }
+.tbl td:nth-child(3) { color: var(--t1); }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl .bad { color: var(--expense); } .tbl .good { color: var(--lime); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
   html { scroll-behavior: auto; }
@@ -815,11 +980,11 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
   <a href="#live">Prototype</a>
   <a href="#screens">Screens</a>
   <a href="#layout">Layout</a>
+  <a href="#review">Review</a>
   <a href="#components">Components</a>
   <a href="#motion">Motion</a>
   <a href="#tokens">Tokens</a>
   <a href="#implementation">Handoff</a>
-  <a href="review-experience-prototype.html">Review flow ↗</a>
 </nav>
 
 <main class="wrap" id="top">
@@ -828,8 +993,8 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
       <span class="overline">BrainIA-Mobile · UI rework proposal · v2 · Oct 2026</span>
       <h1>Calm knowledge &amp; money, <em>under glass.</em></h1>
     </div>
-    <p class="lede">A glassmorphism pass over every BrainIA screen and component. v2 adds a motion system, a polish pass on the material, a component system that folds 81 exports and 13 private or screen-local helpers into 24 components, and nine layout adjustments, eight of them already built into the prototype.</p>
-    <div class="chips-new"><span class="newtag">Motion system</span><span class="newtag">Specular glass edge</span><span class="newtag">24-component system</span><span class="newtag">8 layout changes applied</span></div>
+    <p class="lede">A glassmorphism pass over every BrainIA screen and component. v2 adds a motion system, a polish pass on the material, a component system that folds 81 exports and 13 private or screen-local helpers into 24 components, nine layout adjustments, eight of them already built in, and a reworked review experience: one question per card, one tap or swipe, undo instead of confirm dialogs.</p>
+    <div class="chips-new"><span class="newtag">Motion system</span><span class="newtag">Specular glass edge</span><span class="newtag">24-component system</span><span class="newtag">8 layout changes applied</span><span class="newtag">One-minute review</span></div>
     <div class="controls glass">
       <div class="control">
         <span class="lbl" id="amb-l">Ambience</span>
@@ -861,7 +1026,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
       <div>
         <span class="overline">01 · Interactive</span>
         <h2>Live prototype</h2>
-        <p>Everything works: tabs, view switches, charts, the graph, sheets, the review queue and capture. Scroll inside the phone to see the compact header and the dock shrink.</p>
+        <p>Everything works: tabs, view switches, charts, the graph, sheets, the review session and capture. Scroll inside the phone to see the compact header and the dock shrink.</p>
       </div>
       <button class="btn secondary sm" data-act="replay" aria-label="Replay the loading sequence">Replay load</button>
     </div>
@@ -893,10 +1058,60 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
     <div class="props" id="props"></div>
   </section>
 
+  <section class="block" id="review">
+    <div class="block-h">
+      <div>
+        <span class="overline">04 · Review</span>
+        <h2>Review in a minute, one tap at a time</h2>
+        <p>Review used to be a data-entry form with a confirm dialog at the end. It is now a short, focused session: one plain question per card, the likely answer ready for one tap or a swipe, undo instead of dialogs, repeated cases batched, and the obvious ones handled for you.</p>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="glass kpi reveal"><span class="v">1 tap</span><span class="l">per decision</span><span class="w">was 4 to 7 taps plus a confirm dialog</span></div>
+      <div class="glass kpi reveal"><span class="v">~1 min</span><span class="l">for a full queue of 6</span><span class="w">shown up front, before you start</span></div>
+      <div class="glass kpi reveal"><span class="v">0</span><span class="l">confirm dialogs</span><span class="w">every answer is undoable for 5 seconds</span></div>
+      <div class="glass kpi reveal"><span class="v">12</span><span class="l">obvious matches auto-handled</span><span class="w">listed and reversible, never silent</span></div>
+    </div>
+    <div class="live">
+      <div id="review-phone"></div>
+      <div class="rv-side">
+        <div class="glass reveal"><h3>Try it</h3>
+          <span class="small t2">Start a session, then swipe or drag a card right to accept and left to skip. The same flow runs in the live prototype above, from the Revisar tab or the first highlight on Today.</span>
+          <div class="keys">
+            <span><kbd>→</kbd><kbd>Enter</kbd></span><span>Accept the suggested answer</span>
+            <span><kbd>←</kbd></span><span>Skip for now</span>
+            <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span>Pick an option on multiple-choice cards</span>
+            <span><kbd>Z</kbd></span><span>Undo the last answer</span>
+            <span><kbd>Esc</kbd></span><span>Leave; progress is kept</span>
+          </div>
+          <div class="btn-row"><button class="btn secondary sm" data-act="rreset">Reset review demo</button></div>
+        </div>
+        <div class="princ" id="rvPrinciples"></div>
+      </div>
+    </div>
+    <h3 class="sub-h">Before and after</h3>
+    <div class="glass tbl-wrap reveal"><table class="tbl">
+      <thead><tr><th></th><th>Current Review tab</th><th>Review session</th></tr></thead>
+      <tbody id="compareRows"></tbody>
+    </table></div>
+    <h3 class="sub-h">Every gesture has a button</h3>
+    <div class="glass tbl-wrap reveal"><table class="tbl">
+      <thead><tr><th>Action</th><th>Gesture</th><th>Button</th><th>Keyboard</th><th>Screen reader</th></tr></thead>
+      <tbody>
+        <tr><td>Accept the suggestion</td><td>Swipe right</td><td>Lime answer button on the card</td><td><kbd>→</kbd> <kbd>Enter</kbd></td><td>Custom action “Accept”</td></tr>
+        <tr><td>Choose another answer</td><td>None</td><td>Option tiles, chips, “Something else…”</td><td><kbd>1</kbd>–<kbd>3</kbd></td><td>Each option is a button</td></tr>
+        <tr><td>Skip for now</td><td>Swipe left</td><td>Skip, under the card</td><td><kbd>←</kbd></td><td>Custom action “Skip”</td></tr>
+        <tr><td>Undo</td><td>None</td><td>Undo in the toast (5 s) and in the summary (24 h)</td><td><kbd>Z</kbd></td><td>Toast is a polite live region with an Undo button</td></tr>
+        <tr><td>Why this suggestion?</td><td>None</td><td>“Why?” link on each card</td><td><kbd>Tab</kbd> then <kbd>Enter</kbd></td><td>Expands inline; focus stays on the card</td></tr>
+        <tr><td>Leave</td><td>None</td><td>Close (×); progress is kept</td><td><kbd>Esc</kbd></td><td>“Close review, 3 left”</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
   <section class="block" id="components">
     <div class="block-h">
       <div>
-        <span class="overline">04 · Components</span>
+        <span class="overline">05 · Components</span>
         <h2>One component system</h2>
         <p>An audit of <code>components/</code> and the screen files found aliases, duplicates and local copies of shared controls. Each card is one consolidated component: what it replaces, its API and its variants, all live.</p>
       </div>
@@ -909,7 +1124,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
   <section class="block" id="motion">
     <div class="block-h">
       <div>
-        <span class="overline">05 · Motion</span>
+        <span class="overline">06 · Motion</span>
         <h2>Motion system</h2>
         <p>Four durations, four curves and one stagger. Motion explains where things came from, confirms an action or shows a value changing; nothing moves for decoration while you read.</p>
       </div>
@@ -920,7 +1135,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
   <section class="block" id="tokens">
     <div class="block-h">
       <div>
-        <span class="overline">06 · Foundations</span>
+        <span class="overline">07 · Foundations</span>
         <h2>Tokens</h2>
         <p>Glass adds a fill ladder, a blur scale with a solid fallback, a specular edge and an ambient light field. Semantic colours keep their names.</p>
       </div>
@@ -931,7 +1146,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
   <section class="block" id="implementation">
     <div class="block-h">
       <div>
-        <span class="overline">07 · Handoff</span>
+        <span class="overline">08 · Handoff</span>
         <h2>Implementation notes</h2>
         <p>How to bring this to Expo without hurting performance, readability or accessibility.</p>
       </div>
@@ -999,6 +1214,11 @@ const ICONS = {
   'calendar': '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
   'globe': '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   'map-pin': '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  'arrow-left': '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  'help-circle': '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  'more-horizontal': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  'grid': '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  'droplet': '<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
   'battery': '<rect x="1" y="6" width="18" height="12" rx="2" ry="2"/><line x1="23" y1="13" x2="23" y2="11"/>',
   'play': '<polygon points="5 3 19 12 5 21 5 3"/>',
   'rotate-ccw': '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
@@ -1045,12 +1265,43 @@ const ACCTS = [
 const ACCT_COLORS = [['#2563EB', 'Blue'], ['#4F46E5', 'Indigo'], ['#7C3AED', 'Violet'], ['#DB2777', 'Pink'], ['#E11D48', 'Rose'], ['#D97706', 'Amber'], ['#059669', 'Emerald'], ['#0891B2', 'Cyan']];
 const toUYU = (a) => (a.cur === 'USD' ? a.bal * FX : a.bal);
 const TOTAL = ACCTS.reduce((s, a) => s + toUYU(a), 0);
-const REVIEW_ITEMS = {
-  r1: { id: 'r1', alias: 'MERPAGO*TIENDAINGLES', sug: 'Tienda Inglesa', path: 'Groceries › Supermarket' },
-  r2: { id: 'r2', alias: 'SPOTIFY P2A7C9', sug: 'Spotify', path: 'Subscriptions › Music' },
-  r3: { id: 'r3', alias: 'DLO*UBER RIDES', sug: 'Uber', path: '' },
-  r4: { id: 'r4', alias: 'ANTEL TIENDA ONLINE', sug: 'Antel', path: 'Utilities › Phone & internet' },
-};
+/* Review queue. Ordered by impact: how many transactions each answer tidies up.
+   Each card asks one plain question and carries its most likely answer. */
+const RQ = [
+  { id: 'q1', type: 'name', topic: 'names', kind: 'Name', icon: 'tag', q: 'What should we call this merchant?', raw: 'MERPAGO*TIENDAINGLES', sug: 'Tienda Inglesa', conf: 93, alts: ['Tienda Inglesa Carrasco', 'TI Supermercado'], tx: 14, amount: 9840,
+    why: 'The same merchant code appears in 14 Santander notifications and in 3 Gmail receipts signed “Tienda Inglesa”.',
+    preview: [['MERPAGO*TIENDAINGLES 1234', '−2,340', 'Today'], ['MERPAGO*TIENDAINGLES 0981', '−1,860', 'Oct 9']] },
+  { id: 'q2', type: 'batch', topic: 'names', kind: 'Clean-up', icon: 'layers', q: 'These 6 look like Spotify. Rename them all?', sug: 'Spotify', conf: 97, tx: 12, amount: 5628,
+    items: ['SPOTIFY P2A7C9', 'SPOTIFY P3B1D2', 'SPOTIFY*PREMIUM', 'PAYPAL *SPOTIFY', 'Spotify AB', 'spotify.com'],
+    why: 'All six share the same monthly amount (UYU 469) and the merchant category “music streaming”.' },
+  { id: 'q3', type: 'category', topic: 'categories', kind: 'Category', icon: 'grid', q: 'Where does Uber belong?', raw: 'DLO*UBER RIDES', tx: 7, amount: 3180,
+    options: [{ l: 'Transport', icon: 'map-pin', p: 82 }, { l: 'Eating out', icon: 'coffee', p: 11 }, { l: 'Work trips', icon: 'briefcase', p: 7 }],
+    why: 'Most charges are UYU 180–620 between 07:00 and 09:00, which looks like commuting rather than Uber Eats.' },
+  { id: 'q4', type: 'same', topic: 'same', kind: 'Same company?', icon: 'link', q: 'Are these the same company?', tx: 5, amount: 4210,
+    a: { name: 'Antel', sub: 'Phone & internet · 9 charges' }, b: { name: 'ANTEL TIENDA ONLINE', sub: 'Online store · 5 charges' },
+    evidence: ['Same tax ID (RUT 21 1234 5678)', 'Both paid with Visa Crédito', 'Same billing address'],
+    why: 'Treating them as one company keeps phone and internet spending in one place in Money and search.' },
+  { id: 'q5', type: 'relation', topic: 'links', kind: 'Connection', icon: 'share-2', q: 'Is Spotify one of your subscriptions?', tx: 12, amount: 5628,
+    from: 'Spotify', rel: 'part of', to: 'Subscriptions',
+    why: '12 charges for the same amount on the 14th of every month since March.' },
+  { id: 'q6', type: 'label', topic: 'categories', kind: 'Label', icon: 'droplet', q: 'Tag these 3 fuel purchases as Transport?', tx: 3, amount: 5400,
+    preview: [['ANCAP RUTA 8', '−2,100', 'Oct 13'], ['PETROBRAS CARRASCO', '−1,900', 'Oct 4'], ['ANCAP RAMBLA', '−1,400', 'Sep 27']],
+    why: 'The three merchants are fuel stations; you already put similar purchases under Transport.' },
+];
+const RQ_BY = Object.fromEntries(RQ.map((q) => [q.id, q]));
+const RQ_ALL = RQ.map((q) => q.id);
+const RTOPICS = [{ k: 'names', l: 'Names & clean-up', icon: 'tag' }, { k: 'categories', l: 'Categories & labels', icon: 'grid' }, { k: 'same', l: 'Same company', icon: 'link' }, { k: 'links', l: 'Connections', icon: 'share-2' }];
+const RCATS = [['Transport', 'map-pin'], ['Groceries', 'shopping-cart'], ['Eating out', 'coffee'], ['Housing', 'home'], ['Utilities', 'zap'], ['Health', 'heart'], ['Subscriptions', 'repeat'], ['Work trips', 'briefcase']];
+const RAUTO = [['Mercado Pago', 'MERCADOPAGO*MP 4410 → Mercado Pago', 99], ['Disco → Groceries', 'DISCO 12 POCITOS, 4 purchases', 98], ['Netflix', 'NETFLIX.COM 8812 → Netflix', 99]];
+const SECONDS_PER_CARD = 8;
+const rPending = (s) => RQ_ALL.filter((id) => !s.rvResolved.includes(id));
+const rTime = (n) => { const secs = n * SECONDS_PER_CARD; return secs < 60 ? `About ${Math.max(10, Math.round(secs / 10) * 10)} seconds` : `About ${Math.round(secs / 60)} min`; };
+const rTx = (ids) => ids.reduce((n, id) => n + RQ_BY[id].tx, 0);
+const rAccept = (q) => ({ name: `Call it ${q.sug}`, batch: 'Rename all', category: q.options && q.options[0].l, same: 'Same company', relation: 'Yes, connect them', label: 'Yes, Transport' }[q.type]);
+const rDone = (q, choice) => ({
+  name: `Named ${choice || q.sug}`, batch: `Renamed ${choice || ''} to ${q.sug}`, category: `Uber → ${choice}`, same: choice === 'different' ? 'Kept Antel separate' : 'Merged into Antel',
+  relation: choice === 'no' ? 'Not connected' : 'Spotify → Subscriptions', label: choice === 'no' ? 'Left fuel untagged' : 'Fuel → Transport',
+}[q.type]);
 const GRAPH = {
   nodes: [
     { id: 'fin', label: 'Finance', x: 160, y: 112, r: 22, kind: 'category', events: 412 },
@@ -1340,22 +1591,66 @@ C.explorer = (focus = 'sub') => `<div class="glass panel gx-host">
   <div class="tint gx-info" aria-live="polite">${gxInfo(focus)}</div>
   <div class="legend"><span><i style="background:var(--lime);border-radius:50%"></i>Category</span><span><i style="background:var(--model);border-radius:50%"></i>Service</span><span><i style="background:var(--transfer);border-radius:50%"></i>Merchant</span></div></div>`;
 
-/* DecisionCard: ResolutionForm, AliasDecisionForm, MergePreview, SemanticCandidateCard */
-C.relDecision = (rule = false, withActions = false) => `<div class="glass panel rel-card">
-  <div class="hstack">${C.prov('model', 'Suggested')}${C.tag('Primary area')}${C.conf(0.91)}</div>
-  <div class="rel-path"><div class="rel-node"><span class="t">Spotify</span><span class="s">Service</span></div><div class="rel-edge">${ic('arrow-down', 14)}Es parte de</div><div class="rel-node"><span class="t">Subscriptions</span><span class="s">Category</span></div></div>
-  <div class="why">12 monthly charges with the same amount pattern were classified under Subscriptions, and the merchant name matches a known music service.</div>
-  ${C.seg([{ v: 'once', l: 'Apply once' }, { v: 'rule', l: 'Create rule' }], rule ? 'rule' : 'once', 'rule')}
-  <span class="small muted">${rule ? 'Matching suggestions will be applied automatically from now on.' : 'Only this suggestion is affected.'}</span>
-  ${withActions ? C.btnGroup(C.btn('Reject', { v: 'ghost', size: 'sm', act: 'noop' }), C.btn('Approve', { size: 'sm', icon: 'check', act: 'noop' })) : ''}</div>`;
-C.aliasDecision = (item) => `<div class="glass panel">
-  <div class="stack-sm"><span class="overline">How it appeared</span><span class="raw">${esc(item.alias)}</span></div>
-  <div class="stack-sm"><span class="field-l">Friendly name</span>${C.chipGroup([{ l: item.sug, sel: true }, { l: item.sug.toUpperCase() }, { l: `${item.sug} Online` }], { mode: 'single' })}</div>
-  ${C.field({ label: 'Canonical label', value: item.sug, ph: 'Person, organization, place, app, or topic' })}
-  ${C.group([C.row({ title: item.path || 'Choose a category', sub: 'Category', lead: C.itile('tag', { size: 'sm' }), act: 'noop' })], 'thin')}
-  <div class="stack-sm"><span class="field-l">Same as an existing entity?</span>
-    ${C.group([C.row({ title: `${item.sug} Carrasco`, sub: 'Merchant · 3 alternate names', lead: C.itile('map-pin', { size: 'sm' }), trail: C.chip('Same', true) }), C.row({ title: `${item.sug} Online`, sub: 'Merchant · 1 alternate name', lead: C.itile('globe', { size: 'sm' }), trail: C.chip('Same', false) })], 'thin')}</div>
-  <div class="stack-sm"><span class="field-l">Role</span>${C.chipGroup([{ l: 'Merchant', sel: true }, { l: 'Persona' }, { l: 'Organización' }, { l: 'App' }, { l: 'Proveedor', sel: true }])}</div></div>`;
+/* DecisionCard: one plain question with its likely answer (replaces ResolutionForm,
+   AliasDecisionForm, MergePreview and SemanticCandidateCard). Six kinds share one shell. */
+C.pring = (done, total, size = 104, stroke = 9, label = 'done') => {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - (total ? done / total : 1));
+  return `<div class="pring" style="width:${size}px;height:${size}px"><svg viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle class="trk" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}"/><circle class="val" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}" style="--len:${c}px;stroke-dasharray:${c}px;stroke-dashoffset:${off}px"/></svg>${label !== null ? `<div class="in"><b>${done}<small>/${total}</small></b>${label ? `<span>${label}</span>` : ''}</div>` : ''}</div>`;
+};
+const RCARD = {};
+RCARD.name = (q) => ({
+  body: `<span class="rraw">${esc(q.raw)}</span>
+    <span class="becomes">${ic('arrow-down', 14)}becomes</span>
+    <span class="sug">${esc(q.sug)}<span class="conf-pill">${q.conf}% sure</span></span>
+    <div class="tint prev">${q.preview.map(([r, a, d]) => `<div class="prev-r"><s>${esc(r)}</s><b>${esc(q.sug)} <span class="small muted" style="font-weight:500">· ${d}</span></b><span class="a">${a}</span></div>`).join('')}</div>`,
+  ans: `${C.btn(rAccept(q), { full: true, act: 'ranswer', val: 'accept', icon: 'check' })}
+    <div class="chips">${q.alts.map((a) => `<button class="chip" data-act="ranswer" data-v="alt:${esc(a)}">${esc(a)}</button>`).join('')}<button class="chip" data-act="sheet" data-v="rname">${ic('edit-2', 13)}Edit</button></div>`,
+});
+RCARD.batch = (q, s) => {
+  const on = q.items.length - s.rvOff.length;
+  return {
+    body: `<div class="batch">${q.items.map((it, i) => `<button aria-pressed="${!s.rvOff.includes(i)}" data-act="rbatch" data-v="${i}"><span class="box">${ic('check', 11)}</span>${esc(it)}</button>`).join('')}</div>
+      <span class="becomes">${ic('arrow-down', 14)}all become</span>
+      <span class="sug">${esc(q.sug)}<span class="conf-pill">${q.conf}% sure</span></span>
+      <span class="small muted">Untick any that aren't Spotify.</span>`,
+    ans: `${C.btn(on ? `Rename ${on === q.items.length ? 'all ' : ''}${on}` : 'Nothing selected', { full: true, act: 'ranswer', val: 'accept', icon: 'check', disabled: !on })}
+      <div class="chips"><button class="chip" data-act="sheet" data-v="rname">${ic('edit-2', 13)}Use a different name</button></div>`,
+  };
+};
+RCARD.category = (q) => ({
+  body: `<span class="rraw">${esc(q.raw)}</span>
+    <div class="opts">${q.options.map((o, i) => `<button class="opt ${i === 0 ? 'best' : ''}" data-act="ranswer" data-v="opt:${esc(o.l)}" aria-label="${esc(o.l)}, ${o.p} percent likely"><kbd aria-hidden="true">${i + 1}</kbd>${C.itile(o.icon, { color: i === 0 ? 'var(--lime)' : null })}<b>${esc(o.l)}</b><span class="likely">${i === 0 ? 'Most likely' : `${o.p}%`}<span class="lk"><i style="width:${o.p}%"></i></span></span></button>`).join('')}</div>`,
+  ans: `<button class="btn ghost full" data-act="sheet" data-v="rcat">${ic('more-horizontal', 17)}Something else…</button>`,
+});
+RCARD.same = (q) => ({
+  body: `<div class="vs"><div class="ent">${C.itile('wifi', { size: 'sm', color: 'var(--model)' })}<b>${esc(q.a.name)}</b><span>${esc(q.a.sub)}</span></div><span class="eq" aria-hidden="true">=</span><div class="ent">${C.itile('wifi', { size: 'sm' })}<b>${esc(q.b.name)}</b><span>${esc(q.b.sub)}</span></div></div>
+    <div class="checks">${q.evidence.map((e) => `<span>${ic('check', 15)}${esc(e)}</span>`).join('')}</div>`,
+  ans: `<div class="btn-row">${C.btn('Different', { v: 'secondary', act: 'ranswer', val: 'different' })}${C.btn('Same company', { act: 'ranswer', val: 'accept', icon: 'check' })}</div>`,
+});
+RCARD.relation = (q, s) => ({
+  body: `<div class="chain"><div class="n">${esc(q.from)}<span>Service</span></div><div class="e">${ic('arrow-down', 14)}${esc(q.rel)}</div><div class="n">${esc(q.to)}<span>Category</span></div></div>
+    <div class="rrule"><span class="txt"><b>Do this automatically next time</b><span>Future charges like this are connected for you.</span></span><button class="switch" role="switch" aria-checked="${s.rvRule}" aria-label="Do this automatically next time" data-act="rrule"></button></div>`,
+  ans: `<div class="btn-row">${C.btn('No', { v: 'secondary', act: 'ranswer', val: 'no' })}${C.btn(rAccept(q), { act: 'ranswer', val: 'accept', icon: 'check' })}</div>`,
+});
+RCARD.label = (q) => ({
+  body: `<div class="tint prev">${q.preview.map(([r, a, d]) => `<div class="prev-r"><b>${esc(r)}</b><span class="sub">Fuel station · ${d}</span><span class="a">${a}</span></div>`).join('')}</div>
+    <span class="becomes">${ic('arrow-down', 14)}tagged as</span><span class="sug" style="font-size:26px">${C.itile('map-pin', { size: 'sm', color: 'var(--lime)' })}Transport</span>`,
+  ans: `<div class="btn-row">${C.btn('Not transport', { v: 'secondary', act: 'ranswer', val: 'no' })}${C.btn(rAccept(q), { act: 'ranswer', val: 'accept', icon: 'check' })}</div>`,
+});
+C.decision = (q, s, cls = 'static') => {
+  const c = RCARD[q.type](q, s);
+  const top = cls.includes('top') || cls.includes('static');
+  return `<article class="glass strong rcard ${cls}" data-id="${q.id}" aria-label="${esc(q.q)}" ${top ? '' : 'aria-hidden="true" inert'}>
+    <span class="swipe-stamp yes" aria-hidden="true">${esc(q.type === 'category' ? q.options[0].l : 'Accept')}</span><span class="swipe-stamp no" aria-hidden="true">Skip</span>
+    <div class="rc-meta"><span class="rc-type">${C.itile(q.icon, { size: 'sm' })}${esc(q.kind)}</span><span class="impact" title="${fmt(q.amount)}">${ic('check', 13)}Tidies ${q.tx} transactions</span></div>
+    <h3 class="rc-q">${esc(q.q)}</h3>
+    <div class="rc-body">${c.body}${s.rvWhy && top ? `<div class="why-txt">${esc(q.why)}</div>` : ''}<div style="margin-top:auto"><button class="whylink" data-act="rwhy" aria-expanded="${!!s.rvWhy}">${ic('help-circle', 14)}${s.rvWhy ? 'Hide why' : 'Why?'}</button></div></div>
+    <div class="rc-ans">${c.ans}</div>
+  </article>`;
+};
+C.rSheetCat = () => C.sheet('Where does Uber belong?', `${C.field({ ph: 'Search or create a category', search: true, icon: 'search', aria: 'Search or create a category' })}<div class="cat-grid">${RCATS.map(([l, i]) => `<button data-act="ranswer" data-v="opt:${l}">${C.itile(i, { size: 'sm' })}${l}</button>`).join('')}</div>`);
+C.rSheetName = (s) => { const q = RQ_BY[s.rvOrder[s.rvIdx]] || RQ[0]; return C.sheet('Name it yourself', `<label class="field"><span class="field-box">${ic('edit-2', 18)}<input id="rname-in" value="${esc(q.sug)}" aria-label="Name"></span></label><span class="small muted">Used everywhere this merchant appears: Money, search and the graph.</span>${C.btn('Save name', { full: true, act: 'ranswer', val: 'custom', icon: 'check' })}`); };
+C.rSheetAuto = () => C.sheet('Handled for you', `<span class="small t2">BrainIA confirms a match on its own only when it is at least 95% sure. Each one stays reversible.</span>${C.group(RAUTO.map(([t, sub, c]) => C.row({ title: t, sub: `${sub} · ${c}%`, lead: C.itile('check', { size: 'sm', color: 'var(--lime)' }), trail: C.btn('Undo', { v: 'ghost', size: 'sm', act: 'rauto-undo' }) })))}<div class="rrule"><span class="txt"><b>Handle obvious matches automatically</b><span>Only names and duplicate merchants, never money amounts.</span></span><button class="switch" role="switch" aria-checked="true" aria-label="Handle obvious matches automatically" data-act="switch"></button></div>`);
 
 /* CaptureForm (one form with a mode prop) */
 C.voice = (rec = false) => `<div class="voice"><button class="voice-btn ${rec ? 'rec' : ''}" data-act="voice" aria-label="${rec ? 'Listening, release to transcribe' : 'Hold to record a voice note'}" aria-pressed="${rec}">${ic('mic', 32)}</button>${rec ? `<div class="wave" aria-hidden="true">${'<i></i>'.repeat(7)}</div>` : ''}<small>${rec ? 'Listening… release to transcribe' : 'Hold to record a voice note'}</small></div>`;
@@ -1412,7 +1707,7 @@ C.quick = (items) => `<div class="quick">${items.map((q) => `<button class="quic
 /* ==========================================================================
    Screens. Each returns { title, body, bar?, noCbar? }.
    ========================================================================== */
-const PARENT = { today: 'today', loading: 'today', settings: 'today', insight: 'today', discover: 'discover', results: 'discover', entity: 'discover', capture: 'capture', money: 'money', txn: 'money', review: 'review' };
+const PARENT = { rsession: 'review', rdone: 'review', today: 'today', loading: 'today', settings: 'today', insight: 'today', discover: 'discover', results: 'discover', entity: 'discover', capture: 'capture', money: 'money', txn: 'money', review: 'review' };
 const DETAIL = new Set(['settings', 'insight', 'results', 'entity', 'txn']);
 const S = {};
 
@@ -1432,7 +1727,7 @@ S.today = (s) => ({ title: 'Today', body: `
   </button>
   ${C.quick([{ icon: 'arrow-up-right', l: 'Gasto', act: 'quick', v: 'expense' }, { icon: 'arrow-down-left', l: 'Ingreso', act: 'quick', v: 'income' }, { icon: 'file-text', l: 'Nota', act: 'quick', v: 'note' }, { icon: 'search', l: 'Buscar', act: 'tab', v: 'discover' }])}
   ${C.brief([
-    ...(s.queue.length ? [{ origin: 'pending', title: `${s.queue.length} data decision${s.queue.length === 1 ? '' : 's'} need review`, summary: 'Confirming names and categories keeps search and money summaries readable.', act: 'tab', val: 'review', tone: 't-review' }] : []),
+    ...(rPending(s).length ? [{ origin: 'pending', title: `${rPending(s).length} quick decision${rPending(s).length === 1 ? '' : 's'} to review`, summary: `${rTime(rPending(s).length)}. One tap each; tidies ${rTx(rPending(s))} transactions.`, act: 'rstart', val: '', tone: 't-review' }] : []),
     { origin: 'model', title: 'Subscriptions rose 18% this cycle', summary: 'Two new monthly charges appeared since September: a streaming add-on and a cloud storage plan.', act: 'go', val: 'insight' },
     { origin: 'model', title: 'A quiet week for spending', summary: 'You spent 22% less than your four-week average, mostly from fewer eating-out purchases.', act: 'go', val: 'insight' },
     { origin: 'captured', title: 'Largest spending area', summary: 'Housing leads this cycle with UYU 18,500, followed by Groceries.', act: 'tab', val: 'money' },
@@ -1511,48 +1806,59 @@ S.money = (s) => {
 };
 
 S.review = (s) => {
-  const q = s.queue;
-  const item = REVIEW_ITEMS[s.rsel] || REVIEW_ITEMS[q[0]];
-  const idx = item ? Math.max(0, q.indexOf(item.id)) : 0;
-  const resolved = 31 + (4 - q.length) + (s.relDone ? 1 : 0);
-  let body = '', bar;
-  if (s.review === 'entities') {
-    if (!q.length) body = C.state({ kind: 'success', title: 'All caught up', desc: 'Every name and category has a decision. New ones appear here as activity arrives.' });
-    else {
-      body = `<div class="glass stepper">
-        <div class="between"><span class="label">Decision <b class="tnum" style="color:var(--t1)">${idx + 1}</b> of <span class="tnum">${q.length}</span></span><div class="hstack" style="gap:6px">${C.iconBtn('chevron-left', 'Previous decision', { cls: 'sm', act: 'rstep', val: '-1', size: 16 })}${C.iconBtn('chevron-right', 'Next decision', { cls: 'sm', act: 'rstep', val: '1', size: 16 })}</div></div>
-        <div class="progress" aria-hidden="true"><i style="width:${((4 - q.length + idx + 1) / 4) * 100}%"></i></div>
-        <div class="chips scroll-x" style="margin:0 -14px;padding:2px 14px">${q.map((id) => C.chip(REVIEW_ITEMS[id].sug, id === item.id, { act: 'rsel', val: id, icon: REVIEW_ITEMS[id].path ? 'tag' : 'alert-circle' })).join('')}</div>
-      </div>
-      <div class="decision">${C.aliasDecision(item)}</div>
-      ${C.collapsible('Incoming activity', 'Recent events available for review.', C.timeline([
-        { icon: 'bell', title: 'Compra aprobada', sub: 'Santander notification · Expense', at: '13:42' },
-        { icon: 'mail', title: 'Tu recibo de Spotify', sub: 'Gmail via Make · Receipt', at: '08:06' },
-        { icon: 'smartphone', title: 'Pago recibido', sub: 'Mercado Pago · Income', at: 'Yesterday' }]))}`;
-      bar = `${C.btn('Later', { v: 'ghost', act: 'later' })}${C.btn('Ignore', { v: 'secondary', act: 'ignore' })}${C.btn('Accept', { icon: 'check', act: 'accept' })}`;
-    }
-  }
-  if (s.review === 'relations') {
-    if (s.relDone) body = C.state({ kind: 'success', title: 'No relations to confirm', desc: 'Suggested links and duplicate identities appear here when BrainIA finds a meaningful connection.' });
-    else { body = C.relDecision(s.rule); bar = `${C.btn('Reject', { v: 'secondary', act: 'rel', val: 'reject' })}${C.btn('Approve', { icon: 'check', act: 'rel', val: 'approve' })}`; }
-  }
-  if (s.review === 'labels') body = C.group([
-    C.row({ title: 'Supermercado → Groceries', sub: 'Label suggestion · 14 events', lead: C.itile('tag', { size: 'sm' }), trail: C.prov('model', 'Suggested') }),
-    C.row({ title: 'Farmacia → Health', sub: 'Label suggestion · 6 events', lead: C.itile('tag', { size: 'sm' }), trail: C.prov('model', 'Suggested') }),
-    C.row({ title: 'Combustible → Transport', sub: 'Label suggestion · 3 events', lead: C.itile('tag', { size: 'sm' }), trail: C.prov('model', 'Suggested') }),
-  ]);
-  if (s.review === 'resolved') body = C.group([
-    C.row({ title: 'Mercado Pago', sub: 'Named · 2 days ago', lead: C.itile('check', { size: 'sm', color: 'var(--lime)' }), trail: C.prov('user') }),
-    C.row({ title: 'Disco → Groceries', sub: 'Categorised · 3 days ago', lead: C.itile('check', { size: 'sm', color: 'var(--lime)' }), trail: C.prov('user') }),
-    C.row({ title: 'Netflix is part of Subscriptions', sub: 'Relation · last week', lead: C.itile('check', { size: 'sm', color: 'var(--lime)' }), trail: C.prov('user', 'Rule') }),
-  ]);
+  const pend = rPending(s); const done = RQ.length - pend.length;
+  const resuming = s.rvSkipped.length && pend.length && done > 0;
+  const hero = pend.length ? `<div class="glass start">
+      <div class="start-top">${C.pring(done, RQ.length)}<div style="min-width:0">
+        <h3>${resuming ? `Continue · ${pend.length} left` : `${pend.length} quick decision${pend.length === 1 ? '' : 's'}`}</h3>
+        <div class="meta">${C.tag(rTime(pend.length))}${C.tag(`${rTx(pend)} transactions`, 'positive')}</div>
+      </div></div>
+      ${C.btn(resuming ? 'Continue review' : 'Start review', { full: true, act: 'rstart', icon: 'arrow-right' })}
+      <span class="small muted" style="text-align:center">Most important first. One tap each, undo anytime.</span>
+    </div>`
+    : `<div class="glass start" style="justify-items:center;text-align:center">${C.pring(RQ.length, RQ.length)}<h3>All clear</h3><span class="small t2">Every suggestion has an answer. New ones appear as activity arrives, usually after payday.</span></div>`;
   return {
-    title: 'Review', bar,
+    title: 'Review',
     body: `
-    ${C.header({ title: 'Review', sub: 'Small decisions that make search and money summaries readable.', right: C.iconBtn('settings', 'Settings', { act: 'go', val: 'settings' }) })}
-    <div class="grid4">${C.stat({ label: 'Entities', value: q.length, center: true, glass: true, dot: 'var(--pending)', key: 'rq' })}${C.stat({ label: 'Relations', value: s.relDone ? 0 : 1, center: true, glass: true, dot: 'var(--pending)', key: 'rr' })}${C.stat({ label: 'Labels', value: 3, center: true, glass: true, dot: 'var(--t3)', key: 'rl' })}${C.stat({ label: 'Resolved', value: resolved, center: true, glass: true, dot: 'var(--lime)', key: 'rd' })}</div>
-    ${C.seg([{ v: 'entities', l: 'Entities' }, { v: 'relations', l: 'Relations' }, { v: 'labels', l: 'Labels' }, { v: 'resolved', l: 'Done' }], s.review, 'review', { label: 'Review type' })}
-    <div class="view-body">${body}</div>`,
+    ${C.header({ title: 'Review', sub: 'A minute here keeps search and Money tidy.', right: C.iconBtn('settings', 'Settings', { act: 'go', val: 'settings' }) })}
+    ${hero}
+    ${C.section({ title: 'Or pick a topic', sub: 'Start with the kind of decision you feel like making.' }, `<div class="topic">${RTOPICS.map((t) => { const ids = pend.filter((id) => RQ_BY[id].topic === t.k); const all = RQ.filter((q) => q.topic === t.k).length; return `<button class="glass" data-act="rstart" data-v="${t.k}" ${ids.length ? '' : 'disabled'}>${C.itile(t.icon, { size: 'sm', color: ids.length ? null : 'var(--lime)' })}<span><b>${t.l}</b><br><span class="s ${ids.length ? '' : 'done-t'}">${ids.length ? `${ids.length} to answer` : `All ${all} done`}</span></span></button>`; }).join('')}</div>`)}
+    <button class="glass rauto" data-act="sheet" data-v="rauto">${C.itile('cpu', { color: 'var(--model)' })}<span style="flex:1;min-width:0"><b>12 obvious ones handled for you</b><br><span class="small muted">Matches BrainIA was at least 95% sure of. Tap to check them.</span></span>${ic('chevron-right', 16)}</button>
+    ${C.section({ title: 'This week' }, `<div class="grid2">${C.stat({ label: 'Decisions', value: 31 + done, glass: true, icon: 'check', key: 'rwk' })}${C.stat({ label: 'Rules applied', value: 4, glass: true, icon: 'repeat', key: 'rrl' })}</div>`)}`,
+  };
+};
+
+S.rsession = (s, p) => {
+  const order = s.rvOrder; const i = s.rvIdx;
+  const status = (id, k) => { const a = s.rvAnswers.find((x) => x.id === id); return a ? (a.choice === 'skip' ? 'skip' : 'ok') : k === i ? 'now' : ''; };
+  const stack = [order[i + 2], order[i + 1], order[i]].map((id, k) => (id ? C.decision(RQ_BY[id], s, k === 2 ? `top ${(p && p.enter) || ''}` : k === 1 ? 'peek1' : 'peek2') : '')).join('');
+  return {
+    title: 'Review', focus: true,
+    html: `<div class="sess-h">${C.iconBtn('x', `Close review, ${order.length - i} left`, { act: 'rexit', cls: 'sm', size: 16 })}<div class="segs" aria-hidden="true">${order.map((id, k) => `<i class="${status(id, k)}"></i>`).join('')}</div><span class="sess-n" aria-live="polite">${i + 1} of ${order.length}</span></div>
+      <div class="cstack">${stack}</div>
+      <div class="sess-f">${C.btn('Skip', { v: 'secondary', size: 'sm', act: 'rskip', icon: 'arrow-left' })}<span class="swipe-hint" style="opacity:${s.rvAnswers.length ? 0 : 1}">Swipe right to accept ${ic('arrow-right', 14)}</span></div>`,
+  };
+};
+
+S.rdone = (s) => {
+  const answered = s.rvAnswers.filter((a) => a.choice !== 'skip');
+  const skipped = s.rvAnswers.filter((a) => a.choice === 'skip');
+  const neg = (a) => a.choice === 'different' || a.choice === 'no';
+  const tx = answered.reduce((n, a) => n + (neg(a) ? 0 : RQ_BY[a.id].tx), 0);
+  const rules = answered.filter((a) => a.id === 'q5' && !neg(a) && a.rule).length + (answered.some((a) => a.id === 'q2') ? 1 : 0);
+  const secs = Math.max(1, Math.round((s.rvEnd - s.rvStart) / 1000));
+  const colors = ['var(--lime)', 'var(--model)', 'var(--transfer)', 'var(--pending)'];
+  return {
+    title: 'Review', noCbar: true, noDock: true,
+    body: `<div class="rdone">
+    <div class="burst" aria-hidden="true">${Array.from({ length: 16 }, (_, k) => `<i style="--a:${k * 22.5}deg;--k:${k};--c:${colors[k % 4]}"></i>`).join('')}<span class="core">${ic('check', 44)}</span></div>
+    <h2>${skipped.length ? 'Nice work' : 'All clear'}</h2>
+    <p class="sub">${answered.length} decision${answered.length === 1 ? '' : 's'} in ${secs < 60 ? `${secs} seconds` : `${Math.round(secs / 60)} min`}.${skipped.length ? ` ${skipped.length} kept for later.` : ''}</p>
+    <div class="dstats">${[[tx, 'transactions tidied'], [answered.length, 'decisions'], [rules, rules === 1 ? 'rule created' : 'rules created']].map(([v, l], k) => `<div class="glass dstat"><b>${C.count(v, 0, '', `rd${k}`)}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="glass changes"><div class="between" style="padding:12px 12px 4px"><b style="font-size:14px">What changed</b><span class="small muted">Undo any of them for 24 h</span></div>
+      ${answered.map((a) => `<div class="chg">${C.itile(neg(a) ? 'x' : 'check', { size: 'sm', color: neg(a) ? null : 'var(--lime)' })}<div style="min-width:0"><div class="t">${esc(rDone(RQ_BY[a.id], a.label))}</div><div class="s">${RQ_BY[a.id].kind} · ${RQ_BY[a.id].tx} transactions</div></div></div>`).join('') || '<div class="chg"><span></span><span class="small muted">Nothing changed this time.</span></div>'}
+    </div>
+    <div style="display:grid;gap:8px;width:100%">${skipped.length ? C.btn(`Review the ${skipped.length} skipped`, { v: 'secondary', full: true, act: 'rstart', val: 'skipped', icon: 'rotate-ccw' }) : ''}${C.btn('Back to Today', { full: true, act: 'tab', val: 'today' })}</div></div>`,
   };
 };
 
@@ -1725,27 +2031,32 @@ function selectNode(host, id) {
    Phone instances
    ========================================================================== */
 const phones = {};
-const DEFAULT = { screen: 'today', money: 'overview', period: 'month', cur: 'UYU', trend: 'line', cash: 5, radial: null, mix: 'category', capture: 'money', kind: 'expense', review: 'entities', queue: ['r1', 'r2', 'r3', 'r4'], rsel: 'r1', rule: false, relDone: false, sheet: null, color: '#0891B2', node: 'sub', acct: 'a1', justOpened: null, fb: null, rec: false, captured: false, q: '' };
+const DEFAULT = { screen: 'today', money: 'overview', period: 'month', cur: 'UYU', trend: 'line', cash: 5, radial: null, mix: 'category', capture: 'money', kind: 'expense', rvResolved: [], rvSkipped: [], rvOrder: [], rvIdx: 0, rvAnswers: [], rvWhy: false, rvRule: true, rvOff: [], rvToast: null, rvStart: 0, rvEnd: 0, sheet: null, color: '#0891B2', node: 'sub', acct: 'a1', justOpened: null, fb: null, rec: false, captured: false, q: '' };
 
 function phoneHTML(p) {
   const s = p.s;
-  const v = S[s.screen](s);
-  const sheet = s.sheet === 'account' ? C.sheetAccount(s.color) : s.sheet === 'filter' ? C.sheetFilter() : s.sheet === 'adjust' ? C.sheetAdjust() : '';
-  return `<div class="screen ${v.bar ? 'has-bar' : ''}">
-    <div class="amb" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="r1"></i><i class="r2"></i></div>
+  const v = S[s.screen](s, p);
+  const sheets = { account: () => C.sheetAccount(s.color), filter: C.sheetFilter, adjust: C.sheetAdjust, rcat: C.rSheetCat, rname: () => C.rSheetName(s), rauto: C.rSheetAuto };
+  const sheet = sheets[s.sheet] ? sheets[s.sheet]() : '';
+  const base = `<div class="amb" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="r1"></i><i class="r2"></i></div>
     <div class="topfade" aria-hidden="true"></div>
-    <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span><span class="sys">${ic('wifi', 15)}${ic('battery', 20)}</span></div>
+    <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span><span class="sys">${ic('wifi', 15)}${ic('battery', 20)}</span></div>`;
+  if (v.focus) return `<div class="screen focus">${base}${v.html}<span class="home-ind" aria-hidden="true"></span>${sheet}</div>`;
+  return `<div class="screen ${v.bar ? 'has-bar' : ''} ${v.noDock ? 'no-dock' : ''}">${base}
     ${v.noCbar ? '' : `<div class="glass strong chrome cbar">${DETAIL.has(s.screen) ? C.iconBtn('chevron-left', 'Back', { act: 'back', size: 16 }) : '<span></span>'}<b>${esc(v.title)}</b><span></span></div>`}
     <div class="scroll" data-screen="${s.screen}">${v.body}</div>
     ${v.bar ? `<div class="glass strong chrome actionbar">${v.bar}</div>` : ''}
-    ${s.screen === 'loading' ? '' : C.dock(PARENT[s.screen], s.queue.length)}
+    ${s.screen === 'loading' || v.noDock ? '' : C.dock(PARENT[s.screen], rPending(s).length)}
     <span class="home-ind" aria-hidden="true"></span>
     ${sheet}
   </div>`;
 }
+let activePhone = null;
 function mount(el, init) {
   const id = `p${Object.keys(phones).length}`;
-  const p = { id, el, s: { ...DEFAULT, ...init, queue: [...(init.queue || DEFAULT.queue)], hist: [...(init.hist || [])] }, counts: {}, dir: 'tab' };
+  const s = { ...DEFAULT, ...init };
+  ['hist', 'rvResolved', 'rvSkipped', 'rvOrder', 'rvAnswers', 'rvOff'].forEach((k) => { s[k] = [...(s[k] || [])]; });
+  const p = { id, el, s, counts: {}, dir: 'tab', enter: s.screen === 'rsession' ? 'first' : '' };
   phones[id] = p;
   el.classList.add('phone'); el.dataset.pid = id;
   render(p);
@@ -1762,19 +2073,117 @@ function render(p) {
   p.el.innerHTML = phoneHTML(p);
   const screen = p.el.querySelector('.screen'); const sc = screen.querySelector('.scroll');
   keepClasses.forEach((c) => screen.classList.add(c));
-  sc.scrollTop = keepScroll; sc._y = keepScroll;
   const entering = p.dir === 'tab' || p.dir === 'push' || p.dir === 'pop';
-  if (entering) { stagger(sc); sc.classList.add(`in-${p.dir}`, 'intro'); }
-  if (p.dir === 'view') { const vb = sc.querySelector('.view-body'); if (vb) { stagger(vb); vb.classList.add('in-view', 'intro'); } }
+  if (sc) {
+    sc.scrollTop = keepScroll; sc._y = keepScroll;
+    if (entering) { stagger(sc); sc.classList.add(`in-${p.dir}`, 'intro'); }
+    if (p.dir === 'view') { const vb = sc.querySelector('.view-body'); if (vb) { stagger(vb); vb.classList.add('in-view', 'intro'); } }
+  }
   screen.querySelectorAll('.sheet').forEach((sh) => stagger(sh));
   screen.querySelectorAll('.seg').forEach((sg) => syncSeg(sg, segs[sg.dataset.key]));
   syncDock(screen.querySelector('.dock'), dockFrom);
-  p.badge = p.s.queue.length;
+  p.badge = rPending(p.s).length;
   if (prevBadge !== undefined && prevBadge !== p.badge) { const b = screen.querySelector('.bdg'); if (b) b.classList.add('pop'); }
   animateCounts(screen, p.counts, entering || p.dir === 'view');
+  if (p.s.screen === 'rsession') { rBindDrag(p); if (p.s.rvToast) rShowToast(p, p.s.rvToast); }
   p.s.justOpened = null;
-  p.dir = null;
+  p.dir = null; p.enter = '';
 }
+/* ==========================================================================
+   Review session runtime: start, answer (fly out), undo, exit, drag.
+   ========================================================================== */
+function rStart(p, filter) {
+  const s = p.s;
+  let ids = rPending(s);
+  if (filter === 'skipped') ids = s.rvSkipped.slice();
+  else if (filter) ids = ids.filter((id) => RQ_BY[id].topic === filter);
+  else ids = [...ids.filter((id) => !s.rvSkipped.includes(id)), ...ids.filter((id) => s.rvSkipped.includes(id))];
+  if (!ids.length) return;
+  Object.assign(s, { screen: 'rsession', rvOrder: ids, rvIdx: 0, rvAnswers: [], rvSkipped: s.rvSkipped.filter((id) => !ids.includes(id)), rvWhy: false, rvOff: [], sheet: null, rvToast: null, rvStart: performance.now(), hist: [] });
+  p.enter = 'first'; p.dir = null; render(p);
+}
+function rAnswer(p, choice, dir) {
+  const s = p.s; if (s.rvBusy || s.screen !== 'rsession') return;
+  const q = RQ_BY[s.rvOrder[s.rvIdx]];
+  if (q.type === 'batch' && choice === 'accept' && s.rvOff.length === q.items.length) return;
+  let label = '';
+  if (choice.startsWith('opt:') || choice.startsWith('alt:')) { label = choice.slice(4); choice = 'accept'; }
+  else if (choice === 'custom') { const inp = p.el.querySelector('#rname-in'); label = (inp && inp.value.trim()) || q.sug; choice = 'accept'; }
+  else if (choice === 'accept' && q.type === 'category') label = q.options[0].l;
+  else if (choice === 'accept' && q.type === 'batch') label = `${q.items.length - s.rvOff.length}`;
+  const negative = choice === 'different' || choice === 'no';
+  const flyDir = dir || (choice === 'skip' ? 'l' : negative ? 'u' : 'r');
+  const commit = () => {
+    s.rvAnswers.push({ id: q.id, choice, label, dir: flyDir, rule: q.type === 'relation' ? s.rvRule : undefined });
+    if (choice === 'skip') s.rvSkipped.push(q.id); else s.rvResolved.push(q.id);
+    s.rvIdx += 1; s.rvWhy = false; s.rvOff = []; s.sheet = null; s.rvBusy = false;
+    if (s.rvIdx >= s.rvOrder.length) { s.rvEnd = performance.now(); s.screen = 'rdone'; s.rvToast = null; p.dir = 'tab'; render(p); return; }
+    s.rvToast = { msg: choice === 'skip' ? 'Skipped · kept for later' : rDone(q, label || (negative ? choice : '')), neutral: choice === 'skip' || negative, t: Date.now() };
+    p.enter = 'promote'; render(p);
+  };
+  const top = p.el.querySelector('.rcard.top');
+  if (!top || reduced()) return commit();
+  s.rvBusy = true;
+  const tx = flyDir === 'r' ? 'translateX(460px) rotate(24deg)' : flyDir === 'l' ? 'translateX(-460px) rotate(-24deg)' : 'translateY(-620px)';
+  const stamp = top.querySelector(flyDir === 'l' ? '.swipe-stamp.no' : '.swipe-stamp.yes'); if (stamp && flyDir !== 'u') stamp.style.opacity = 1;
+  const sw = p.el.querySelector('.sheet-wrap'); if (sw) sw.remove();
+  top.classList.remove('settle', 'promote', 'first', 'return-r', 'return-l', 'return-u'); top.classList.add('fly'); top.style.transform = tx;
+  setTimeout(commit, 260 * slow);
+}
+function rUndo(p) {
+  const s = p.s; const last = s.rvAnswers.pop(); if (!last) return;
+  s.rvIdx -= 1; s.rvResolved = s.rvResolved.filter((id) => id !== last.id); s.rvSkipped = s.rvSkipped.filter((id) => id !== last.id);
+  s.screen = 'rsession'; s.rvToast = null; s.rvWhy = false; s.rvOff = [];
+  p.enter = `return-${last.dir}`; p.dir = null; render(p);
+}
+function rExit(p) {
+  const s = p.s;
+  Object.assign(s, { screen: 'review', rvToast: null, sheet: null });
+  p.dir = 'tab'; render(p);
+  const left = rPending(s).length;
+  if (left) toast(p.el.querySelector('.screen'), `Saved · ${left} left for later`, 'clock');
+}
+const utoastTimers = new Map();
+function rShowToast(p, t) {
+  const screen = p.el.querySelector('.screen');
+  screen.querySelectorAll('.utoast').forEach((x) => x.remove());
+  const el = document.createElement('div');
+  el.className = `glass strong chrome utoast ${t.static ? 'static' : ''}`; el.setAttribute('role', 'status');
+  el.innerHTML = `<span class="ok ${t.neutral ? 'neutral' : ''}">${ic(t.neutral ? 'clock' : 'check', 15)}</span><span class="msg">${esc(t.msg)}</span><button class="btn white sm" data-act="rundo">${ic('rotate-ccw', 14)}Undo</button><span class="timer" aria-hidden="true"></span>`;
+  screen.appendChild(el);
+  if (t.static) return;
+  clearTimeout(utoastTimers.get(p.id));
+  const left = Math.max(0, 5000 * slow - (Date.now() - t.t));
+  el.querySelector('.timer').style.animationDuration = `${left}ms`;
+  utoastTimers.set(p.id, setTimeout(() => { if (p.s.rvToast === t) { p.s.rvToast = null; el.classList.add('out'); setTimeout(() => el.remove(), 260); } }, left));
+}
+/* Drag: the card follows the finger, tilts, shows a stamp, and commits past a threshold. */
+function rBindDrag(p) {
+  const top = p.el.querySelector('.rcard.top'); if (!top) return;
+  let x0 = 0, y0 = 0, dx = 0, active = false, pid = null;
+  const yes = top.querySelector('.swipe-stamp.yes'), no = top.querySelector('.swipe-stamp.no');
+  top.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('button, input, label')) return;
+    active = true; pid = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0;
+    top.setPointerCapture(pid); top.classList.add('dragging'); top.classList.remove('settle', 'promote', 'first', 'return-r', 'return-l', 'return-u');
+  });
+  top.addEventListener('pointermove', (e) => {
+    if (!active || e.pointerId !== pid) return;
+    dx = e.clientX - x0; const dy = (e.clientY - y0) * 0.15;
+    top.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`;
+    yes.style.opacity = Math.max(0, Math.min(1, dx / 90)); no.style.opacity = Math.max(0, Math.min(1, -dx / 90));
+    const peek = p.el.querySelector('.rcard.peek1'); if (peek) { const k = Math.min(1, Math.abs(dx) / 140); peek.style.transform = `translateY(${14 - 14 * k}px) scale(${0.95 + 0.05 * k})`; peek.style.opacity = 0.55 + 0.45 * k; }
+  });
+  const end = (e) => {
+    if (!active || e.pointerId !== pid) return;
+    active = false; top.classList.remove('dragging');
+    if (Math.abs(dx) > 100) { rAnswer(p, dx > 0 ? 'accept' : 'skip', dx > 0 ? 'r' : 'l'); return; }
+    top.classList.add('settle'); top.style.transform = ''; yes.style.opacity = 0; no.style.opacity = 0;
+    const peek = p.el.querySelector('.rcard.peek1'); if (peek) { peek.style.transform = ''; peek.style.opacity = ''; }
+  };
+  top.addEventListener('pointerup', end); top.addEventListener('pointercancel', end);
+}
+
 function nav(p, dir, mut) { mut(); p.s.sheet = null; p.dir = dir; render(p); }
 function closeSheet(p, then) {
   const wrap = p.el.querySelector('.sheet-wrap');
@@ -1782,7 +2191,6 @@ function closeSheet(p, then) {
   if (!wrap || reduced()) return done();
   wrap.classList.add('closing'); setTimeout(done, 230 * slow);
 }
-function leaveThen(el, fn) { if (el && !reduced()) { el.classList.add('leaving'); setTimeout(fn, 280 * slow); } else fn(); }
 
 function handlePhone(p, act, v, el) {
   const s = p.s; const screen = p.el.querySelector('.screen');
@@ -1799,7 +2207,6 @@ function handlePhone(p, act, v, el) {
       if (s.screen !== 'money') return nav(p, 'tab', () => { s.hist = []; s.screen = 'money'; s.money = v; });
       s.money = v; s.radial = null; p.dir = 'view'; break;
     case 'capture': s.capture = v; s.captured = false; p.dir = 'view'; break;
-    case 'review': s.review = v; p.dir = 'view'; break;
     case 'mix': s.mix = v; s.radial = null; break;
     case 'trend': s.trend = v; break;
     case 'cur': s.cur = v; break;
@@ -1818,25 +2225,15 @@ function handlePhone(p, act, v, el) {
     case 'save': s.captured = true; p.dir = 'view'; render(p); say('Guardado en BrainIA'); return;
     case 'capture-again': s.captured = false; p.dir = 'view'; break;
     case 'voice': s.rec = !s.rec; break;
-    case 'rule': s.rule = v === 'rule'; break;
-    case 'rsel': s.rsel = v; p.dir = 'view'; break;
-    case 'rstep': { const q = s.queue; const i = q.indexOf(s.rsel); s.rsel = q[(i + Number(v) + q.length) % q.length]; p.dir = 'view'; break; }
-    case 'accept': case 'ignore': case 'later': {
-      const item = REVIEW_ITEMS[s.rsel];
-      return leaveThen(screen.querySelector('.decision'), () => {
-        const i = s.queue.indexOf(item.id);
-        s.queue.splice(i, 1);
-        if (act === 'later') s.queue.push(item.id);
-        s.rsel = s.queue[Math.min(i, s.queue.length - 1)] || null;
-        p.dir = 'view'; render(p);
-        say(act === 'accept' ? `Saved · ${item.sug}` : act === 'ignore' ? `Ignored · ${item.sug}` : 'Kept for later', act === 'accept' ? 'check' : act === 'ignore' ? 'x' : 'clock');
-      });
-    }
-    case 'rel':
-      return leaveThen(screen.querySelector('.rel-card'), () => {
-        s.relDone = true; p.dir = 'view'; render(p);
-        say(v === 'approve' ? (s.rule ? 'Approved · rule created' : 'Relation approved') : 'Relation rejected', v === 'approve' ? 'check' : 'x');
-      });
+    case 'rstart': return rStart(p, v);
+    case 'ranswer': return rAnswer(p, v);
+    case 'rskip': return rAnswer(p, 'skip', 'l');
+    case 'rundo': return rUndo(p);
+    case 'rexit': return rExit(p);
+    case 'rwhy': s.rvWhy = !s.rvWhy; break;
+    case 'rrule': s.rvRule = !s.rvRule; el.setAttribute('aria-checked', s.rvRule); return;
+    case 'rbatch': { const i = +v; s.rvOff = s.rvOff.includes(i) ? s.rvOff.filter((x) => x !== i) : [...s.rvOff, i]; break; }
+    case 'rauto-undo': el.closest('.row').style.opacity = 0.4; el.textContent = 'Undone'; el.disabled = true; return;
     case 'sheet': s.sheet = v; break;
     case 'close-sheet': return closeSheet(p);
     case 'create-account': return closeSheet(p, () => say('Account created'));
@@ -1882,6 +2279,7 @@ function handleLocal(act, v, el) {
   if (act === 'cash') { const h = el.closest('.cash-host'); if (h) selectCash(h, Number(v)); return; }
   if (act === 'node') { const h = el.closest('.gx-host'); if (h) selectNode(h, v); return; }
   if (act === 'replay') { const p = phones.p0; nav(p, 'tab', () => { p.s.screen = 'loading'; p.s.hist = []; }); setTimeout(() => nav(p, 'tab', () => { p.s.screen = 'today'; }), 1100 * slow); return; }
+  if (act === 'rreset') { const p = reviewPhone; Object.assign(p.s, { screen: 'review', rvResolved: [], rvSkipped: [], rvOrder: [], rvIdx: 0, rvAnswers: [], rvToast: null, sheet: null }); activePhone = p; p.dir = 'tab'; render(p); return; }
   if (act === 'ease') { el.parentElement.querySelector('.ease-demo').classList.toggle('go'); return; }
   const host = el.closest('[data-spec]');
   if (host && SPECS[host.dataset.spec]) {
@@ -1898,6 +2296,7 @@ document.addEventListener('click', (e) => {
   const { act, v } = el.dataset;
   if (act === 'noop') return;
   const phoneEl = el.closest('.phone');
+  if (phoneEl && phones[phoneEl.dataset.pid]) activePhone = phones[phoneEl.dataset.pid];
   if (phoneEl && phones[phoneEl.dataset.pid]) handlePhone(phones[phoneEl.dataset.pid], act, v, el);
   else handleLocal(act, v, el);
 });
@@ -1906,8 +2305,19 @@ document.addEventListener('keydown', (e) => {
     const phoneEl = e.target.closest('.phone');
     if (phoneEl) handlePhone(phones[phoneEl.dataset.pid], 'q', e.target.value || 'spotify', e.target);
   }
+  if (e.key === 'Enter' && e.target.id === 'rname-in') { const ph = e.target.closest('.phone'); if (ph) rAnswer(phones[ph.dataset.pid], 'custom'); return; }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('g[data-act]')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
-  if (e.key === 'Escape') Object.values(phones).forEach((p) => { if (p.s.sheet) closeSheet(p); });
+  /* Escape and review keys act on the phone you last touched (the live one by default). */
+  const p = activePhone;
+  if (e.key === 'Escape' && p && p.s.sheet) { closeSheet(p); return; }
+  if (!p || p.s.screen !== 'rsession' || p.s.sheet || e.target.matches('input, textarea')) return;
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('button')) return;
+  const q = RQ_BY[p.s.rvOrder[p.s.rvIdx]];
+  if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); rAnswer(p, 'accept', 'r'); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); rAnswer(p, 'skip', 'l'); }
+  else if (e.key.toLowerCase() === 'z') rUndo(p);
+  else if (e.key === 'Escape') rExit(p);
+  else if (/^[1-3]$/.test(e.key) && q && q.type === 'category') rAnswer(p, `opt:${q.options[+e.key - 1].l}`);
 });
 /* Scroll-driven chrome: compact header, minimizing dock, carousel dots. */
 document.addEventListener('scroll', (e) => {
@@ -1947,6 +2357,8 @@ document.getElementById('blur').addEventListener('input', (e) => {
    ========================================================================== */
 document.querySelector('[data-act="replay"]').innerHTML = `${ic('rotate-ccw', 15)}Replay load`;
 const hero = mount(document.getElementById('hero-phone'), { screen: 'loading' });
+activePhone = hero;
+const reviewPhone = mount(document.getElementById('review-phone'), { screen: 'review' });
 hero.el.classList.add('drift');
 setTimeout(() => nav(hero, 'tab', () => { hero.s.screen = 'today'; }), 1100);
 
@@ -1954,10 +2366,10 @@ document.getElementById('principles').innerHTML = [
   ['layers', 'One material, three thicknesses', 'Thin glass for groups, regular for cards, strong for floating chrome. A specular hairline catches light at the top-left edge. Blur never nests.'],
   ['play', 'Motion with a job', 'Screens enter with a short stagger, pushes slide, thumbs and the dock pill glide, numbers count to their new value, and charts draw once when a view opens.'],
   ['minimize-2', 'Chrome that gets out of the way', 'The large title collapses into a compact glass bar and the dock shrinks while you scroll down. Both come back as soon as you scroll up.'],
-  ['move', 'Actions in the thumb zone', 'Capture and Review pin their primary actions just above the dock, so decisions never need a reach to the top.'],
+  ['move', 'Actions in the thumb zone', 'Capture pins Save above the dock, and review answers sit at the bottom of each card, so nothing needs a reach to the top.'],
   ['check', 'White means selected, lime means signal', 'Selection is an opaque white pill. Lime is reserved for the primary action, live state, positive net and capture.'],
   ['shield', 'Trust stays visible', 'Provenance tags, confidence bars and evidence timelines lead every generated card.'],
-].map(([i, t, d]) => `<div class="glass principle reveal"><span class="pi">${ic(i, 18)}</span><div><h3>${t}</h3><p>${d}</p></div></div>`).join('') + `<div class="try reveal">Try: ${['Scroll Today', 'Tap Gasto', 'Accept a decision', 'Tap a donut slice', 'Switch line and bars'].map((x) => `<span class="tag">${x}</span>`).join('')}</div>`;
+].map(([i, t, d]) => `<div class="glass principle reveal"><span class="pi">${ic(i, 18)}</span><div><h3>${t}</h3><p>${d}</p></div></div>`).join('') + `<div class="try reveal">Try: ${['Scroll Today', 'Tap Gasto', 'Swipe a review card', 'Tap a donut slice', 'Switch line and bars'].map((x) => `<span class="tag">${x}</span>`).join('')}</div>`;
 
 const GALLERY = [
   { init: { screen: 'today' }, t: 'Hoy · Today', c: 'app/(tabs)/index.tsx', n: 'Net hero, quick actions, highlights, recent activity. Review lives in the first highlight and the dock badge.', layout: true },
@@ -1970,8 +2382,14 @@ const GALLERY = [
   { init: { screen: 'money', money: 'overview', trend: 'bars', cash: 3, mix: 'merchant' }, t: 'Dinero · Bars + merchants', c: 'TrendChart · SpendingRadial', n: 'The same cards with the chart and grouping toggles flipped.' },
   { init: { screen: 'money', money: 'accounts' }, t: 'Dinero · Accounts', c: 'MixCard · portfolio', n: 'Portfolio mix leads, with the net total in its centre and account colours. Create account opens the sheet.', layout: true },
   { init: { screen: 'money', money: 'activity' }, t: 'Dinero · Activity', c: 'app/(tabs)/financials.tsx', n: 'Cycle navigator, sort chip, day-grouped rows.' },
-  { init: { screen: 'review' }, t: 'Revisar · Entities', c: 'app/(tabs)/review.tsx', n: 'One decision at a time with a stepper; Accept, Ignore and Later pinned to the thumb zone.', layout: true },
-  { init: { screen: 'review', review: 'relations' }, t: 'Revisar · Relations', c: 'DecisionCard kind="relation"', n: 'The relation card moved here from the top of the screen, where it duplicated this tab.', layout: true },
+  { init: { screen: 'review' }, t: 'Revisar · Review', c: 'app/(tabs)/review.tsx', n: 'One clear start with the effort up front, topics for a narrower session, and what was handled automatically.', layout: true },
+  { init: { screen: 'rsession', rvOrder: RQ_ALL, rvIdx: 0 }, t: 'Review · Name', c: 'DecisionCard kind="name"', n: 'Full-screen session. Raw text, what it becomes, real transactions before and after; one tap or a swipe right.' },
+  { init: { screen: 'rsession', rvOrder: RQ_ALL, rvIdx: 1, rvAnswers: [{ id: 'q1', choice: 'accept', dir: 'r' }], rvResolved: ['q1'], rvOff: [4] }, t: 'Review · Batch clean-up', c: 'DecisionCard kind="batch"', n: 'Six variants in one card. One is unticked, so the button reads “Rename 5”.' },
+  { init: { screen: 'rsession', rvOrder: RQ_ALL, rvIdx: 2, rvAnswers: [{ id: 'q1', choice: 'accept' }, { id: 'q2', choice: 'accept' }], rvResolved: ['q1', 'q2'], sheet: 'rcat' }, t: 'Review · Category + “Something else…”', c: 'DecisionCard kind="category"', n: 'Three ranked options as tiles; the full list sits in a sheet with search.' },
+  { init: { screen: 'rsession', rvOrder: RQ_ALL, rvIdx: 3, rvAnswers: [{ id: 'q1', choice: 'accept' }, { id: 'q2', choice: 'accept' }, { id: 'q3', choice: 'accept' }], rvResolved: ['q1', 'q2', 'q3'], rvWhy: true }, t: 'Review · Same company, “Why?” open', c: 'DecisionCard kind="same"', n: 'Two records side by side with the evidence; the reason expands inline.' },
+  { init: { screen: 'rsession', rvOrder: RQ_ALL, rvIdx: 4, rvAnswers: [{ id: 'q1', choice: 'accept' }, { id: 'q2', choice: 'accept' }, { id: 'q3', choice: 'accept' }, { id: 'q4', choice: 'skip' }], rvResolved: ['q1', 'q2', 'q3'], rvSkipped: ['q4'], rvToast: { msg: 'Skipped · kept for later', neutral: true, static: true } }, t: 'Review · Connection + undo', c: 'DecisionCard kind="relation"', n: 'A yes/no with an optional rule. Every answer leaves a toast with Undo for 5 seconds.' },
+  { init: { screen: 'rdone', rvOrder: RQ_ALL, rvIdx: 6, rvAnswers: [{ id: 'q1', choice: 'accept' }, { id: 'q2', choice: 'accept', label: '6' }, { id: 'q3', choice: 'accept', label: 'Transport' }, { id: 'q4', choice: 'skip' }, { id: 'q5', choice: 'accept', rule: true }, { id: 'q6', choice: 'accept' }], rvResolved: ['q1', 'q2', 'q3', 'q5', 'q6'], rvSkipped: ['q4'], rvStart: 0, rvEnd: 44000 }, t: 'Review · Summary', c: 'StateView kind="success"', n: 'What changed, how much it tidied, rules created, and a way back to anything skipped.' },
+  { init: { screen: 'review', sheet: 'rauto' }, t: 'Revisar · Handled for you', c: 'BottomSheet', n: 'Auto-confirmed matches with their confidence and an Undo each, plus the setting.' },
   { init: { screen: 'txn', hist: ['money'] }, t: 'Transaction detail', c: 'app/transaction/[id].tsx', n: 'A facts grid inside the hero replaces the summary list.', layout: true },
   { init: { screen: 'entity', hist: ['discover'] }, t: 'Entity detail', c: 'app/entity/[id].tsx', n: 'Identity card with counts and aliases, then the local graph.' },
   { init: { screen: 'insight', hist: ['today'] }, t: 'Insight detail', c: 'app/insight/[id].tsx', n: 'Generated block, stat tiles, evidence, and feedback with a confirmation toast.' },
@@ -1988,7 +2406,7 @@ const PROPS = [
   { n: '03', t: 'Today: quick actions, no duplicate review panel', s: 'applied', why: 'Today showed the pending review twice (a highlight and a full panel), and capturing an expense took two taps and a mode change.', what: 'The panel goes; the review highlight and the dock badge carry it. A row of four quick actions (expense, income, note, search) sits under the net hero.', a: wf(['title:8', 'hero:42', 'card:34', 'card:30:gone', 'row', 'row']), b: wf(['title:8', 'hero:42', 'quick:16:new', 'card:34', 'row', 'row', 'row']) },
   { n: '04', t: 'Money: five views become three', s: 'applied', why: 'Overview, Trends, Accounts, Transactions and Insights overflowed at 375pt (the last tab was cut off), and the trend and insight views were mostly empty.', what: 'Overview (expense mix first, then net, accounts strip, cash flow and signals), Accounts (portfolio mix first, then the account list) and Activity. One currency switch beside the FX stamp replaces three per-chart switches. Category and merchant share become a toggle on one donut card.', a: wf(['title:8', 'cut', 'hero:30', 'card:44', 'row', 'row']), b: wf(['title:8', 'seg:9:new', 'card:56:new', 'hero:26', 'quick:20', 'card:26']) },
   { n: '05', t: 'Capture: compact mode switch, Save in the thumb zone', s: 'applied', why: 'Two 112pt mode tiles pushed the amount down, and the Save button sat below the optional fields, often under the fold.', what: 'A segmented control replaces the tiles. The amount gets the space, and Save is pinned above the dock, so recording a movement is amount, then Save.', a: wf(['title:8', 'card:34', 'seg', 'hero:36', 'row', 'card:20', 'hero:10']), b: wf(['title:8', 'seg:9:new', 'seg', 'hero:46', 'row', 'card:16'], { sbar: 'new' }) },
-  { n: '06', t: 'Review: one decision at a time', s: 'applied', why: 'Review stacked counters, a relation card, a four-row queue, a long form and the actions at the very bottom. The relation card also duplicated the Relations tab.', what: 'Counters and tabs stay. Entities shows a stepper (1 of 4, progress, queue chips), one form, and Accept, Ignore and Later pinned above the dock. Resolved cards slide out and the next one loads. The relation card lives only under Relations.', a: wf(['quick:16', 'card:30:gone', 'seg', 'row', 'row', 'row', 'card:40']), b: wf(['quick:16', 'seg', 'card:22:new', 'card:58'], { sbar: 'new' }) },
+  { n: '06', t: 'Review: a one-minute session instead of a form', s: 'applied', why: 'Each review decision was a form: pick an item, choose a friendly name, set a canonical label, open a category sheet, mark equivalents, pick roles, then confirm a dialog. The relation card also duplicated its own tab.', what: 'Review opens a full-screen session: one plain question per card, the likely answer as one tap or a swipe, Undo instead of confirm dialogs, repeated merchants batched, and obvious matches handled automatically. See section 04.', a: wf(['quick:16', 'card:30:gone', 'seg', 'row', 'row', 'row', 'card:40']), b: wf(['seg:5', 'card:132:new', 'row:10']) },
   { n: '07', t: 'Detail screens: facts in the hero', s: 'applied', why: 'Transaction detail repeated the amount, category and account as a three-row list right below the hero that already showed them.', what: 'A 2×2 grid of fact tiles (category, account, time, sources) inside the hero. Origin, explanation and evidence follow directly.', a: wf(['title:8', 'hero:40', 'row', 'row', 'row', 'card:24']), b: wf(['title:8', 'hero:62:new', 'card:22', 'card:24']) },
   { n: '08', t: 'Discover: sticky search', s: 'applied', why: 'Search scrolled away with the graph, so refining a query meant scrolling back up.', what: 'The search field pins under the status bar with its own frosted backing while the graph and results scroll beneath it.', a: wf(['title:8', 'seg:12', 'chips', 'card:60', 'row']), b: wf(['seg:12:new', 'card:60', 'row', 'row', 'row']) },
   { n: '09', t: 'Large text: tiles reflow', s: 'proposed', why: 'At font scale 1.3 and above, two-column tiles and the four review counters truncate numbers.', what: 'When useWindowDimensions().fontScale is 1.3 or more, StatTile grids drop to one column, hero numerals step down one size, and the review counters become a two-by-two grid. The dock keeps its labels.', a: wf(['title:8', 'hero:30', 'quick:16', 'row', 'row']), b: wf(['title:10', 'hero:34', 'row:14:new', 'row:14:new', 'row', 'row']) },
@@ -2019,7 +2437,9 @@ const LIB = [
   { k: 'trend', name: 'TrendChart', group: 'Charts', repl: ['MonthlyCashFlowBar', 'MonthlyCashFlowLine', 'TrendChart:a', 'MiniBarChart ×2:l'], api: `<TrendChart mode="line|bars|spark"\n  series={[income, spending]} selected onSelect />`, note: 'Bars grow on a spring and lines draw in. Changing the month glides the cursor and tooltip instead of redrawing.', render: (st) => `${C.seg([{ v: 'line', l: 'Line', icon: 'activity' }, { v: 'bars', l: 'Bars', icon: 'bar-chart-2' }], st.trend || 'line', 'trend', { key: 'sptrend' })}${C.trend(st.trend || 'line', 4)}<div class="between"><span class="label">Sparkline</span>${C.spark([8, 9.1, 8.4, 10.2, 9.6, 9.84], 140, 40, 'var(--model)')}</div>` },
   { k: 'radial', name: 'SpendingRadial', group: 'Charts', wide: true, repl: ['SpendingRadial', 'DistributionRing:l', 'AnimatedRadialSlice:l'], api: `<MixCard overline title action note\n  segments={[{ label, value, display?, color? }]}\n  centerValue? delta? selected onSelect />`, note: 'Round-capped arcs with even gaps start at 12 o\'clock; the tick ring lights the selected share; legend rows use fixed columns so percentages and amounts align. Tap a slice, a row, or the centre to reset. The same card shows account share with account colours and a net total.', render: () => `<div class="duo">${C.mixCard({ over: 'Spending · Oct cycle', title: 'Expense mix', right: C.tag('6 groups'), segments: CATS, key: 'spr', delta: { text: '↓ 10% vs Sep', tone: 'good' } })}${C.mixCard({ over: 'Portfolio · today', title: 'Portfolio mix', right: C.tag('4 accounts'), segments: ACCTS.map((a) => ({ label: a.name, v: Math.abs(toUYU(a)), display: toUYU(a), color: a.color })), center: TOTAL, totalLabel: 'Net portfolio', key: 'spa', delta: { text: '↑ 6% this cycle', tone: 'good' } })}</div>` },
   { k: 'graph', name: 'Graph', group: 'Charts', wide: true, repl: ['GraphExplorer', 'GraphForceCanvas', 'GraphPreview'], api: `<Graph mode="explore|preview" focus onFocus\n  showServices showEvidence />`, note: 'Nodes pop in on a stagger; focus glows, neighbours stay lit and the rest dim, without a re-render.', render: () => C.explorer('gro') },
-  { k: 'decision', name: 'DecisionCard', group: 'Review', wide: true, repl: ['ResolutionForm', 'AliasDecisionForm:a', 'MergePreview', 'SemanticCandidateCard:l'], api: `<DecisionCard kind="alias|relation" item\n  onAccept onIgnore onLater />  // actions render in Screen.bar`, note: 'Both review decisions share provenance, rationale and the same three outcomes; resolved cards slide out.', render: (st) => `<div class="duo">${C.relDecision(st.rule === 'rule', true)}${C.aliasDecision(REVIEW_ITEMS.r2)}</div>` },
+  { k: 'decision', name: 'DecisionCard', group: 'Review', wide: true, repl: ['ResolutionForm', 'AliasDecisionForm:a', 'MergePreview', 'SemanticCandidateCard:l'], api: `<ReviewSession queue onDone>
+  <DecisionCard kind="name|batch|category|same|relation|label"
+    item onAnswer onSkip />`, note: 'One shell for every review question: type and impact, a plain question, the evidence, and answers at the bottom. Inside a session the top card can be swiped; here they are static.', render: () => `<div class="duo">${C.decision(RQ_BY.q1, { rvOff: [], rvRule: true })}${C.decision(RQ_BY.q3, { rvOff: [], rvRule: true })}</div>` },
   { k: 'capture', name: 'CaptureForm', group: 'Review', repl: ['CaptureForm', 'QuickCapture:a', 'ExpenseCapture:a', 'EmailCapture:a', 'NotificationCapture:a', 'VoiceRecordButton:l'], api: `<CaptureForm mode="note|expense|income|transfer" />`, note: 'Four aliases already pointed at one form; the mode prop makes that explicit.', render: (st) => `${C.captureMoney(st.kind || 'expense')}${C.voice(false)}` },
   { k: 'state', name: 'StateView', group: 'Feedback', wide: true, repl: ['EmptyState', 'ErrorState', 'LoadingSkeleton', 'LoadingState:a', 'ActionPreview:a', 'CaptureSuccess'], api: `<StateView kind="empty|error|success|loading"\n  title description action secondaryAction\n  skeleton="list|hero|chart" />`, note: 'Screens render their errors with EmptyState and never import ErrorState. One component, four kinds.', render: () => `<div class="duo">${C.state({ icon: 'share-2', title: 'Your graph is still growing', desc: 'Capture notes, emails and payments to see connections.', primary: 'Capture' })}${C.state({ kind: 'error', title: 'Live data unavailable', desc: 'Showing your saved view from 09:12.', code: 'NETWORK_TIMEOUT', primary: 'Retry' })}${C.state({ kind: 'success', title: 'Guardado en BrainIA', desc: 'Already counted in Money.' })}${C.skeleton('list', 2)}</div>` },
   { k: 'sheet', name: 'BottomSheet', group: 'Feedback', repl: ['BottomSheet'], api: `<BottomSheet visible title onClose>`, note: 'Same API as today. Springs in, children stagger, sinks out on close.', render: () => `<div style="position:relative;height:340px;border-radius:24px;overflow:hidden;background:var(--base)"><div class="amb" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>${C.sheetFilter().replace('class="sheet-wrap"', 'class="sheet-wrap" style="position:absolute"')}</div>` },
@@ -2057,7 +2477,7 @@ document.getElementById('motionGrid').innerHTML = `
       ['View switch', 'Only the body below the segmented control re-staggers; the header and the control stay still while the thumb slides.'],
       ['Value change', 'Numbers count from the old value to the new one (easeOutExpo, 800ms). Currency and period toggles morph every amount.'],
       ['Chart selection', 'Selecting a month or slice never redraws: cursor, tooltip and arcs transition in place.'],
-      ['Decision', 'The card leaves to the right (300ms, ease-in), the next one rises in, a toast confirms, and the dock badge pops.'],
+      ['Decision', 'The card follows the finger and tilts; past the threshold it flies out (300ms, ease-in), the next card rises from behind, the progress segment fills, and a toast offers Undo.'],
       ['Sheet', 'Springs up and its children stagger in; it sinks fully on close while the scrim fades.'],
       ['Scroll', 'After 64pt the compact header drops in. Scrolling down shrinks the dock; scrolling up restores it.'],
     ].map(([t, d]) => `<div class="tint" style="padding:14px;display:grid;gap:4px"><b style="font-size:14px">${t}</b><span class="small t2">${d}</span></div>`).join('')}</div></div>`;
@@ -2122,6 +2542,41 @@ document.getElementById('impl').innerHTML = `
     <li>Toasts use <code>accessibilityLiveRegion="polite"</code>; the radial centre and graph info announce changes.</li>
     <li>The minimized dock keeps 44pt targets and accessible labels; only the visible text hides.</li>
     <li>Validate with <code>npm run lint</code>, <code>npx tsc --noEmit</code> and <code>npm run agent:harness</code>.</li></ul></div>`;
+
+
+/* Review section content */
+document.getElementById('rvPrinciples').innerHTML = [
+  ['help-circle', 'One plain question', 'Each card asks a single question in everyday words. Raw strings and graph terms move into “Why?”.'],
+  ['check', 'The likely answer is one tap', 'BrainIA already has a best guess; it is the big lime button. Other answers are one tap too.'],
+  ['rotate-ccw', 'Undo, never confirm', 'No “Save decision?” dialogs. Each answer shows a toast with Undo for 5 seconds.'],
+  ['layers', 'Batch the repetitive', 'Six Spotify variants become one card; untick any that do not belong.'],
+  ['clock', 'Know the effort, keep your place', 'The queue says how long it takes, most important first. Leave anytime and continue later.'],
+  ['cpu', 'Skip what is obvious', 'Matches BrainIA is at least 95% sure of are handled automatically, listed, and reversible.'],
+].map(([i, t, d]) => `<div class="glass reveal"><span class="pi">${ic(i, 17)}</span><div><b>${t}</b><p>${d}</p></div></div>`).join('');
+document.getElementById('compareRows').innerHTML = [
+  ['Taps per decision', '<span class="bad">4–7</span>: select item, pick a name chip, open the category sheet, choose, mark equivalents, Accept, then confirm', '<span class="good">1</span> (or a swipe); 2 when picking something other than the suggestion'],
+  ['First thing you read', 'Raw alias strings and terms like “canonical label”, “entity roles”, “relation type”', 'A question in plain words with the suggested answer already shown'],
+  ['Order', 'Grouped by type tabs; no sense of what matters', 'Sorted by how many transactions each answer tidies up'],
+  ['Repetitive cases', 'Each Spotify variant is its own item', 'Batched into one card with checkboxes'],
+  ['Mistakes', 'Confirm dialog before every save or ignore', 'No dialogs; Undo in a toast for 5 s and in the summary for 24 h'],
+  ['Obvious matches', 'Still wait in the queue', 'Auto-confirmed at ≥ 95% confidence, listed and reversible'],
+  ['Interruptions', 'Selection and form state are lost', 'Progress is kept: “Continue · 1 left”'],
+  ['Effort cue', 'None', '“6 quick decisions · about 50 seconds”, plus the transactions it will tidy'],
+  ['Finishing', 'The list just becomes empty', 'A summary: what changed, rules created, anything skipped'],
+].map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('');
+document.getElementById('impl').insertAdjacentHTML('beforeend', `
+  <div class="glass reveal"><h3>Review session: data and API</h3><ul>
+    <li><b>Queue order:</b> score = transactions affected × confidence; variants of one merchant are batched into a single card.</li>
+    <li><b>Answers map to today's calls:</b> name and batch → <code>resolveAlias</code>; same company → <code>mergeEntity</code>; connection → <code>resolveSemanticCandidate</code> with the rule flag; “Different” and “No” → <code>ignoreAlias</code>; skip stays local.</li>
+    <li><b>Undo without rollback:</b> apply locally at once, send the call when the toast expires or the session ends; Undo drops the pending call.</li>
+    <li><b>Auto-handle:</b> confidence ≥ 0.95 and type name or duplicate merchant only, each logged for “Handled for you”.</li>
+    <li>Present the session as a full-screen modal (<code>presentation: 'fullScreenModal'</code>) and persist <code>order</code>, <code>idx</code> and answers so “Continue” survives restarts.</li></ul></div>
+  <div class="glass reveal"><h3>Review session: gesture and access</h3><ul>
+    <li>Gesture Handler <code>Pan</code> + Reanimated: x follows the finger, rotate = x / 18, commit past 30% of width or 800 pt/s, otherwise spring back.</li>
+    <li><b>Haptics:</b> <code>selectionAsync</code> at the threshold, <code>impactAsync(Light)</code> on accept, nothing on skip.</li>
+    <li>Cards expose <code>accessibilityActions</code> for Accept, Skip and Why; swiping is never required.</li>
+    <li>Progress is announced (“Decision 2 of 6”); answer buttons are at least 50 pt tall in the lower half of the screen.</li>
+    <li>Reduce Motion: cards cross-fade instead of flying, and the summary burst is skipped.</li></ul></div>`);
 
 /* Sections reveal as they scroll in; specimens render then, so their intro animations are seen. */
 const io = new IntersectionObserver((entries) => entries.forEach((en) => {
