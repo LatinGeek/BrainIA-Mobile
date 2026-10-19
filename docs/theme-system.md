@@ -31,10 +31,12 @@ Rules:
 - Real blur is reserved for `strong`/chrome on Android; other levels use the
   translucent fill.
 - Android needs a real blur target: expo-blur 55+ renders only a translucent
-  view unless the `BlurView` receives `blurTarget`. `Screen` wraps its content
-  in a `BlurTargetView` and registers it; the dock, compact header and action
-  bar blur that content. Non-chrome surfaces keep the fill to avoid blurring
-  themselves inside the target.
+  view unless the `BlurView` receives `blurTarget`. Screens expose two targets:
+  the ambient backdrop for card surfaces and the scrolling content for floating
+  chrome (dock, compact header, action bar). A view never blurs a target it is
+  inside, which avoids recursive blur and native stack overflows.
+- Nested surfaces keep the fill instead of a second BlurView. On Android, real
+  blur uses `dimezisBlurViewSdk31Plus`; older devices fall back to the fill.
 - With Reduce Transparency on, every level uses `glass.solid` and no blur.
 - No nested `BlurView` and no more than ~6 live blurs per screen.
 - The specular edge is a one-pixel SVG stroke, not a second border.

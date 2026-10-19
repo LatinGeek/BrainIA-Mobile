@@ -70,16 +70,18 @@ export function Screen({
   const desktop = width >= 1024;
   const scrollY = useSharedValue(0);
   const [compactVisible, setCompactVisible] = useState(false);
-  const targetRef = useRef<View | null>(null);
+  const cardTargetRef = useRef<View | null>(null);
+  const chromeTargetRef = useRef<View | null>(null);
   const blurTarget = useBlurTarget();
 
-  const registerTarget = useCallback(() => {
-    if (targetRef.current) blurTarget?.setTarget(targetRef.current);
+  const registerTargets = useCallback(() => {
+    if (cardTargetRef.current) blurTarget?.setCardTarget(cardTargetRef.current);
+    if (chromeTargetRef.current) blurTarget?.setChromeTarget(chromeTargetRef.current);
   }, [blurTarget]);
 
   useFocusEffect(useCallback(() => {
-    registerTarget();
-  }, [registerTarget]));
+    registerTargets();
+  }, [registerTargets]));
 
   const handleScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -121,13 +123,15 @@ export function Screen({
   const bottomPadding = theme.layout.dockHeight + insets.bottom + (bar ? 92 : 24);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.flex, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.flex, { overflow: 'hidden', backgroundColor: theme.colors.background }]}>
       <View style={[styles.flex, desktop ? styles.desktopRow : null]}>
         {desktop ? <NavigationRail /> : null}
         <KeyboardAvoidingView style={styles.flex} behavior="padding" enabled={Platform.OS === 'ios'}>
           <View style={styles.flex}>
-            <BlurTargetView ref={targetRef} onLayout={registerTarget} style={styles.flex}>
+            <BlurTargetView ref={cardTargetRef} onLayout={registerTargets} style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
               <AmbientBackground animated={ambientAnimated} />
+            </BlurTargetView>
+            <BlurTargetView ref={chromeTargetRef} onLayout={registerTargets} style={[styles.flex, { overflow: 'hidden' }]}>
               {scrollable ? (
               <Animated.ScrollView
                 style={[styles.flex, contentStyle]}

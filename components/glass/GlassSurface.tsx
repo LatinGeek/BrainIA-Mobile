@@ -71,11 +71,14 @@ export function GlassSurface({
   const fill = theme.glass.fill[level];
   const tint = toneTint[tone](theme);
 
-  // expo-blur SDK 55+ requires a BlurTargetView on Android. The focused Screen
-  // registers its content here; floating chrome blurs that content. Non-chrome
-  // surfaces stay translucent to avoid blurring themselves inside the target.
-  const canBlurAndroid = chrome && Boolean(blurTarget?.targetRef.current);
+  // expo-blur SDK 55+ requires a BlurTargetView on Android. Cards blur the
+  // ambient backdrop; floating chrome blurs the scrolling content. A view must
+  // never blur a target it is inside, hence two targets. Thin wrappers and
+  // nested surfaces keep the translucent fill for performance.
+  const target = chrome ? blurTarget?.chromeTargetRef : blurTarget?.cardTargetRef;
+  const canBlurAndroid = Boolean(target?.current);
   const useBlur = !disableBlur && !reduceTransparency && !nested && (Platform.OS === 'android' ? canBlurAndroid : true);
+  const blurMethod = Platform.OS === 'android' ? 'dimezisBlurViewSdk31Plus' : undefined;
   const backgroundColor = reduceTransparency
     ? theme.glass.solid[level]
     : chrome
@@ -101,8 +104,9 @@ export function GlassSurface({
           key={`blur-${blurTarget?.version ?? 0}-${level}`}
           intensity={theme.glass.blur[level]}
           tint="dark"
-          blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-          blurTarget={Platform.OS === 'android' ? blurTarget?.targetRef : undefined}
+          blurMethod={blurMethod}
+          blurReductionFactor={Platform.OS === 'android' ? 1.6 : undefined}
+          blurTarget={target ?? undefined}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
