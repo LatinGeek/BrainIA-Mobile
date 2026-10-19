@@ -16,6 +16,7 @@ const KEY_DASHBOARD_MODE = `${STORAGE_PREFIX}.dashboardMode`;
 const KEY_DATA_VISIBILITY = `${STORAGE_PREFIX}.dataVisibility`;
 const KEY_DIGEST_NOTIFICATIONS = `${STORAGE_PREFIX}.digestNotifications`;
 const KEY_REVIEW_NOTIFICATIONS = `${STORAGE_PREFIX}.reviewNotifications`;
+const KEY_REVIEW_SESSION = `${STORAGE_PREFIX}.reviewSession`;
 
 const defaultBaseUrl = process.env.EXPO_PUBLIC_BRAINIA_API_BASE_URL?.trim() || 'https://brain-ia-six.vercel.app';
 
@@ -29,6 +30,7 @@ const defaultSettings: AppSettings = {
   dataVisibility: 'balanced',
   digestNotifications: true,
   reviewNotifications: true,
+  reviewSession: false,
 };
 
 type AppStateValue = {
@@ -44,6 +46,7 @@ type AppStateValue = {
   setDataVisibility: (dataVisibility: AppSettings['dataVisibility']) => void;
   setDigestNotifications: (digestNotifications: boolean) => void;
   setReviewNotifications: (reviewNotifications: boolean) => void;
+  setReviewSession: (reviewSession: boolean) => void;
   resetSettings: () => Promise<void>;
   refreshSettings: () => Promise<void>;
 };
@@ -70,6 +73,7 @@ async function loadSettings(): Promise<AppSettings> {
     readStoredValue(KEY_DIGEST_NOTIFICATIONS),
     readStoredValue(KEY_REVIEW_NOTIFICATIONS),
   ]);
+  const reviewSession = await readStoredValue(KEY_REVIEW_SESSION);
 
   return {
     themeId: 'intelligence-console',
@@ -81,6 +85,7 @@ async function loadSettings(): Promise<AppSettings> {
     dataVisibility: (dataVisibility as AppSettings['dataVisibility']) || defaultSettings.dataVisibility,
     digestNotifications: digestNotifications ? digestNotifications === 'true' : defaultSettings.digestNotifications,
     reviewNotifications: reviewNotifications ? reviewNotifications === 'true' : defaultSettings.reviewNotifications,
+    reviewSession: reviewSession ? reviewSession === 'true' : defaultSettings.reviewSession,
   };
 }
 
@@ -122,6 +127,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     void writeStoredValue(KEY_DATA_VISIBILITY, settings.dataVisibility);
     void writeStoredValue(KEY_DIGEST_NOTIFICATIONS, String(settings.digestNotifications));
     void writeStoredValue(KEY_REVIEW_NOTIFICATIONS, String(settings.reviewNotifications));
+    void writeStoredValue(KEY_REVIEW_SESSION, String(settings.reviewSession));
   }, [hydrated, settings]);
 
   useEffect(() => {
@@ -164,6 +170,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setDataVisibility: (dataVisibility) => setSettings((current) => ({ ...current, dataVisibility })),
       setDigestNotifications: (digestNotifications) => setSettings((current) => ({ ...current, digestNotifications })),
       setReviewNotifications: (reviewNotifications) => setSettings((current) => ({ ...current, reviewNotifications })),
+      setReviewSession: (reviewSession) => setSettings((current) => ({ ...current, reviewSession })),
       resetSettings: async () => {
         await Promise.all([
           writeStoredValue(KEY_BASE_URL, defaultSettings.baseUrl),
@@ -174,6 +181,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           writeStoredValue(KEY_DATA_VISIBILITY, defaultSettings.dataVisibility),
           writeStoredValue(KEY_DIGEST_NOTIFICATIONS, String(defaultSettings.digestNotifications)),
           writeStoredValue(KEY_REVIEW_NOTIFICATIONS, String(defaultSettings.reviewNotifications)),
+          writeStoredValue(KEY_REVIEW_SESSION, String(defaultSettings.reviewSession)),
         ]);
         setSettings(defaultSettings);
       },

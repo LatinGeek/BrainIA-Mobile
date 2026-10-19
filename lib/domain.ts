@@ -285,4 +285,5 @@ export type AppSettings = {
   dataVisibility: 'essential' | 'balanced' | 'detailed';
   digestNotifications: boolean;
   reviewNotifications: boolean;
+  reviewSession: boolean;
 };

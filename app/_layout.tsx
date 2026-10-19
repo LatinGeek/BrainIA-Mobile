@@ -1,11 +1,13 @@
-import { Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { JetBrainsMono_500Medium, JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
+import { Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
 import { AppStateProvider, useAppState } from '@/lib/app-state';
@@ -44,9 +46,12 @@ function RootNavigator() {
   const { hydrated, theme } = useAppState();
   const [fontsLoaded, fontsError] = useFonts({
     Inter_400Regular,
+    Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    JetBrainsMono_500Medium,
     JetBrainsMono_600SemiBold,
+    Poppins_600SemiBold,
   });
   const typographyReady = fontsLoaded || Boolean(fontsError);
 
@@ -86,8 +91,10 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AppStateProvider>
-      <RootNavigator />
-    </AppStateProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppStateProvider>
+        <RootNavigator />
+      </AppStateProvider>
+    </GestureHandlerRootView>
   );
 }
