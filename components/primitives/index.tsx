@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  PressableProps,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,59 +15,29 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
 
+import { GlassSurface } from './glass';
+import { Pressable as GlassPressable } from './pressable';
+
 type SurfaceVariant = 'default' | 'raised' | 'subtle';
-const AnimatedPressableRoot = Animated.createAnimatedComponent(Pressable);
+export { AmbientBackground, GlassSurface } from './glass';
+export type { GlassTone } from './glass';
+export { Pressable } from './pressable';
+export type { PressHaptic } from './pressable';
 
-export function AnimatedPressable({
-  children,
-  style,
-  onPressIn,
-  onPressOut,
-  disabled,
-  scaleTo = 0.985,
-  ...props
-}: PressableProps & {
-  children: ReactNode;
-  scaleTo?: number;
-}) {
-  const theme = useTheme();
-  const progress = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - progress.value * (1 - scaleTo) }],
-    opacity: disabled ? 0.58 : 1 - progress.value * 0.08,
-  }));
+/** @deprecated use `Pressable` from `@/components/primitives`. */
+export const AnimatedPressable = GlassPressable;
 
-  return (
-    <AnimatedPressableRoot
-      {...props}
-      disabled={disabled}
-      onPressIn={(event) => {
-        progress.value = withTiming(1, { duration: theme.motion.fast });
-        onPressIn?.(event);
-      }}
-      onPressOut={(event) => {
-        progress.value = withSpring(0, theme.motion.spring);
-        onPressOut?.(event);
-      }}
-      style={[animatedStyle, style]}
-    >
-      {children}
-    </AnimatedPressableRoot>
-  );
-}
-
+/** @deprecated wrapper over `GlassSurface`; `raised` maps to `regular`, `subtle` and `default` to `thin`. */
 export function Surface({
   children,
   variant = 'default',
   padding = 'md',
   radius = 'lg',
-  bordered = true,
   style,
 }: {
   children: ReactNode;
@@ -78,30 +47,14 @@ export function Surface({
   bordered?: boolean;
   style?: object;
 }) {
-  const theme = useTheme();
-  const paddingValue = padding === 'none' ? 0 : padding === 'sm' ? theme.spacing.sm : padding === 'lg' ? theme.spacing.lg : theme.spacing.md;
-  const backgroundColor = variant === 'raised' ? theme.colors.surfaceRaised : variant === 'subtle' ? theme.colors.surfaceSubtle : theme.colors.surface;
-  const borderColor = variant === 'raised' ? theme.depth.hairline : variant === 'subtle' ? theme.depth.hairline : theme.colors.border;
-
   return (
-    <View
-      style={[
-        {
-          backgroundColor,
-          borderRadius: theme.radius[radius],
-          padding: paddingValue,
-          borderWidth: bordered ? StyleSheet.hairlineWidth : 0,
-          borderColor,
-          ...(variant === 'raised' ? theme.shadow.card : {}),
-        },
-        style,
-      ]}
-    >
+    <GlassSurface level={variant === 'raised' ? 'regular' : 'thin'} padding={padding} radius={radius} style={style}>
       {children}
-    </View>
+    </GlassSurface>
   );
 }
 
+/** @deprecated wrapper over `GlassSurface` with a tone. */
 export function Panel({
   children,
   tone = 'neutral',
@@ -113,51 +66,21 @@ export function Panel({
   style?: object;
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }) {
-  const theme = useTheme();
-  const toneColor =
-    tone === 'accent'
-      ? theme.colors.accent
-      : tone === 'finance'
-        ? `${theme.status.income}24`
-        : tone === 'review'
-          ? `${theme.status.review}24`
-          : tone === 'danger'
-            ? `${theme.colors.danger}22`
-            : theme.depth.hairline;
-
   return (
-    <Surface
-      variant="raised"
-      padding={padding}
-      style={[
-        {
-          borderColor: tone === 'neutral' ? theme.colors.border : `${toneColor}66`,
-          borderLeftWidth: tone === 'neutral' ? StyleSheet.hairlineWidth : 2,
-        },
-        style,
-      ]}
-    >
+    <GlassSurface level="regular" tone={tone} padding={padding} style={style}>
       {children}
-    </Surface>
+    </GlassSurface>
   );
 }
 
+/** @deprecated wrapper over `GlassSurface`. */
 export function CommandPanel({ children, style }: { children: ReactNode; style?: object }) {
   const theme = useTheme();
 
   return (
-    <Panel
-      tone="accent"
-      style={[
-        {
-          gap: theme.spacing.md,
-          backgroundColor: theme.colors.surfaceRaised,
-        },
-        style,
-      ]}
-    >
+    <GlassSurface level="regular" tone="accent" style={[{ gap: theme.spacing.md }, style]}>
       {children}
-    </Panel>
+    </GlassSurface>
   );
 }
 
@@ -388,7 +311,7 @@ export function SegmentedControl<T extends string>({
         ]}
       >
         {option.icon}
-        {scrollable ? <View style={[styles.segmentSignal, { backgroundColor: selected ? theme.colors.accentStrong : theme.colors.textMuted + '66' }]} /> : null}
+        {scrollable ? <View style={[styles.segmentSignal, { backgroundColor: selected ? theme.colors.accentStrong : theme.glass.stroke }]} /> : null}
         <Text numberOfLines={1} style={[theme.typography.caption, { color: selected ? selectedTextColor : theme.colors.textSecondary, fontWeight: selected ? '700' : '600' }]}>
           {cleanDisplayText(option.label)}
         </Text>

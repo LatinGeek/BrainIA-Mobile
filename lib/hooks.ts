@@ -57,13 +57,15 @@ function useAccessibilityFlag(
   eventName: 'reduceMotionChanged' | 'reduceTransparencyChanged',
   webQuery: string
 ) {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia(webQuery).matches;
+  });
 
   useEffect(() => {
     if (Platform.OS === 'web') {
       const media = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(webQuery) : null;
       if (!media) return;
-      setEnabled(media.matches);
       const onChange = (event: MediaQueryListEvent) => setEnabled(event.matches);
       media.addEventListener?.('change', onChange);
       return () => media.removeEventListener?.('change', onChange);

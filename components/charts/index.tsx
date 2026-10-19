@@ -351,7 +351,7 @@ export function MonthlyCashFlowLine({
       </Animated.View> : null}
       <View style={{ alignItems: 'center' }}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          {[0.25, 0.5, 0.75].map((fraction) => <Line key={fraction} x1={padding.left} x2={width - padding.right} y1={padding.top + fraction * (height - padding.top - padding.bottom)} y2={padding.top + fraction * (height - padding.top - padding.bottom)} stroke={theme.colors.border + '99'} strokeWidth={1} />)}
+          {[0.25, 0.5, 0.75].map((fraction) => <Line key={fraction} x1={padding.left} x2={width - padding.right} y1={padding.top + fraction * (height - padding.top - padding.bottom)} y2={padding.top + fraction * (height - padding.top - padding.bottom)} stroke={theme.glass.divider} strokeWidth={1} />)}
           <Polyline points={incomeLine} fill="none" stroke={theme.status.income} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
           <Polyline points={expenseLine} fill="none" stroke={theme.status.expense} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
           {points.map((point, index) => <Circle key={`${point.periodLabel}-income`} cx={x(index)} cy={y(point.income)} r={selectedIndex === index ? 5 : 3.5} fill={theme.status.income} />)}
@@ -458,7 +458,7 @@ export function SpendingRadial({
           style={{ width: size, height: size }}
         >
           <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            <Circle cx={center} cy={center} r={radius + strokeWidth / 2 + 4} stroke={theme.colors.border + '88'} strokeWidth={1} fill="none" />
+            <Circle cx={center} cy={center} r={radius + strokeWidth / 2 + 4} stroke={theme.glass.divider} strokeWidth={1} fill="none" />
             <Circle
               cx={center}
               cy={center}
@@ -489,7 +489,7 @@ export function SpendingRadial({
                 />
               );
             })}
-            <Circle cx={center} cy={center} r={radius - strokeWidth / 2 - 3} stroke={theme.colors.border + 'B8'} strokeWidth={1} fill="none" />
+            <Circle cx={center} cy={center} r={radius - strokeWidth / 2 - 3} stroke={theme.glass.stroke} strokeWidth={1} fill="none" />
           </Svg>
           <View pointerEvents="none" style={styles.radialCenter}>
             <View

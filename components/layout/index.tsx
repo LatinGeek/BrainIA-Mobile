@@ -4,7 +4,7 @@ import { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, ScrollViewProps, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton } from '@/components/primitives';
+import { AmbientBackground, IconButton } from '@/components/primitives';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
 
@@ -29,7 +29,8 @@ export function AppScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.flex, { backgroundColor: theme.ambient.base }]}>
+      <AmbientBackground />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {scrollable ? (
         <ScrollView
@@ -57,7 +58,7 @@ export function AppScreen({
           {footer}
         </View>
       )}
-      {stickyFooter ? <View style={[styles.stickyFooter, { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border, paddingBottom: Math.max(theme.spacing.sm, insets.bottom) }]}>{stickyFooter}</View> : null}
+      {stickyFooter ? <View style={[styles.stickyFooter, { backgroundColor: theme.colors.surface, borderTopColor: theme.glass.divider, paddingBottom: Math.max(theme.spacing.sm, insets.bottom) }]}>{stickyFooter}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
