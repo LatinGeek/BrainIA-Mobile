@@ -386,9 +386,9 @@ footer { padding: 64px 0 48px; color: var(--t3); font-size: 13px; }
 .tb-right { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
 
 /* Pressable feel shared by every control */
-.btn, .chip, .icon-btn, .row, .quick-b, .acct-card, .leg-row, .link, .swatch, .signal { transition: transform var(--d2) var(--ease-spring), background-color var(--d2), color var(--d2), box-shadow var(--d2), border-color var(--d2); }
+.btn, .chip, .icon-btn, .row, .quick-b, .acct-card, .link, .swatch, .signal { transition: transform var(--d2) var(--ease-spring), background-color var(--d2), color var(--d2), box-shadow var(--d2), border-color var(--d2); }
 .btn:active, .chip:active, .icon-btn:active, .quick-b:active, .link:active, .swatch:active { transform: scale(.94); }
-button.row:active, .acct-card:active, .leg-row:active, button.signal:active { transform: scale(.98); }
+button.row:active, .acct-card:active, button.signal:active { transform: scale(.98); }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: var(--r-pill); font-weight: 600; font-size: 15px; white-space: nowrap; }
 .btn.sm { min-height: 40px; padding: 0 14px; font-size: 13.5px; }
@@ -556,6 +556,7 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
 .stile.center .h { font-size: 10.5px; white-space: nowrap; }
 .delta.up { color: var(--income); } .delta.down { color: var(--expense); } .delta.flat { color: var(--t3); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; align-items: start; }
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .dotk { width: 6px; height: 6px; border-radius: 50%; flex: none; }
 
@@ -649,24 +650,56 @@ button.row:hover .chev { transform: translateX(3px); color: var(--t2); }
 .intro .spark-area { animation: fade-in 900ms both 600ms; }
 .intro .spark-dot { animation: pop 500ms var(--ease-spring) both 1300ms; transform-box: fill-box; transform-origin: center; }
 @keyframes draw { from { stroke-dashoffset: 1; } }
-.radial-wrap { position: relative; width: min(232px, 100%); margin: 0 auto; aspect-ratio: 1; }
-.radial-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.arc { transition: stroke-width 420ms var(--ease-spring), opacity var(--d3); cursor: pointer; }
-.intro .arc { animation: arc-in 1000ms var(--ease-out) both; animation-delay: calc(var(--d, 0) * 70ms + 100ms); }
-@keyframes arc-in { from { stroke-dasharray: 0 600px; } }
-.radial-c { position: absolute; inset: 22%; border-radius: 50%; display: grid; place-content: center; text-align: center; gap: 2px; background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.12), rgba(255,255,255,.02)); border: 1px solid var(--g-inner-stroke); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.radial-c .v { font: 650 20px var(--f-num); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.radial-c .l { font-size: 11.5px; color: var(--t3); max-width: 120px; }
-.radial-c .p { font: 600 11px var(--f-mono); color: var(--lime); min-height: 14px; }
-.radial-c.bump { animation: bump 420ms var(--ease-spring); }
-@keyframes bump { 40% { transform: scale(.94); } }
-.leg-rows { display: grid; gap: 2px; }
-.leg-row { display: grid; grid-template-columns: 12px 1fr auto auto; gap: 10px; align-items: center; min-height: 40px; padding: 0 10px; border-radius: 12px; font-size: 13.5px; text-align: left; }
-.leg-row i { width: 10px; height: 10px; border-radius: 3px; }
-.leg-row .pct { font: 600 11px var(--f-mono); color: var(--t3); }
-.leg-row .val { font-weight: 600; font-variant-numeric: tabular-nums; }
-.leg-row[aria-pressed="true"] { background: var(--g2); }
-.leg-row:hover { background: var(--g1); }
+/* SpendingRadial (mix card) */
+.mix-card { gap: 18px; }
+.mix-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.mix-h h4 { margin: 4px 0 0; font: 600 17px/1.2 var(--f-display); letter-spacing: -.01em; }
+.mix-h .tag { margin-top: 2px; }
+.mix-dial { position: relative; width: min(252px, 100%); aspect-ratio: 1; margin: 0 auto; }
+.mix-dial > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mix-track { fill: none; stroke: rgba(255,255,255,.045); }
+.mix-hair { fill: none; stroke: rgba(255,255,255,.09); stroke-width: 1; }
+.arc { fill: none; stroke-linecap: round; cursor: pointer; transition: stroke-width 460ms var(--ease-spring), opacity var(--d3), filter var(--d3); }
+.arc:hover { filter: brightness(1.12); }
+.arc.on { filter: drop-shadow(0 0 9px var(--c)); }
+.intro .arc { animation: arc-in 1100ms var(--ease-out) both; animation-delay: calc(var(--d, 0) * 85ms + 80ms); }
+@keyframes arc-in { from { stroke-dasharray: 0 var(--circ); } }
+.tick { fill: rgba(255,255,255,.17); r: 1.25px; transition: r 360ms var(--ease-spring), fill var(--d2); }
+.tick.lit { r: 2.1px; }
+.intro .tick { animation: fade-in 420ms both; animation-delay: calc(var(--d, 0) * 12ms + 260ms); }
+.mix-c { position: absolute; inset: 19.5%; border-radius: 50%; display: grid; place-content: center; justify-items: center; gap: 5px; text-align: center;
+  background: radial-gradient(circle at 50% 22%, rgba(255,255,255,.14), rgba(255,255,255,.025) 68%);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -14px 26px rgba(0,0,0,.28), 0 14px 32px -14px rgba(0,0,0,.7);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.mix-c:active { transform: scale(.97); }
+.mix-c .l { font: 600 9.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--t3); max-width: 116px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mix-c .v { font: 650 22px/1.05 var(--f-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; white-space: nowrap; transition: color var(--d2); }
+.mix-c .v.neg { color: var(--expense); }
+.mix-c .p { display: inline-flex; align-items: center; gap: 4px; font: 600 11px var(--f-body); padding: 3px 9px; border-radius: 99px; background: rgba(255,255,255,.08); color: var(--t2); min-height: 20px; white-space: nowrap; }
+.mix-c .p.good { color: var(--income); background: rgba(159,232,112,.1); }
+.mix-c .p.share { font-family: var(--f-mono); color: var(--on-white); background: var(--selected); }
+.mix-c.bump { animation: bump 420ms var(--ease-spring); }
+@keyframes bump { 40% { transform: scale(.95); } }
+.mix-rows { display: grid; gap: 2px; margin: 0 -8px; }
+.mix-row { display: grid; grid-template-columns: 6px minmax(0, 1fr) 36px 92px; column-gap: 12px; align-items: center; min-height: 50px; padding: 6px 8px; border-radius: 14px; text-align: left; transition: background var(--d2), opacity var(--d3), transform var(--d2) var(--ease-spring); }
+.mix-row .sw { width: 6px; height: 26px; border-radius: 3px; background: var(--c); box-shadow: 0 0 12px -3px var(--c); }
+.mix-row .nm { display: grid; gap: 7px; min-width: 0; }
+.mix-row .t { font-size: 13.5px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mix-row .bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.07); overflow: hidden; }
+.mix-row .bar i { display: block; height: 100%; border-radius: 2px; background: var(--c); transform-origin: left; }
+.intro .mix-row .bar i { animation: grow-x 900ms var(--ease-out) both; animation-delay: calc(var(--d, 0) * 70ms + 320ms); }
+@keyframes grow-x { from { transform: scaleX(0); } }
+.mix-row .pct { font: 600 11px/1 var(--f-mono); color: var(--t3); text-align: right; }
+.mix-row .val { font: 600 13.5px/1 var(--f-num); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.mix-row .val.neg { color: var(--expense); }
+.mix-row:hover { background: var(--g1); }
+.mix-row:active { transform: scale(.98); }
+.mix-row[aria-pressed="true"] { background: var(--g2); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+.mix-row[aria-pressed="true"] .pct { color: var(--t1); }
+.radial-host:not([data-sel=""]) .mix-row[aria-pressed="false"] { opacity: .45; }
+.mix-note { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--t2); padding: 11px 12px; border-radius: 14px; background: var(--g-inner); border: 1px solid var(--g-inner-stroke); }
+.mix-note .ic { color: var(--lime); margin-top: 1px; }
 .bar-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
 .bar-track i { display: block; height: 100%; border-radius: 3px; transform-origin: left; }
 
@@ -1230,23 +1263,62 @@ C.trend = (mode = 'line', sel = 5, cur = 'UYU') => {
     <div class="legend"><span><i style="background:var(--income)"></i>Income <b class="li tnum">${fmt(conv(s.inc, cur), cur)}</b></span><span><i style="background:var(--expense)"></i>Spending${line ? ' (dashed)' : ''} <b class="le tnum">${fmt(conv(s.exp, cur), cur)}</b></span></div></div>`;
 };
 
-/* SpendingRadial. Selection updates in place. */
-C.radial = ({ segments, sel, cur = 'UYU', totalLabel = 'Total spent', key = 'radial' }) => {
-  const total = segments.reduce((s, x) => s + x.v, 0);
-  const R = 84, CIRC = 2 * Math.PI * R, GAP = 4;
-  let off = 0;
-  const arcs = segments.map((sg, i) => {
-    const len = (sg.v / total) * CIRC;
-    const a = `<circle class="arc" data-act="radial" data-v="${esc(sg.label)}" data-label="${esc(sg.label)}" cx="100" cy="100" r="${R}" fill="none" stroke="var(--chart-${(i % 6) + 1})" style="--d:${i};stroke-dasharray:${Math.max(len - GAP, 1).toFixed(2)}px ${CIRC.toFixed(2)}px;stroke-dashoffset:${(-off).toFixed(2)}px;stroke-width:${sel === sg.label ? 26 : 20}px;opacity:${!sel || sel === sg.label ? 1 : 0.28}"/>`;
-    off += len; return a;
+/* SpendingRadial (mix card). Round-capped arcs start at 12 o'clock with even gaps; an outer
+   tick ring lights the selected share; legend rows share fixed columns so figures line up.
+   Selection updates in place. */
+const MIX = { R: 92, W: 18, GAP: 7, TICKS: 60, C: 120 };
+C.mix = ({ segments, sel, cur = 'UYU', totalLabel = 'Total spent', key = 'mix', center, delta }) => {
+  const total = segments.reduce((n, x) => n + x.v, 0);
+  const CIRC = 2 * Math.PI * MIX.R;
+  const gid = `mx${uid++}`;
+  let acc = 0;
+  const segs = segments.map((sg, i) => { const s0 = acc / total; acc += sg.v; return { ...sg, i, s0, s1: acc / total, c: sg.color || `var(--chart-${(i % 6) + 1})`, pct: Math.round((sg.v / total) * 100) }; });
+  const max = Math.max(...segs.map((x) => x.v));
+  const cur0 = segs.find((x) => x.label === sel);
+  const arcs = segs.map((sg) => {
+    const len = (sg.s1 - sg.s0) * CIRC;
+    const dash = Math.max(len - MIX.GAP - MIX.W, 0.1);
+    const startAt = ((0.75 + sg.s0) * CIRC + MIX.GAP / 2 + MIX.W / 2) % CIRC;
+    const on = sel === sg.label;
+    return `<circle class="arc ${on ? 'on' : ''}" data-act="radial" data-v="${esc(sg.label)}" data-label="${esc(sg.label)}" data-s0="${sg.s0}" data-s1="${sg.s1}" data-c="${sg.c}" cx="${MIX.C}" cy="${MIX.C}" r="${MIX.R}" stroke="url(#${gid}-${sg.i})" style="--c:${sg.c};--d:${sg.i};stroke-width:${on ? MIX.W + 6 : MIX.W}px;stroke-dasharray:${dash.toFixed(2)}px ${(CIRC - dash).toFixed(2)}px;stroke-dashoffset:${(-startAt).toFixed(2)}px;opacity:${!sel || on ? 1 : 0.22}"/>`;
   }).join('');
-  const s = segments.find((x) => x.label === sel);
-  const val = conv(s ? s.v : total, cur);
-  return `<div class="radial-host" data-total="${conv(total, cur)}" data-total-label="${esc(totalLabel)}" data-sel="${esc(sel || '')}">
-    <div class="radial-wrap"><svg viewBox="0 0 200 200" role="img" aria-label="${esc(totalLabel)} ${fmt(conv(total, cur), cur)}"><circle cx="100" cy="100" r="${R}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="20"/>${arcs}</svg>
-    <div class="radial-c" aria-live="polite"><span class="v">${C.count(val, dec(cur), curPrefix(cur), key)}</span><span class="l">${esc(s ? s.label : totalLabel)}</span><span class="p">${s ? `${Math.round((s.v / total) * 100)}%` : ''}</span></div></div>
-    <div class="leg-rows">${segments.map((sg, i) => `<button class="leg-row" aria-pressed="${sel === sg.label}" data-act="radial" data-v="${esc(sg.label)}" data-val="${conv(sg.v, cur)}" data-pct="${Math.round((sg.v / total) * 100)}%"><i style="background:var(--chart-${(i % 6) + 1})"></i><span>${esc(sg.label)}</span><span class="pct">${Math.round((sg.v / total) * 100)}%</span><span class="val">${fmt(conv(sg.v, cur), cur)}</span></button>`).join('')}</div></div>`;
+  const grads = segs.map((sg) => `<linearGradient id="${gid}-${sg.i}" gradientUnits="userSpaceOnUse" x1="28" y1="20" x2="212" y2="220"><stop offset="0" style="stop-color:color-mix(in srgb, ${sg.c} 60%, white)"/><stop offset=".5" style="stop-color:${sg.c}"/><stop offset="1" style="stop-color:color-mix(in srgb, ${sg.c} 72%, black)"/></linearGradient>`).join('');
+  const tr = MIX.R + MIX.W / 2 + 11;
+  const ticks = Array.from({ length: MIX.TICKS }, (_, k) => {
+    const f = k / MIX.TICKS; const a = f * 2 * Math.PI;
+    const lit = cur0 && f >= cur0.s0 && f < cur0.s1;
+    return `<circle class="tick ${lit ? 'lit' : ''}" data-f="${f}" cx="${(MIX.C + tr * Math.sin(a)).toFixed(2)}" cy="${(MIX.C - tr * Math.cos(a)).toFixed(2)}" style="--d:${k};${lit ? `fill:${cur0.c}` : ''}"/>`;
+  }).join('');
+  const centreTotal = center !== undefined ? center : total;
+  const shown = conv(cur0 ? (cur0.display ?? cur0.v) : centreTotal, cur);
+  return `<div class="radial-host" style="--circ:${CIRC.toFixed(2)}px" data-total="${conv(centreTotal, cur)}" data-total-label="${esc(totalLabel)}" data-delta="${esc(delta ? delta.text : '')}" data-delta-tone="${delta ? delta.tone || '' : ''}" data-sel="${esc(sel || '')}">
+    <div class="mix-dial">
+      <svg viewBox="0 0 240 240" role="img" aria-label="${esc(totalLabel)} ${fmt(conv(centreTotal, cur), cur)}, split across ${segs.length} groups">
+        <defs>${grads}</defs>
+        <g>${ticks}</g>
+        <circle class="mix-track" cx="${MIX.C}" cy="${MIX.C}" r="${MIX.R}" stroke-width="${MIX.W}"/>
+        ${arcs}
+        <circle class="mix-hair" cx="${MIX.C}" cy="${MIX.C}" r="${MIX.R - MIX.W / 2 - 5}"/>
+      </svg>
+      <button class="mix-c" data-act="radial" data-v="" aria-label="Show ${esc(totalLabel.toLowerCase())}" aria-live="polite">
+        <span class="l">${esc(cur0 ? cur0.label : totalLabel)}</span>
+        <span class="v ${shown < 0 ? 'neg' : ''}">${C.count(shown, dec(cur), curPrefix(cur), key)}</span>
+        <span class="p ${cur0 ? 'share' : delta && delta.tone === 'good' ? 'good' : ''}">${cur0 ? `${cur0.pct}%` : delta ? esc(delta.text) : ''}</span>
+      </button>
+    </div>
+    <div class="mix-rows">${segs.map((sg) => {
+      const val = conv(sg.display ?? sg.v, cur);
+      return `<button class="mix-row" style="--c:${sg.c};--d:${sg.i}" aria-pressed="${sel === sg.label}" data-act="radial" data-v="${esc(sg.label)}" data-val="${val}" data-pct="${sg.pct}%" aria-label="${esc(sg.label)}, ${sg.pct} percent, ${fmt(val, cur)}">
+        <span class="sw" aria-hidden="true"></span>
+        <span class="nm"><span class="t">${esc(sg.label)}</span><span class="bar" aria-hidden="true"><i style="width:${((sg.v / max) * 100).toFixed(1)}%"></i></span></span>
+        <span class="pct">${sg.pct}%</span>
+        <span class="val ${val < 0 ? 'neg' : ''}">${val < 0 ? '−' : ''}${fmt(Math.abs(val), cur)}</span></button>`;
+    }).join('')}</div></div>`;
 };
+C.mixCard = ({ over, title, right = '', note, ...mix }) => `<div class="glass panel mix-card">
+  <div class="mix-h"><div><span class="overline">${esc(over)}</span><h4>${esc(title)}</h4></div>${right}</div>
+  ${C.mix(mix)}
+  ${note ? `<div class="mix-note">${ic('zap', 15)}<span>${esc(note)}</span></div>` : ''}</div>`;
 
 /* Graph: GraphExplorer, GraphForceCanvas, GraphPreview. Focus updates in place. */
 C.graph = (focus = 'sub') => {
@@ -1406,6 +1478,7 @@ S.money = (s) => {
   if (s.money === 'overview') {
     const mult = s.period === 'year' ? 12 : 1;
     body = `
+    ${C.mixCard({ over: 'Spending · Oct cycle', title: s.mix === 'merchant' ? 'Where it went' : 'Expense mix', right: C.seg([{ v: 'category', l: 'Category' }, { v: 'merchant', l: 'Merchant' }], s.mix, 'mix', { mini: true, label: 'Group by' }), segments: s.mix === 'merchant' ? MERCHANTS : CATS, sel: s.radial, cur, key: 'mradial', delta: { text: '↓ 10% vs Sep', tone: 'good' }, note: s.mix === 'merchant' ? 'Rent and one supermarket account for 65% of spending this cycle.' : 'Housing leads at 47%. Eating out is down a third since September.' })}
     <div class="glass panel t-finance">
       <div class="between"><span class="label">${s.period === 'year' ? 'Projected net movement' : 'Net movement'}</span>${C.seg([{ v: 'month', l: 'Cycle' }, { v: 'year', l: 'Year' }], s.period, 'period', { mini: true, label: 'Financial period' })}</div>
       ${C.amount(conv(INCOME - SPEND, cur) * mult, cur, { size: 'xl', tone: 'pos', prefix: '+', key: 'mnet' })}
@@ -1413,19 +1486,13 @@ S.money = (s) => {
     </div>
     <div class="acct-strip" aria-label="Accounts">${ACCTS.map(C.acctCard).join('')}<button class="acct-card add" data-act="sheet" data-v="account">${ic('plus', 18)}Add</button></div>
     ${C.card({ title: 'Cash flow', sub: 'Last six financial cycles', right: C.seg([{ v: 'line', icon: 'activity', aria: 'Line chart' }, { v: 'bars', icon: 'bar-chart-2', aria: 'Bar chart' }], s.trend, 'trend', { mini: true, label: 'Chart type' }) }, C.trend(s.trend, s.cash, cur))}
-    ${C.card({ title: s.mix === 'merchant' ? 'Where it went' : 'Expense mix', sub: `${s.mix === 'merchant' ? 'Merchant' : 'Category'} share · Oct cycle`, right: C.seg([{ v: 'category', l: 'Category' }, { v: 'merchant', l: 'Merchant' }], s.mix, 'mix', { mini: true, label: 'Group by' }) }, C.radial({ segments: s.mix === 'merchant' ? MERCHANTS : CATS, sel: s.radial, cur, key: 'mradial' }))}
     ${C.section({ title: 'Signals', sub: 'Patterns worth noticing this cycle.' }, `<div class="stack">
       ${C.signal({ title: 'Subscriptions rose 18%', summary: 'Two new recurring charges appeared since September.', takeaways: ['Cloud storage plan started Oct 2', 'Streaming add-on renews Nov 3'], conf: 0.88, act: 'go', val: 'insight' })}
       ${C.signal({ origin: 'captured', title: 'Housing is 47% of spending', summary: 'Rent is unchanged; the share grew because groceries and eating out fell.', act: 'radial', val: 'Housing' })}</div>`)}`;
   }
   if (s.money === 'accounts') body = `
-    <div class="glass panel t-finance">
-      <span class="label">Total available in ${cur}</span>
-      ${C.amount(conv(TOTAL, cur), cur, { size: 'xl', tone: 'pos', key: 'mtotal' })}
-      <span class="small t2">Includes transfers and balance adjustments. Adjustments never count as income or spending.</span>
-      ${C.btn('Create account', { icon: 'plus', act: 'sheet', val: 'account', full: true })}
-    </div>
-    ${C.section({ title: 'Accounts', count: ACCTS.length }, `<div class="stack">${ACCTS.map((a) => C.acctItem(a, s.acct === a.id, cur, s.justOpened === a.id)).join('')}</div>`)}`;
+    ${C.mixCard({ over: 'Portfolio · today', title: 'Portfolio mix', right: C.tag(`${ACCTS.length} accounts`), segments: ACCTS.map((a) => ({ label: a.name, v: Math.abs(toUYU(a)), display: toUYU(a), color: a.color })), center: TOTAL, sel: s.radial, cur, key: 'aradial', totalLabel: 'Net portfolio', delta: { text: '↑ 6% this cycle', tone: 'good' }, note: 'Visa Crédito is money owed: it counts toward share by size and is subtracted from the net total.' })}
+    ${C.section({ title: 'Accounts', count: ACCTS.length, sub: 'Balances include transfers and adjustments.' }, `<div class="stack">${ACCTS.map((a) => C.acctItem(a, s.acct === a.id, cur, s.justOpened === a.id)).join('')}${C.btn('Create account', { v: 'secondary', icon: 'plus', act: 'sheet', val: 'account', full: true })}</div>`)}`;
   if (s.money === 'activity') body = `
     <div class="glass cycle-nav">
       <div class="cur">${C.iconBtn('chevron-left', 'Previous financial cycle', { cls: 'sm', act: 'noop', size: 16 })}<b>Oct 2026</b>${C.iconBtn('chevron-right', 'Next financial cycle', { cls: 'sm', act: 'noop', size: 16 })}</div>
@@ -1545,7 +1612,7 @@ S.settings = () => ({ title: 'Settings', body: `
 const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 function tween(el, from, to, ms = 800) {
   const d = +el.dataset.dec || 0, prefix = el.dataset.prefix || '';
-  const write = (v) => { el.textContent = prefix + plain(v, d); };
+  const write = (v) => { el.textContent = (v < 0 ? '−' : '') + prefix + plain(Math.abs(v), d); };
   cancelAnimationFrame(el._raf);
   if (reduced() || from === to) { write(to); el.dataset.now = to; return; }
   const t0 = performance.now(); const dur = ms * slow;
@@ -1602,16 +1669,31 @@ function toast(screen, msg, icon = 'check') {
 
 /* In-place chart updates: no re-render, so CSS transitions carry the change. */
 function selectRadial(host, label) {
-  const sel = host.dataset.sel === label ? '' : label;
+  const sel = !label || host.dataset.sel === label ? '' : label;
   host.dataset.sel = sel;
-  host.querySelectorAll('.arc').forEach((c) => { c.style.strokeWidth = c.dataset.label === sel ? '26px' : '20px'; c.style.opacity = !sel || c.dataset.label === sel ? 1 : 0.28; });
+  let arc = null;
+  host.querySelectorAll('.arc').forEach((c) => {
+    const on = c.dataset.label === sel;
+    c.classList.toggle('on', on);
+    c.style.strokeWidth = `${on ? MIX.W + 6 : MIX.W}px`;
+    c.style.opacity = !sel || on ? 1 : 0.22;
+    if (on) arc = c;
+  });
+  host.querySelectorAll('.tick').forEach((t) => {
+    const f = +t.dataset.f; const lit = !!arc && f >= +arc.dataset.s0 && f < +arc.dataset.s1;
+    t.style.transitionDelay = lit ? `${Math.round((f - +arc.dataset.s0) * 900)}ms` : '0ms';
+    t.classList.toggle('lit', lit); t.style.fill = lit ? arc.dataset.c : '';
+  });
   let btn = null;
-  host.querySelectorAll('.leg-row').forEach((b) => { const on = b.dataset.v === sel; b.setAttribute('aria-pressed', on); if (on) btn = b; });
-  const center = host.querySelector('.radial-c'); const v = center.querySelector('[data-count]');
+  host.querySelectorAll('.mix-row').forEach((b) => { const on = b.dataset.v === sel; b.setAttribute('aria-pressed', on); if (on) btn = b; });
+  const center = host.querySelector('.mix-c'); const vEl = center.querySelector('.v'); const v = vEl.querySelector('[data-count]');
   const to = btn ? +btn.dataset.val : +host.dataset.total;
-  tween(v, +(v.dataset.now ?? v.dataset.count), to, 600); v.dataset.count = to;
+  tween(v, +(v.dataset.now ?? v.dataset.count), to, 650); v.dataset.count = to;
+  vEl.classList.toggle('neg', to < 0);
   center.querySelector('.l').textContent = btn ? sel : host.dataset.totalLabel;
-  center.querySelector('.p').textContent = btn ? btn.dataset.pct : '';
+  const pill = center.querySelector('.p');
+  pill.textContent = btn ? btn.dataset.pct : host.dataset.delta;
+  pill.className = `p ${btn ? 'share' : host.dataset.deltaTone === 'good' ? 'good' : ''}`;
   center.classList.remove('bump'); void center.offsetWidth; center.classList.add('bump');
   return sel || null;
 }
@@ -1726,7 +1808,7 @@ function handlePhone(p, act, v, el) {
       const host = el.closest('.radial-host');
       if (host) { s.radial = selectRadial(host, v); return; }
       const target = screen.querySelector('.radial-host');
-      if (target && s.mix === 'category') { s.radial = selectRadial(target, v); target.closest('.panel').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (target && s.mix === 'category') { s.radial = selectRadial(target, v); target.closest('.mix-card').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); return; }
       s.mix = 'category'; s.radial = v; break;
     }
     case 'cash': s.cash = Number(v); selectCash(el.closest('.cash-host'), s.cash); return;
@@ -1883,9 +1965,9 @@ const GALLERY = [
   { init: { screen: 'results', q: 'spotify', hist: ['discover'] }, t: 'Explorar · Results', c: 'app/(tabs)/search.tsx', n: 'Top match card, then grouped results.' },
   { init: { screen: 'capture', capture: 'money' }, t: 'Capturar · Movement', c: 'app/(tabs)/capture.tsx', n: 'Compact mode switch, a large amount, Save pinned above the dock.', layout: true },
   { init: { screen: 'capture', capture: 'note', rec: true }, t: 'Capturar · Note + voice', c: 'app/(tabs)/capture.tsx', n: 'Listening state with a live waveform and pulsing rings.' },
-  { init: { screen: 'money', money: 'overview' }, t: 'Dinero · Overview', c: 'app/(tabs)/financials.tsx', n: 'Three views instead of five. Cash flow, mix and signals now live in Overview.', layout: true },
+  { init: { screen: 'money', money: 'overview' }, t: 'Dinero · Overview', c: 'app/(tabs)/financials.tsx', n: 'Three views instead of five. The expense mix leads, then net movement, accounts, cash flow and signals.', layout: true },
   { init: { screen: 'money', money: 'overview', trend: 'bars', cash: 3, mix: 'merchant' }, t: 'Dinero · Bars + merchants', c: 'TrendChart · SpendingRadial', n: 'The same cards with the chart and grouping toggles flipped.' },
-  { init: { screen: 'money', money: 'accounts', sheet: 'account' }, t: 'Dinero · Accounts + sheet', c: 'BottomSheet', n: 'The sheet springs up over a blurred scrim and sinks away on close.' },
+  { init: { screen: 'money', money: 'accounts' }, t: 'Dinero · Accounts', c: 'MixCard · portfolio', n: 'Portfolio mix leads, with the net total in its centre and account colours. Create account opens the sheet.', layout: true },
   { init: { screen: 'money', money: 'activity' }, t: 'Dinero · Activity', c: 'app/(tabs)/financials.tsx', n: 'Cycle navigator, sort chip, day-grouped rows.' },
   { init: { screen: 'review' }, t: 'Revisar · Entities', c: 'app/(tabs)/review.tsx', n: 'One decision at a time with a stepper; Accept, Ignore and Later pinned to the thumb zone.', layout: true },
   { init: { screen: 'review', review: 'relations' }, t: 'Revisar · Relations', c: 'DecisionCard kind="relation"', n: 'The relation card moved here from the top of the screen, where it duplicated this tab.', layout: true },
@@ -1903,7 +1985,7 @@ const PROPS = [
   { n: '01', t: 'Collapsing header', s: 'applied', why: 'The large title scrolls away, so deep in Money or a detail screen there is no reminder of where you are and no back button within reach.', what: 'A compact glass bar with the title (and back on detail screens) fades in after 64pt of scroll. The large title dims underneath it.', a: wf(['title:8', 'hero:40', 'row', 'row', 'row', 'row', 'row']), b: wf(['row', 'row', 'row', 'row', 'row', 'row', 'row'], { cbar: 'new' }) },
   { n: '02', t: 'Dock shrinks on scroll', s: 'applied', why: 'The 68pt dock and its labels cover the last rows of every list while you read.', what: 'Scrolling down scales the dock to an icon-only capsule about 14% smaller and hides the labels. Any upward scroll brings them back. The current tab and the review count stay visible.', a: wf(['row', 'row', 'row', 'row', 'row', 'row', 'row', 'row']), b: wf(['row', 'row', 'row', 'row', 'row', 'row', 'row', 'row', 'row'], { dock: 'min new' }) },
   { n: '03', t: 'Today: quick actions, no duplicate review panel', s: 'applied', why: 'Today showed the pending review twice (a highlight and a full panel), and capturing an expense took two taps and a mode change.', what: 'The panel goes; the review highlight and the dock badge carry it. A row of four quick actions (expense, income, note, search) sits under the net hero.', a: wf(['title:8', 'hero:42', 'card:34', 'card:30:gone', 'row', 'row']), b: wf(['title:8', 'hero:42', 'quick:16:new', 'card:34', 'row', 'row', 'row']) },
-  { n: '04', t: 'Money: five views become three', s: 'applied', why: 'Overview, Trends, Accounts, Transactions and Insights overflowed at 375pt (the last tab was cut off), and the trend and insight views were mostly empty.', what: 'Overview (net, accounts strip, cash flow, mix, signals), Accounts and Activity. One currency switch beside the FX stamp replaces three per-chart switches. Category and merchant share become a toggle on one donut card.', a: wf(['title:8', 'cut', 'hero:30', 'card:44', 'row', 'row']), b: wf(['title:8', 'seg:9:new', 'hero:30', 'quick:22', 'card:34', 'card:30']) },
+  { n: '04', t: 'Money: five views become three', s: 'applied', why: 'Overview, Trends, Accounts, Transactions and Insights overflowed at 375pt (the last tab was cut off), and the trend and insight views were mostly empty.', what: 'Overview (expense mix first, then net, accounts strip, cash flow and signals), Accounts (portfolio mix first, then the account list) and Activity. One currency switch beside the FX stamp replaces three per-chart switches. Category and merchant share become a toggle on one donut card.', a: wf(['title:8', 'cut', 'hero:30', 'card:44', 'row', 'row']), b: wf(['title:8', 'seg:9:new', 'card:56:new', 'hero:26', 'quick:20', 'card:26']) },
   { n: '05', t: 'Capture: compact mode switch, Save in the thumb zone', s: 'applied', why: 'Two 112pt mode tiles pushed the amount down, and the Save button sat below the optional fields, often under the fold.', what: 'A segmented control replaces the tiles. The amount gets the space, and Save is pinned above the dock, so recording a movement is amount, then Save.', a: wf(['title:8', 'card:34', 'seg', 'hero:36', 'row', 'card:20', 'hero:10']), b: wf(['title:8', 'seg:9:new', 'seg', 'hero:46', 'row', 'card:16'], { sbar: 'new' }) },
   { n: '06', t: 'Review: one decision at a time', s: 'applied', why: 'Review stacked counters, a relation card, a four-row queue, a long form and the actions at the very bottom. The relation card also duplicated the Relations tab.', what: 'Counters and tabs stay. Entities shows a stepper (1 of 4, progress, queue chips), one form, and Accept, Ignore and Later pinned above the dock. Resolved cards slide out and the next one loads. The relation card lives only under Relations.', a: wf(['quick:16', 'card:30:gone', 'seg', 'row', 'row', 'row', 'card:40']), b: wf(['quick:16', 'seg', 'card:22:new', 'card:58'], { sbar: 'new' }) },
   { n: '07', t: 'Detail screens: facts in the hero', s: 'applied', why: 'Transaction detail repeated the amount, category and account as a three-row list right below the hero that already showed them.', what: 'A 2×2 grid of fact tiles (category, account, time, sources) inside the hero. Origin, explanation and evidence follow directly.', a: wf(['title:8', 'hero:40', 'row', 'row', 'row', 'card:24']), b: wf(['title:8', 'hero:62:new', 'card:22', 'card:24']) },
@@ -1927,18 +2009,18 @@ const LIB = [
   { k: 'tag', name: 'Tag', group: 'Controls', repl: ['StatusBadge', 'ProvenanceMark', 'FxStamp'], api: `<Tag tone="neutral|positive|warning|danger|info"\n  kind="status|provenance|stamp" icon live />`, note: 'Every state pairs hue with a dot or icon and a word. `live` adds the pulse.', render: () => `<div class="hstack">${C.tag('Live', 'positive', { live: true })}${C.tag('Syncing', 'warning')}${C.tag('Offline', 'danger')}${C.tag('11 results', 'info')}${C.tag('Saved view')}</div><div class="hstack">${C.prov('model')}${C.prov('captured')}${C.prov('user')}${C.prov('pending')}</div>${C.stamp()}` },
   { k: 'conf', name: 'ConfidenceMeter', group: 'Controls', repl: ['ConfidenceTier'], api: `<ConfidenceMeter value={0.91} showValue />`, note: 'Same role as today: three bars plus a word.', render: () => `<div class="hstack" style="gap:16px">${C.conf(0.93, true)}${C.conf(0.64, true)}${C.conf(0.3, true)}</div>` },
   { k: 'field', name: 'Field', group: 'Controls', repl: ['Input', 'SearchField'], api: `<Field variant="default|search|amount"\n  label hint error leading trailing />`, note: 'Search adds its own frosted backing so it can stick over content. Errors shake once.', render: () => `${C.field({ ph: 'Spotify, groceries, a contact…', search: true, icon: 'search', aria: 'Search' })}${C.field({ label: 'Account name', ph: 'Main bank account' })}${C.field({ label: 'Start day (1–28)', value: '31', error: true, hint: 'Choose a day from 1 through 28.' })}` },
-  { k: 'row', name: 'Row', group: 'Data', wide: true, repl: ['ListRow', 'ToggleRow', 'TransactionRow', 'TransactionListItem:a', 'RelationPathRow', 'GraphRelationRow:a', 'ReviewQueueItem:a', 'AccountListItem:l'], api: `<Row title subtitle description leading={<IconTile/>}\n  trailing accessory="chevron|switch|expand|none"\n  selected expanded={<…/>} />\n// TransactionRow = a thin preset mapping a Transaction to Row props`, note: 'Eight row types were the same slots with a different accessory. Domain presets stay as two-line wrappers, not separate components.', render: (st) => `<div class="grid2" style="align-items:start">${C.group([C.txnRow(TX[3], 'UYU', 'noop'), C.txnRow(TX[2], 'UYU', 'noop'), C.row({ title: 'Housing', sub: 'Top spending group', lead: C.itile('home'), act: 'noop' })], 'thin')}<div class="stack">${C.group([C.toggleRow('Digest reminders', 'Switch accessory', true), C.relationRow('Subscriptions', 'Es parte de · 12 charges', 'out')], 'thin')}${C.acctItem(ACCTS[2], st.acct !== 'a3', 'UYU', st.acct === null)}</div></div>` },
+  { k: 'row', name: 'Row', group: 'Data', wide: true, repl: ['ListRow', 'ToggleRow', 'TransactionRow', 'TransactionListItem:a', 'RelationPathRow', 'GraphRelationRow:a', 'ReviewQueueItem:a', 'AccountListItem:l'], api: `<Row title subtitle description leading={<IconTile/>}\n  trailing accessory="chevron|switch|expand|none"\n  selected expanded={<…/>} />\n// TransactionRow = a thin preset mapping a Transaction to Row props`, note: 'Eight row types were the same slots with a different accessory. Domain presets stay as two-line wrappers, not separate components.', render: (st) => `<div class="duo">${C.group([C.txnRow(TX[3], 'UYU', 'noop'), C.txnRow(TX[2], 'UYU', 'noop'), C.row({ title: 'Housing', sub: 'Top spending group', lead: C.itile('home'), act: 'noop' })], 'thin')}<div class="stack">${C.group([C.toggleRow('Digest reminders', 'Switch accessory', true), C.relationRow('Subscriptions', 'Es parte de · 12 charges', 'out')], 'thin')}${C.acctItem(ACCTS[2], st.acct !== 'a3', 'UYU', st.acct === null)}</div></div>` },
   { k: 'itile', name: 'IconTile', group: 'Data', repl: ['AccountIcon'], api: `<IconTile icon size="sm|md|lg" color? />`, note: 'The rounded icon square used by rows, timelines, states and accounts.', render: () => `<div class="hstack">${C.itile('credit-card', { size: 'lg', color: '#2563EB' })}${C.itile('music', { color: 'var(--model)' })}${C.itile('arrow-down-left', { color: 'var(--income)' })}${C.itile('repeat', { color: 'var(--transfer)' })}${C.itile('tag', { size: 'sm' })}</div>` },
   { k: 'stat', name: 'StatTile', group: 'Data', repl: ['MetricCard', 'MoneyMetric:a', 'SummaryGrid', 'ReviewSummary', 'TodayFinanceSnapshot', 'MoneyTile:l'], api: `<StatTile label value currency tone delta\n  icon layout="start|center" />\n<StatGrid columns={2|4}>`, note: 'Values count to their new number. TodayFinanceSnapshot becomes a GlassSurface plus an Amount plus two StatTiles.', render: () => `<div class="tiles">${C.stat({ label: 'Income', value: 72700, tone: 'income', key: 'si' })}${C.stat({ label: 'Expenses', value: 39510, tone: 'expense', key: 'se' })}${C.stat({ label: 'This cycle', value: 1260, cur: 'UYU', delta: '+18%', dir: 'up', icon: 'repeat', key: 'sc' })}${C.stat({ label: 'Entities', value: 248, delta: 'flat', icon: 'share-2', key: 'sn' })}</div><div class="grid4">${C.stat({ label: 'Entities', value: 4, center: true, glass: true, dot: 'var(--pending)', key: 's1' })}${C.stat({ label: 'Relations', value: 1, center: true, glass: true, dot: 'var(--pending)', key: 's2' })}${C.stat({ label: 'Labels', value: 3, center: true, glass: true, dot: 'var(--t3)', key: 's3' })}${C.stat({ label: 'Done', value: 31, center: true, glass: true, dot: 'var(--lime)', key: 's4' })}</div>` },
   { k: 'amount', name: 'Amount', group: 'Data', repl: ['MoneyAmount'], api: `<Amount value currency tone="neutral|income|expense|positive"\n  size="row|tile|hero" animated />`, note: 'Inter tabular figures so counting digits never jitter; the currency code is small mono.', render: () => `${C.amount(33190, 'UYU', { size: 'xl', tone: 'pos', prefix: '+', key: 'am1' })}<div class="hstack" style="gap:16px">${C.money(68500, 'UYU', 'income')}${C.money(-2340)}${C.money(-10000, 'UYU', 'transfer')}${C.money(-58.5, 'USD')}</div>` },
-  { k: 'signal', name: 'SignalCard', group: 'Data', wide: true, repl: ['InsightCard', 'InsightArticleCard:a', 'DigestCard', 'DigestSummaryCard:a', 'GeneratedTextBlock', 'DailyBrief', 'EntitySummary'], api: `<SignalCard variant="brief|card|block" origin\n  title summary takeaways metrics confidence onPress />\n<SignalCarousel items />  // was DailyBrief`, note: 'Insights, digests, highlights and generated text all lead with provenance, then a title and a short body. One card with three densities.', render: () => `<div class="grid2" style="align-items:start">${C.signal({ title: 'Subscriptions rose 18%', summary: 'Two new recurring charges since September.', takeaways: ['Review the cloud storage plan'], conf: 0.88, act: 'noop' })}${C.signal({ variant: 'block', title: 'Built from 2 sources', summary: 'Notification and receipt share amount and merchant.', conf: 0.94 })}</div>${C.signal({ origin: 'model', meta: 'Digest', title: 'A quiet week', summary: 'Spending was 22% below your four-week average.', metrics: [{ l: 'Events', v: '64' }, { l: 'New entities', v: '5' }], footer: 'Oct 11 – 17 · 12 related items' })}` },
+  { k: 'signal', name: 'SignalCard', group: 'Data', wide: true, repl: ['InsightCard', 'InsightArticleCard:a', 'DigestCard', 'DigestSummaryCard:a', 'GeneratedTextBlock', 'DailyBrief', 'EntitySummary'], api: `<SignalCard variant="brief|card|block" origin\n  title summary takeaways metrics confidence onPress />\n<SignalCarousel items />  // was DailyBrief`, note: 'Insights, digests, highlights and generated text all lead with provenance, then a title and a short body. One card with three densities.', render: () => `<div class="duo">${C.signal({ title: 'Subscriptions rose 18%', summary: 'Two new recurring charges since September.', takeaways: ['Review the cloud storage plan'], conf: 0.88, act: 'noop' })}${C.signal({ variant: 'block', title: 'Built from 2 sources', summary: 'Notification and receipt share amount and merchant.', conf: 0.94 })}</div>${C.signal({ origin: 'model', meta: 'Digest', title: 'A quiet week', summary: 'Spending was 22% below your four-week average.', metrics: [{ l: 'Events', v: '64' }, { l: 'New entities', v: '5' }], footer: 'Oct 11 – 17 · 12 related items' })}` },
   { k: 'timeline', name: 'Timeline', group: 'Data', repl: ['EvidenceRow', 'TransactionEvidenceTimeline:a', 'EvidenceTrail', 'EventTimeline'], api: `<Timeline items={[{ icon, title, subtitle,\n  amount?, time?, reason? }]} />`, note: 'Evidence, event history and insight references share one rail.', render: () => C.timeline([{ icon: 'bell', title: 'Santander', sub: 'Notification · 13:42', amount: 'UYU 2,340', why: 'Primary source' }, { icon: 'mail', title: 'Gmail receipt', sub: 'Email · 13:45', amount: 'UYU 2,340', why: 'Same merchant and amount within 3 min' }]) },
   { k: 'trend', name: 'TrendChart', group: 'Charts', repl: ['MonthlyCashFlowBar', 'MonthlyCashFlowLine', 'TrendChart:a', 'MiniBarChart ×2:l'], api: `<TrendChart mode="line|bars|spark"\n  series={[income, spending]} selected onSelect />`, note: 'Bars grow on a spring and lines draw in. Changing the month glides the cursor and tooltip instead of redrawing.', render: (st) => `${C.seg([{ v: 'line', l: 'Line', icon: 'activity' }, { v: 'bars', l: 'Bars', icon: 'bar-chart-2' }], st.trend || 'line', 'trend', { key: 'sptrend' })}${C.trend(st.trend || 'line', 4)}<div class="between"><span class="label">Sparkline</span>${C.spark([8, 9.1, 8.4, 10.2, 9.6, 9.84], 140, 40, 'var(--model)')}</div>` },
-  { k: 'radial', name: 'SpendingRadial', group: 'Charts', repl: ['SpendingRadial', 'DistributionRing:l', 'AnimatedRadialSlice:l'], api: `<SpendingRadial segments groupBy selected\n  onSelect totalLabel />`, note: 'Arcs sweep in once; selecting thickens the slice and counts the centre to its value. Tap a slice or a legend row.', render: () => C.radial({ segments: CATS, key: 'spr' }) },
+  { k: 'radial', name: 'SpendingRadial', group: 'Charts', wide: true, repl: ['SpendingRadial', 'DistributionRing:l', 'AnimatedRadialSlice:l'], api: `<MixCard overline title action note\n  segments={[{ label, value, display?, color? }]}\n  centerValue? delta? selected onSelect />`, note: 'Round-capped arcs with even gaps start at 12 o\'clock; the tick ring lights the selected share; legend rows use fixed columns so percentages and amounts align. Tap a slice, a row, or the centre to reset. The same card shows account share with account colours and a net total.', render: () => `<div class="duo">${C.mixCard({ over: 'Spending · Oct cycle', title: 'Expense mix', right: C.tag('6 groups'), segments: CATS, key: 'spr', delta: { text: '↓ 10% vs Sep', tone: 'good' } })}${C.mixCard({ over: 'Portfolio · today', title: 'Portfolio mix', right: C.tag('4 accounts'), segments: ACCTS.map((a) => ({ label: a.name, v: Math.abs(toUYU(a)), display: toUYU(a), color: a.color })), center: TOTAL, totalLabel: 'Net portfolio', key: 'spa', delta: { text: '↑ 6% this cycle', tone: 'good' } })}</div>` },
   { k: 'graph', name: 'Graph', group: 'Charts', wide: true, repl: ['GraphExplorer', 'GraphForceCanvas', 'GraphPreview'], api: `<Graph mode="explore|preview" focus onFocus\n  showServices showEvidence />`, note: 'Nodes pop in on a stagger; focus glows, neighbours stay lit and the rest dim, without a re-render.', render: () => C.explorer('gro') },
-  { k: 'decision', name: 'DecisionCard', group: 'Review', wide: true, repl: ['ResolutionForm', 'AliasDecisionForm:a', 'MergePreview', 'SemanticCandidateCard:l'], api: `<DecisionCard kind="alias|relation" item\n  onAccept onIgnore onLater />  // actions render in Screen.bar`, note: 'Both review decisions share provenance, rationale and the same three outcomes; resolved cards slide out.', render: (st) => `<div class="grid2" style="align-items:start">${C.relDecision(st.rule === 'rule', true)}${C.aliasDecision(REVIEW_ITEMS.r2)}</div>` },
+  { k: 'decision', name: 'DecisionCard', group: 'Review', wide: true, repl: ['ResolutionForm', 'AliasDecisionForm:a', 'MergePreview', 'SemanticCandidateCard:l'], api: `<DecisionCard kind="alias|relation" item\n  onAccept onIgnore onLater />  // actions render in Screen.bar`, note: 'Both review decisions share provenance, rationale and the same three outcomes; resolved cards slide out.', render: (st) => `<div class="duo">${C.relDecision(st.rule === 'rule', true)}${C.aliasDecision(REVIEW_ITEMS.r2)}</div>` },
   { k: 'capture', name: 'CaptureForm', group: 'Review', repl: ['CaptureForm', 'QuickCapture:a', 'ExpenseCapture:a', 'EmailCapture:a', 'NotificationCapture:a', 'VoiceRecordButton:l'], api: `<CaptureForm mode="note|expense|income|transfer" />`, note: 'Four aliases already pointed at one form; the mode prop makes that explicit.', render: (st) => `${C.captureMoney(st.kind || 'expense')}${C.voice(false)}` },
-  { k: 'state', name: 'StateView', group: 'Feedback', wide: true, repl: ['EmptyState', 'ErrorState', 'LoadingSkeleton', 'LoadingState:a', 'ActionPreview:a', 'CaptureSuccess'], api: `<StateView kind="empty|error|success|loading"\n  title description action secondaryAction\n  skeleton="list|hero|chart" />`, note: 'Screens render their errors with EmptyState and never import ErrorState. One component, four kinds.', render: () => `<div class="grid2" style="align-items:start">${C.state({ icon: 'share-2', title: 'Your graph is still growing', desc: 'Capture notes, emails and payments to see connections.', primary: 'Capture' })}${C.state({ kind: 'error', title: 'Live data unavailable', desc: 'Showing your saved view from 09:12.', code: 'NETWORK_TIMEOUT', primary: 'Retry' })}${C.state({ kind: 'success', title: 'Guardado en BrainIA', desc: 'Already counted in Money.' })}${C.skeleton('list', 2)}</div>` },
+  { k: 'state', name: 'StateView', group: 'Feedback', wide: true, repl: ['EmptyState', 'ErrorState', 'LoadingSkeleton', 'LoadingState:a', 'ActionPreview:a', 'CaptureSuccess'], api: `<StateView kind="empty|error|success|loading"\n  title description action secondaryAction\n  skeleton="list|hero|chart" />`, note: 'Screens render their errors with EmptyState and never import ErrorState. One component, four kinds.', render: () => `<div class="duo">${C.state({ icon: 'share-2', title: 'Your graph is still growing', desc: 'Capture notes, emails and payments to see connections.', primary: 'Capture' })}${C.state({ kind: 'error', title: 'Live data unavailable', desc: 'Showing your saved view from 09:12.', code: 'NETWORK_TIMEOUT', primary: 'Retry' })}${C.state({ kind: 'success', title: 'Guardado en BrainIA', desc: 'Already counted in Money.' })}${C.skeleton('list', 2)}</div>` },
   { k: 'sheet', name: 'BottomSheet', group: 'Feedback', repl: ['BottomSheet'], api: `<BottomSheet visible title onClose>`, note: 'Same API as today. Springs in, children stagger, sinks out on close.', render: () => `<div style="position:relative;height:340px;border-radius:24px;overflow:hidden;background:var(--base)"><div class="amb" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>${C.sheetFilter().replace('class="sheet-wrap"', 'class="sheet-wrap" style="position:absolute"')}</div>` },
   { k: 'dock', name: 'Dock + Toast', group: 'Feedback', repl: ['TabIcon:l'], api: `<Dock tabs badge minimizeOnScroll />\ntoast.show(message, { icon })`, note: 'Custom tabBar for expo-router Tabs with a gliding pill. Toasts confirm quick actions without a modal.', render: (st) => `<div style="position:relative;height:96px;margin-top:20px">${C.dock(st.tab || 'money', 4, 'left:0;right:0;bottom:0')}</div><div style="position:relative;height:52px"><div class="glass strong chrome toast" style="animation:none;top:6px"><span class="ok">${ic('check', 15)}</span>Saved · Tienda Inglesa</div></div>` },
 ];
