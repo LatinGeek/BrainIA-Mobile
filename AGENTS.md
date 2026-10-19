@@ -43,7 +43,7 @@ Use `docs/bibiz-reference-brief.md` as the active visual reference for current B
 
 - Use semantic tokens from the theme layer instead of hardcoded colors, typography, spacing, or chart palettes.
 - Prefer full-width sections, dividers, and list rows over nested cards. Cards are for distinct repeated objects, summaries, modals, or framed tools.
-- Keep cards at disciplined radii and minimal elevation. Avoid heavy shadows, decorative gradients, and generic purple SaaS styling.
+- Keep cards at the token radii (10/14/20/28) and minimal elevation. Avoid heavy shadows, decorative gradients, and generic purple SaaS styling.
 - Typography should carry hierarchy: concise titles, readable body text, small metadata, and no oversized headings inside compact panels.
 - Charts should use minimum necessary ink: clear labels, trend direction, formatted values, and no unlabeled decorative visualization.
 - Use icons for familiar actions and pair them with labels when ambiguity would slow the user down.

@@ -330,3 +330,21 @@ That gives us:
 - easy theme swaps
 - less UI rewrite cost later
 - room for visual experimentation without affecting behavior
+
+## Glass tokens (current)
+
+`lib/themes.ts` is the source of truth. The glass frontend (see `docs/glass-frontend-integration-plan.md`) adds:
+
+| Group | Tokens | Use |
+| --- | --- | --- |
+| `glass.blur` | `thin 12`, `regular 22`, `strong 36` | Blur radius per glass level. Never animate it. |
+| `glass.fill` | two-stop gradients per level | Fill over the blur. |
+| `glass.edge`, `stroke`, `inner`, `innerStroke`, `divider` | hairlines | Specular top edge, outer stroke, inset rows, list dividers. |
+| `glass.chromeBase` | `0.74` | Opacity of the solid base under the dock and bars. |
+| `glass.selected` / `onSelected` | near-white pill / near-black text | Selected segment, chip and dock item. |
+| `glass.solid` | opaque fills per level | Reduce Transparency fallback. |
+| `ambient` | base, raised base, three orbs, ring | Background field behind each screen. |
+| `motion.duration` | `press 140`, `quick 240`, `enter 420`, `count 800` | Timings in ms. `fast`, `base`, `slow`, `spring` remain as deprecated aliases. |
+| `motion.springs` | `thumb`, `press` | Sliding thumbs and pressed scale. |
+| `motion.easing` | `out`, `in`, `soft` | Cubic-bezier control points. |
+| `typography.title`, `numeral`, `numeralCompact` | Poppins title; Inter 700 tabular numerals | Screen titles and money values. |
