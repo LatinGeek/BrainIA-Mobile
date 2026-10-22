@@ -43,8 +43,8 @@ export type MixSegment = {
 const { R, W, GAP, C } = DIAL;
 const CIRC = DIAL_CIRC;
 const MIN_SHARE = 0.01; // thinnest drawn slice, as a share of the ring
-const THIN_GAP = 2.4; // gap between a thin bar and its neighbours
-const THIN_EXTRA = 4; // a slice shorter than a capsule plus this becomes a bar
+const FLAT_GAP = 4; // gap between flat-ended slices
+const THIN_GAP = 2.4; // gap used when a slice is too short for FLAT_GAP
 
 function percent(value: number, total: number) {
   if (total <= 0) return '0%';
@@ -115,19 +115,22 @@ export function MixCard({
     const floored = source.map((segment) => (segment.value > 0 ? Math.max(segment.value / total, MIN_SHARE) : 0));
     const flooredTotal = floored.reduce((sum, share) => sum + share, 0) || 1;
     const shares = floored.map((share) => share / flooredTotal);
+    const roundedIndex = shares.indexOf(Math.max(...shares));
     return source.map((segment, index) => {
       const s0 = shares.slice(0, index).reduce((sum, share) => sum + share, 0);
       const s1 = s0 + shares[index];
       const length = shares[index] * CIRC;
-      const thin = length < GAP + W + THIN_EXTRA;
+      // Only the biggest slice keeps rounded ends; every other slice is flat-ended, and stays flat when selected.
+      const rounded = index === roundedIndex;
+      const flatGap = length > FLAT_GAP * 4 ? FLAT_GAP : THIN_GAP;
       return {
         ...segment,
         index,
         color: segment.color ?? theme.colors.chart[index % theme.colors.chart.length],
-        cap: thin ? ('butt' as const) : ('round' as const),
-        dash: thin ? Math.max(length - THIN_GAP, 1.2) : Math.max(length - GAP - W, 0.1),
-        startAt: thin ? ((0.75 + s0) * CIRC + THIN_GAP / 2) % CIRC : ((0.75 + s0) * CIRC + GAP / 2 + W / 2) % CIRC,
-        selDash: Math.max(length - GAP - W, 0.1),
+        cap: rounded ? ('round' as const) : ('butt' as const),
+        dash: rounded ? Math.max(length - GAP - W, 0.1) : Math.max(length - flatGap, 1.2),
+        startAt: rounded ? ((0.75 + s0) * CIRC + GAP / 2 + W / 2) % CIRC : ((0.75 + s0) * CIRC + flatGap / 2) % CIRC,
+        selDash: rounded ? Math.max(length - GAP - W, 0.1) : Math.max(length - flatGap, 1.2),
         s0,
         s1,
       };

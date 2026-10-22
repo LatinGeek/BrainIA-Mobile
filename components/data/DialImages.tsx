@@ -20,10 +20,10 @@ const TICK_RADIUS = DIAL.R + DIAL.W / 2 + 11;
 export type DialArc = {
   id: string;
   color: string;
-  cap: 'round' | 'butt'; // thin slices get slim butt-capped bars so each keeps its own readable slot
+  cap: 'round' | 'butt'; // only the biggest slice is round-ended; every other slice is flat-ended, also when selected
   dash: number; // visible dash length along the circle (round caps add W)
   startAt: number; // distance along the circle, from 3 o'clock, where the dash starts
-  selDash: number; // dash length of the selected capsule (always round-capped)
+  selDash: number; // dash length of the selected highlight (same cap as the slice itself)
   s0: number;
   s1: number;
 };
@@ -118,10 +118,10 @@ function OverlayScene({ arc, scale }: { arc: DialArc; scale: number }) {
       {lit.map((tick) => (
         <Circle key={tick.k} cx={tick.cx} cy={tick.cy} r={2.1} color={arc.color} />
       ))}
-      <Path path={capsulePath(arc)} style="stroke" strokeWidth={DIAL.W + 8} strokeCap="round" color={arc.color} opacity={0.5}>
+      <Path path={capsulePath(arc)} style="stroke" strokeWidth={DIAL.W + 8} strokeCap={arc.cap} color={arc.color} opacity={0.5}>
         <BlurMask blur={9} style="normal" />
       </Path>
-      <Path path={capsulePath(arc)} style="stroke" strokeWidth={DIAL.W + 6} strokeCap="round">
+      <Path path={capsulePath(arc)} style="stroke" strokeWidth={DIAL.W + 6} strokeCap={arc.cap}>
         <Gradient color={arc.color} />
       </Path>
       <Path path={pin} style="stroke" strokeWidth={2.2} strokeCap="round" color={arc.color} />
