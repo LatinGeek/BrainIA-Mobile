@@ -305,7 +305,7 @@ export default function SettingsScreen() {
 
       <Section title="Dinero" subtitle="Configura tu ciclo mensual y la presencia de Dinero en la vista de Hoy.">
         <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.sm }}>
-        <Row style={{ borderRadius: 0 }} title={`${UYU_PER_USD.toFixed(4)} UYU/USD`} descriptionLines={4} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
+        <Row style={{ borderRadius: 0 }} title={`1 USD = ${UYU_PER_USD} UYU`} descriptionLines={4} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
         <Row style={{ borderRadius: 0 }} title={`Día ${settings.financialPeriodStartDay} de cada mes`} descriptionLines={4} subtitle="Inicio del ciclo financiero" description="Los informes mensuales van desde este día hasta el día anterior al próximo ciclo." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambiar</Text>} accessory="none" onPress={openFinancialPeriod} />
         <View style={{ paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm }}>
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prioridad en Hoy</Text>
