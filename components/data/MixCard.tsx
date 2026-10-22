@@ -220,7 +220,9 @@ export function MixCard({
         >
           {images.rings ? <Image source={{ uri: images.rings }} fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
           <ArcsLayer uri={images.arcs} anySelected={anySelected} introKey={introKey} reduceMotion={reduceMotion} />
-          {leaving && leaving.id !== activeArc?.id ? <SelectedOverlay key={`leave-${leaving.id}`} uri={images.overlays[leaving.id] ?? null} visible={false} reduceMotion={reduceMotion} travel={travel} /> : null}
+          {/* Overlay images are decoded ahead of the first tap (drawn at near-zero opacity), so selecting never waits on a decode. */}
+          {arcs.map((arc) => (images.overlays[arc.id] && arc.id !== activeId && arc.id !== leaving?.id ? <Image key={`warm-${arc.id}`} source={{ uri: images.overlays[arc.id] as string }} fadeDuration={0} style={[StyleSheet.absoluteFill, { opacity: 0.01 }]} /> : null))}
+          {leaving && leaving.id !== activeArc?.id ? <SelectedOverlay key={`leave-${leaving.id}`} uri={images.overlays[leaving.id] ?? null} visible={false} reduceMotion={reduceMotion} travel={null} fixedTurn={(leaving.s0 + leaving.s1) / 2} /> : null}
           {activeArc ? <SelectedOverlay key={`on-${activeArc.id}`} uri={images.overlays[activeArc.id] ?? null} visible reduceMotion={reduceMotion} travel={travel} /> : null}
 
           <Pressable
@@ -403,22 +405,26 @@ function ArcsLayer({ uri, anySelected, introKey, reduceMotion }: { uri: string |
 }
 
 /** The selected arc: wider, with a soft halo and its share of the tick ring lit. It fades and springs in or out. */
-function SelectedOverlay({ uri, visible, reduceMotion, travel }: { uri: string | null; visible: boolean; reduceMotion: boolean; travel: SharedValue<number> }) {
+function SelectedOverlay({ uri, visible, reduceMotion, travel, fixedTurn = 0 }: { uri: string | null; visible: boolean; reduceMotion: boolean; travel: SharedValue<number> | null; fixedTurn?: number }) {
   const theme = useTheme();
-  const progress = useSharedValue(visible ? (reduceMotion ? 1 : 0) : 1);
+  const ready = Boolean(uri);
+  const progress = useSharedValue(visible ? 0 : 1);
 
   useEffect(() => {
+    // The spring waits for the image, so the capsule never pops in without animating.
+    if (visible && !ready) return;
     if (reduceMotion) {
       progress.set(visible ? 1 : 0);
       return;
     }
     progress.set(visible ? withSpring(1, { damping: 15, stiffness: 150, mass: 1 }) : withTiming(0, { duration: 340, easing: Easing.bezier(...theme.motion.easing.in) }));
-  }, [visible, progress, reduceMotion, theme.motion.easing.in]);
+  }, [visible, ready, progress, reduceMotion, theme.motion.easing.in]);
 
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, progress.value * 1.4),
-    // The image is drawn centred at 12 o'clock; turning it by the shared angle puts the highlight on its split.
-    transform: [{ rotate: `${travel.value * 360}deg` }, { scale: 0.96 + 0.04 * progress.value }],
+    // The image is drawn centred at 12 o'clock. The incoming overlay turns with the shared angle; the
+    // outgoing one stays where it was and fades there, so it never sweeps across the ring.
+    transform: [{ rotate: `${(travel ? travel.value : fixedTurn) * 360}deg` }, { scale: 0.96 + 0.04 * progress.value }],
   }));
 
   return (
