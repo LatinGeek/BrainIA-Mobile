@@ -5,8 +5,8 @@ import { useFonts } from 'expo-font';
 import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
@@ -15,6 +15,7 @@ import { Telemetry } from '@/components/Telemetry';
 import { ToastProvider } from '@/components/layout/Toast';
 import { useReduceMotion } from '@/lib/hooks';
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
+import { warmAmbientBackdrops } from '@/components/glass/GlassBackdrop';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -81,11 +82,32 @@ function RootNavigator() {
   });
   const typographyReady = fontsLoaded || Boolean(fontsError);
 
+  // The glass backdrop images are made (or found on disk) before the first screen shows, and are then reused
+  // by every screen: switching screens never re-renders them. The splash waits for them, but never for long.
+  const { width, height } = useWindowDimensions();
+  const [backdropsReady, setBackdropsReady] = useState(Platform.OS === 'web');
   useEffect(() => {
-    if (hydrated && typographyReady) {
+    if (Platform.OS === 'web') return;
+    let alive = true;
+    const finish = () => {
+      if (alive) setBackdropsReady(true);
+    };
+    const timer = setTimeout(finish, 1800);
+    void warmAmbientBackdrops(theme.ambient, width, height).then(() => {
+      clearTimeout(timer);
+      finish();
+    });
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [theme.ambient, width, height]);
+
+  useEffect(() => {
+    if (hydrated && typographyReady && backdropsReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [hydrated, typographyReady]);
+  }, [hydrated, typographyReady, backdropsReady]);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(theme.colors.background);

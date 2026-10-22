@@ -1,4 +1,6 @@
+import { File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { Blur, Circle, Fill, Group, ImageFormat, Paint, RadialGradient, drawAsImage, rect, vec } from '@shopify/react-native-skia';
 
 /**
@@ -79,12 +81,42 @@ function keyOf(blur: number, colors: AmbientColors, width: number, height: numbe
 }
 
 const cache = new Map<string, string>();
+
+/** The blur levels glass surfaces use (thin, regular, strong), plus 0 for the unblurred field. */
+export const AMBIENT_BLURS = [8, 12, 18] as const;
+
+function hashKey(value: string) {
+  let h = 5381;
+  for (let i = 0; i < value.length; i++) h = ((h * 33) ^ value.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+/**
+ * Images live in the app cache folder as PNG files, named after their inputs. A screen switch, or a
+ * relaunch, finds them there and shows them straight away: nothing is re-rendered or re-decoded from a
+ * base64 string. They are only rendered the first time a theme, size or blur has no file yet.
+ */
+function fromDisk(key: string): string | undefined {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  if (Platform.OS === 'web') return undefined;
+  try {
+    const file = new File(Paths.cache, `ambient-${hashKey(key)}.png`);
+    if (file.exists) {
+      cache.set(key, file.uri);
+      return file.uri;
+    }
+  } catch {
+    // An unreadable cache folder only means the image is rendered again.
+  }
+  return undefined;
+}
 // One render at a time keeps the GPU work off the critical path when a screen mounts.
 let queue: Promise<unknown> = Promise.resolve();
 
 function render(blur: number, colors: AmbientColors, width: number, height: number): Promise<string | null> {
   const key = keyOf(blur, colors, width, height);
-  const hit = cache.get(key);
+  const hit = fromDisk(key);
   if (hit) return Promise.resolve(hit);
 
   const job = queue.then(async () => {
@@ -94,7 +126,15 @@ function render(blur: number, colors: AmbientColors, width: number, height: numb
       height: Math.max(1, Math.ceil(height * scale)),
     });
     if (!image) return null;
-    const uri = `data:image/png;base64,${image.encodeToBase64(ImageFormat.PNG, 100)}`;
+    let uri: string;
+    if (Platform.OS === 'web') {
+      uri = `data:image/png;base64,${image.encodeToBase64(ImageFormat.PNG, 100)}`;
+    } else {
+      const file = new File(Paths.cache, `ambient-${hashKey(key)}.png`);
+      file.create({ overwrite: true });
+      file.write(image.encodeToBytes(ImageFormat.PNG, 100));
+      uri = file.uri;
+    }
     cache.set(key, uri);
     return uri;
   });
@@ -109,12 +149,12 @@ function render(blur: number, colors: AmbientColors, width: number, height: numb
 function useRenderedAmbient(blur: number, enabled: boolean, colors: AmbientColors, width: number, height: number): string | null {
   const key = keyOf(blur, colors, width, height);
   const [loaded, setLoaded] = useState<{ key: string; uri: string } | null>(() => {
-    const hit = cache.get(key);
+    const hit = fromDisk(key);
     return hit ? { key, uri: hit } : null;
   });
 
   useEffect(() => {
-    if (!enabled || cache.has(key)) return;
+    if (!enabled || fromDisk(key)) return;
     let alive = true;
     render(blur, colors, width, height)
       .then((uri) => {
@@ -129,7 +169,7 @@ function useRenderedAmbient(blur: number, enabled: boolean, colors: AmbientColor
   }, [key, enabled]);
 
   if (!enabled) return null;
-  return cache.get(key) ?? (loaded?.key === key ? loaded.uri : null);
+  return fromDisk(key) ?? (loaded?.key === key ? loaded.uri : null);
 }
 
 export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: number, height: number): string | null {
@@ -139,4 +179,18 @@ export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: n
 /** The unblurred ambient field as one cached image: new screens draw a bitmap instead of re-recording an SVG scene. */
 export function useAmbientField(colors: AmbientColors, width: number, height: number): string | null {
   return useRenderedAmbient(0, true, colors, width, height);
+}
+
+/**
+ * Renders (or finds on disk) every backdrop image the app uses, one at a time, so the first screen already has them.
+ * Resolves when all are ready.
+ */
+export async function warmAmbientBackdrops(colors: AmbientColors, width: number, height: number) {
+  for (const blur of [0, ...AMBIENT_BLURS]) {
+    try {
+      await render(blur, colors, width, height);
+    } catch {
+      // A failed warm-up just means that surface renders it on demand.
+    }
+  }
 }

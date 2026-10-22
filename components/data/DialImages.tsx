@@ -54,7 +54,9 @@ function arcPath(arc: DialArc) {
 /** The selected capsule, centred at 12 o'clock (the dial turns the image to the split's own angle). */
 function capsulePath(arc: DialArc) {
   const path = Skia.Path.Make();
-  const sweep = (arc.selDash / DIAL_CIRC) * 360;
+  // A very thin flat slice is highlighted at least as wide as the stroke, centred on the slice, so it reads at a glance;
+  // the slice's own slot in the ring keeps its true width.
+  const sweep = Math.max((arc.selDash / DIAL_CIRC) * 360, arc.cap === 'butt' ? 11 : 0);
   path.addArc(Skia.XYWHRect(DIAL.C - DIAL.R, DIAL.C - DIAL.R, DIAL.R * 2, DIAL.R * 2), 270 - sweep / 2, sweep);
   return path;
 }
