@@ -102,7 +102,7 @@ function OverlayScene({ arc, scale }: { arc: DialArc; scale: number }) {
       if (offset < -0.5) offset += 1;
       return { k: tick.k, offset };
     })
-    .filter((tick) => Math.abs(tick.offset) <= half)
+    .filter((tick) => Math.abs(tick.offset) <= half && Math.abs(tick.offset) > 0.012)
     .map((tick) => {
       const angle = tick.offset * 2 * Math.PI;
       return { k: tick.k, cx: DIAL.C + TICK_RADIUS * Math.sin(angle), cy: DIAL.C - TICK_RADIUS * Math.cos(angle) };
@@ -124,7 +124,6 @@ function OverlayScene({ arc, scale }: { arc: DialArc; scale: number }) {
         <Gradient color={arc.color} />
       </Path>
       <Path path={pin} style="stroke" strokeWidth={2.2} strokeCap="round" color={arc.color} />
-      <Circle cx={DIAL.C} cy={DIAL.C - pinTo - 3} r={2.8} color={arc.color} />
     </Group>
   );
 }
@@ -136,6 +135,8 @@ function render(key: string, scene: (scale: number) => React.ReactElement, pixel
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
   const job = queue.then(async () => {
+    // Yield between images so no single encode lands inside a frame (11 splits means 13 images).
+    await new Promise((resolve) => setTimeout(resolve, 70));
     const scale = pixels / DIAL.BOX;
     const image = await drawAsImage(scene(scale), { width: pixels, height: pixels });
     if (!image) return null;

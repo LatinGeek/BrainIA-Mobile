@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
   FadeOutUp,
   SharedValue,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -284,8 +285,11 @@ export function MixCard({
 }
 
 /**
- * The centre figure. On device it rolls between values (opacity and transform only); on web a plain Text with a JS count-up is used.
+ * The centre figure counts to its new value like the prototype's; on web a plain Text with a JS count-up is used.
  */
+const COUNT_STEPS = 24;
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
 type CenterAmountProps = {
   target: number;
   animate: boolean;
@@ -317,38 +321,52 @@ function CenterAmountWeb({ target, animate, hasActive, centerValue, currency, fo
 
 function CenterAmountNative({ target, animate, hasActive, centerValue, currency, formatValue, amountLabel, maxWidth, fontSize, lineHeight, reduceMotion }: CenterAmountProps) {
   const theme = useTheme();
-  const text = !animate ? amountLabel : hasActive ? formatValue(target) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(target, currency) : formatValue(target)}`;
+  // Prototype behaviour: the figure counts from the old value to the new one over ~650 ms. The in-between
+  // numbers are formatted once and an animated TextInput shows the frame for the current progress, so the
+  // count costs no React render or layout per frame.
+  const [pair, setPair] = useState({ from: target, to: target });
+  if (pair.to !== target) setPair({ from: pair.to, to: target });
 
-  // The figure rolls: the old one lifts away while the new one rises in. Only opacity and transform
-  // animate, so it stays on the UI thread (changing text every frame forced a layout pass per frame).
-  const [shown, setShown] = useState({ from: text, to: text });
-  if (shown.to !== text) setShown({ from: shown.to, to: text });
-  const roll = useSharedValue(1);
+  const frames = useMemo(() => {
+    const format = (value: number) => (!animate ? amountLabel : hasActive ? formatValue(value) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(value, currency) : formatValue(value)}`);
+    return Array.from({ length: COUNT_STEPS }, (_, i) => {
+      const x = i / (COUNT_STEPS - 1);
+      const eased = 1 - (1 - x) * (1 - x) * (1 - x);
+      return format(pair.from + (pair.to - pair.from) * eased);
+    });
+    // formatValue is a fresh closure every render; the values it reads are the real inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair.from, pair.to, animate, hasActive, centerValue, currency, amountLabel]);
+
+  const index = useSharedValue(COUNT_STEPS - 1);
   useEffect(() => {
-    if (reduceMotion || shown.from === shown.to) {
-      roll.set(1);
+    if (!animate || reduceMotion) {
+      index.set(COUNT_STEPS - 1);
       return;
     }
-    roll.set(0);
-    roll.set(withTiming(1, { duration: 480, easing: Easing.bezier(...theme.motion.easing.out) }));
-  }, [reduceMotion, roll, shown.from, shown.to, theme.motion.easing.out]);
+    index.set(0);
+    index.set(withTiming(COUNT_STEPS - 1, { duration: 650, easing: Easing.linear }));
+  }, [animate, index, pair.from, pair.to, reduceMotion]);
 
-  const lift = lineHeight * 0.55;
-  const outStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, roll.value * 1.8), transform: [{ translateY: -lift * roll.value }] }));
-  const inStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, roll.value * 1.6), transform: [{ translateY: lift * (1 - roll.value) }] }));
-  const figure = [theme.typography.numeral, { color: theme.colors.textPrimary, fontSize, lineHeight, width: maxWidth, textAlign: 'center' as const }];
+  const animatedProps = useAnimatedProps(() => {
+    const i = Math.min(COUNT_STEPS - 1, Math.max(0, Math.round(index.value)));
+    // Reanimated writes `text` straight to the native input (not part of TextInputProps).
+    return { text: frames[i] } as unknown as TextInputProps;
+  }, [frames]);
+
+  // A TextInput cannot auto-fit, so long figures shrink to the disc up front.
+  const longest = frames.reduce((n, text) => Math.max(n, text.length), 1);
+  const fitted = Math.max(fontSize * 0.62, Math.min(fontSize, (maxWidth / longest) * 1.75));
 
   return (
-    <View accessibilityLabel={amountLabel} style={{ width: maxWidth, height: lineHeight, overflow: 'hidden' }}>
-      {shown.from !== shown.to ? (
-        <Animated.Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[figure, StyleSheet.absoluteFill, outStyle]}>
-          {shown.from}
-        </Animated.Text>
-      ) : null}
-      <Animated.Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[figure, inStyle]}>
-        {shown.to}
-      </Animated.Text>
-    </View>
+    <AnimatedTextInput
+      accessibilityLabel={amountLabel}
+      editable={false}
+      pointerEvents="none"
+      defaultValue={frames[COUNT_STEPS - 1]}
+      animatedProps={animatedProps}
+      style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: fitted, lineHeight, height: lineHeight, width: maxWidth, textAlign: 'center', padding: 0, margin: 0, includeFontPadding: false }]}
+    />
   );
 }
 /** The arcs, as one image. The ring settles in on first show (and when the groups change) and recedes while a split is selected. */

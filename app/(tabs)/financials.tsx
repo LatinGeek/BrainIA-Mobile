@@ -667,7 +667,7 @@ export default function FinancialsScreen() {
                 centerLabel="Cartera neta"
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 percentageNoun="de la cartera"
-                delta={{ text: 'Los saldos incluyen transferencias', tone: 'neutral' }}
+                delta={{ text: 'Incluye transferencias', tone: 'neutral' }}
               />
               <Button label="Crear cuenta" icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} onPress={openCreateAccount} full />
               <View style={{ gap: 22 }}>
