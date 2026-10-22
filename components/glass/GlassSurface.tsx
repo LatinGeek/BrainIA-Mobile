@@ -28,6 +28,14 @@ function svgStop(value: string) {
   return { color: `rgb(${r},${g},${b})`, opacity: Number.isFinite(a) ? a : 1 };
 }
 
+/** A rim colour from a theme edge colour, with its alpha scaled (clamped to opaque). */
+function rimColor(value: string, scale: number) {
+  const { color, opacity } = svgStop(value);
+  const match = color.match(/^rgb\((\d+),(\d+),(\d+)\)$/);
+  if (!match) return value;
+  return `rgba(${match[1]},${match[2]},${match[3]},${Math.min(1, opacity * scale)})`;
+}
+
 /**
  * Set inside every GlassSurface so a nested surface knows what it sits on. `veil` is the
  * white haze already laid down by the surfaces around it (a nested surface adds its own on
@@ -160,28 +168,36 @@ export function GlassSurface({
           <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(255,255,255,${veilAlpha})` }]} />
         </>
       ) : null}
-      {!reduceTransparency ? (
+      {crisp ? (
+        // Soft top-lit sheen: brightest at the top edge, gone by the middle. A native gradient
+        // style, so a screen full of cards does not record one SVG scene per card on the UI thread.
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { experimental_backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 45%, rgba(255,255,255,0) 100%)' }]}
+        />
+      ) : !reduceTransparency ? (
         <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
           <Defs>
-            {crisp ? (
-              // Soft top-lit sheen: brightest at the top edge, gone by the middle.
-              <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.05} />
-                <Stop offset="0.45" stopColor="#FFFFFF" stopOpacity={0.01} />
-                <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
-              </LinearGradient>
-            ) : (
-              <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={svgStop(fill[0]).color} stopOpacity={svgStop(fill[0]).opacity} />
-                <Stop offset="1" stopColor={svgStop(fill[1]).color} stopOpacity={svgStop(fill[1]).opacity} />
-              </LinearGradient>
-            )}
+            <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={svgStop(fill[0]).color} stopOpacity={svgStop(fill[0]).opacity} />
+              <Stop offset="1" stopColor={svgStop(fill[1]).color} stopOpacity={svgStop(fill[1]).opacity} />
+            </LinearGradient>
           </Defs>
           <Rect x="0.5" y="0.5" width="99.7%" height="99.7%" rx={borderRadius} fill={`url(#${gradientId})`} />
         </Svg>
       ) : null}
       {tint ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} /> : null}
-      {!reduceTransparency ? (
+      {crisp ? (
+        <>
+          {/* Rim: one uniform colour. Per-side border colours leave a visible notch at rounded corners; the top light comes from the specular line below. */}
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius, borderWidth: 1, borderColor: rimColor(theme.glass.edge[0], 0.45) }]} />
+          {/* Specular line along the top edge, fading out at both ends. */}
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', top: 0, left: '10%', width: '80%', height: 1, experimental_backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%)' }}
+          />
+        </>
+      ) : !reduceTransparency ? (
         <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`${gradientId}-stroke`} x1="0" y1="0" x2="1" y2="1">

@@ -14,6 +14,8 @@ import { Blur, Circle, Fill, Group, ImageFormat, Paint, RadialGradient, drawAsIm
 
 // Half resolution: it is a blurred backdrop, so the detail is lost anyway.
 const SCALE = 0.5;
+// The unblurred field keeps its thin ring strokes, so it gets more pixels.
+const FIELD_SCALE = 0.75;
 
 export type AmbientColors = { base: string; orbs: readonly string[]; ring: string };
 
@@ -55,9 +57,16 @@ function AmbientShapes({ colors, width, height }: { colors: AmbientColors; width
   );
 }
 
-function AmbientBlurred({ blur, colors, width, height }: { blur: number; colors: AmbientColors; width: number; height: number }) {
+function AmbientBlurred({ blur, colors, width, height, scale }: { blur: number; colors: AmbientColors; width: number; height: number; scale: number }) {
+  if (blur <= 0) {
+    return (
+      <Group transform={[{ scale }]}>
+        <AmbientShapes colors={colors} width={width} height={height} />
+      </Group>
+    );
+  }
   return (
-    <Group transform={[{ scale: SCALE }]}>
+    <Group transform={[{ scale }]}>
       <Group layer={<Paint><Blur blur={blur} mode="clamp" /></Paint>}>
         <AmbientShapes colors={colors} width={width} height={height} />
       </Group>
@@ -66,7 +75,7 @@ function AmbientBlurred({ blur, colors, width, height }: { blur: number; colors:
 }
 
 function keyOf(blur: number, colors: AmbientColors, width: number, height: number) {
-  return [blur, Math.round(width), Math.round(height), colors.base, colors.orbs.join(','), colors.ring].join('|');
+  return [blur, blur <= 0 ? FIELD_SCALE : SCALE, Math.round(width), Math.round(height), colors.base, colors.orbs.join(','), colors.ring].join('|');
 }
 
 const cache = new Map<string, string>();
@@ -79,9 +88,10 @@ function render(blur: number, colors: AmbientColors, width: number, height: numb
   if (hit) return Promise.resolve(hit);
 
   const job = queue.then(async () => {
-    const image = await drawAsImage(<AmbientBlurred blur={blur} colors={colors} width={width} height={height} />, {
-      width: Math.max(1, Math.ceil(width * SCALE)),
-      height: Math.max(1, Math.ceil(height * SCALE)),
+    const scale = blur <= 0 ? FIELD_SCALE : SCALE;
+    const image = await drawAsImage(<AmbientBlurred blur={blur} colors={colors} width={width} height={height} scale={scale} />, {
+      width: Math.max(1, Math.ceil(width * scale)),
+      height: Math.max(1, Math.ceil(height * scale)),
     });
     if (!image) return null;
     const uri = `data:image/png;base64,${image.encodeToBase64(ImageFormat.PNG, 100)}`;
@@ -96,7 +106,7 @@ function render(blur: number, colors: AmbientColors, width: number, height: numb
  * A screen-sized image of the ambient light, blurred, or null until it is ready. Shared by
  * every glass surface at the same blur level, so a screen costs a couple of small images.
  */
-export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: number, height: number): string | null {
+function useRenderedAmbient(blur: number, enabled: boolean, colors: AmbientColors, width: number, height: number): string | null {
   const key = keyOf(blur, colors, width, height);
   const [loaded, setLoaded] = useState<{ key: string; uri: string } | null>(() => {
     const hit = cache.get(key);
@@ -104,7 +114,7 @@ export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: n
   });
 
   useEffect(() => {
-    if (blur <= 0 || cache.has(key)) return;
+    if (!enabled || cache.has(key)) return;
     let alive = true;
     render(blur, colors, width, height)
       .then((uri) => {
@@ -116,8 +126,17 @@ export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: n
     };
     // The key captures every input that changes the image.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, enabled]);
 
-  if (blur <= 0) return null;
+  if (!enabled) return null;
   return cache.get(key) ?? (loaded?.key === key ? loaded.uri : null);
+}
+
+export function useAmbientBackdrop(blur: number, colors: AmbientColors, width: number, height: number): string | null {
+  return useRenderedAmbient(blur, blur > 0, colors, width, height);
+}
+
+/** The unblurred ambient field as one cached image: new screens draw a bitmap instead of re-recording an SVG scene. */
+export function useAmbientField(colors: AmbientColors, width: number, height: number): string | null {
+  return useRenderedAmbient(0, true, colors, width, height);
 }
