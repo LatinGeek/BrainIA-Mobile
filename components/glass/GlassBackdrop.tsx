@@ -76,8 +76,14 @@ function AmbientBlurred({ blur, colors, width, height, scale }: { blur: number; 
   );
 }
 
-function keyOf(blur: number, colors: AmbientColors, width: number, height: number) {
-  return [blur, blur <= 0 ? FIELD_SCALE : SCALE, Math.round(width), Math.round(height), colors.base, colors.orbs.join(','), colors.ring].join('|');
+/**
+ * Bump this whenever the drawing changes (AmbientShapes, the blur mode, the scale): the images are kept as files
+ * and reused across launches and app updates, so an old file would otherwise be served for the new drawing.
+ */
+const BACKDROP_VERSION = 2;
+
+function keyOf(blur: number, colors: AmbientColors, width: number, height: number) {
+  return [BACKDROP_VERSION, blur, blur <= 0 ? FIELD_SCALE : SCALE, Math.round(width), Math.round(height), colors.base, colors.orbs.join(','), colors.ring].join('|');
 }
 
 const cache = new Map<string, string>();

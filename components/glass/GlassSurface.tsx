@@ -1,13 +1,13 @@
-import { createContext, ReactNode, useCallback, useContext, useId, useRef, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { Platform, StyleProp, StyleSheet, Text, View, ViewStyle, useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useAmbientBackdrop } from '@/components/glass/GlassBackdrop';
 import { GlassScrollContext } from '@/components/glass/GlassScroll';
 import { useTheme } from '@/lib/app-state';
-import { useReduceTransparency } from '@/lib/hooks';
+import { useReduceMotion, useReduceTransparency } from '@/lib/hooks';
 import { GlassLevel } from '@/lib/themes';
 
 export type GlassTone = 'neutral' | 'finance' | 'review' | 'model' | 'danger' | 'accent';
@@ -78,6 +78,7 @@ export function GlassSurface({
 }) {
   const theme = useTheme();
   const reduceTransparency = useReduceTransparency();
+  const reduceMotion = useReduceMotion();
   const parent = useContext(ParentGlass);
   const nested = parent !== null;
   const gradientId = `glass-edge-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -111,6 +112,20 @@ export function GlassSurface({
   const backdropUri = useAmbientBackdrop(wantsBackdrop ? backdropBlur[level] : 0, theme.ambient, screenWidth, screenHeight);
   const childGlass = { veil: wantsBackdrop ? veilAlpha : parent?.veil ?? 0, chrome: chrome || (parent?.chrome ?? false) };
   const glass = backdropUri !== null && spot !== null;
+  // A new surface paints no flat fill while its glass backdrop is on the way (a flat fill is a different colour, and
+  // swapping it for glass a moment later was visible on every tab switch). The glass fades in once ready; if it
+  // never comes (no image, no measurement), the flat fill is shown after a short wait.
+  const reveal = useSharedValue(0);
+  const [giveUp, setGiveUp] = useState(false);
+  useEffect(() => {
+    reveal.set(reduceMotion ? (glass ? 1 : 0) : withTiming(glass ? 1 : 0, { duration: 180 }));
+  }, [glass, reduceMotion, reveal]);
+  useEffect(() => {
+    if (!wantsBackdrop || glass) return;
+    const timer = setTimeout(() => setGiveUp(true), 900);
+    return () => clearTimeout(timer);
+  }, [glass, wantsBackdrop]);
+  const revealStyle = useAnimatedStyle(() => ({ opacity: reveal.value }));
   const backdropStyle = useAnimatedStyle(
     () => ({
       transform: [
@@ -125,7 +140,8 @@ export function GlassSurface({
   const nativeBlur = !android && !reduceTransparency && !nested && level !== 'thin';
   // Flat Android glass (no blur): fill, top light, rim and a specular line.
   const crisp = android && !reduceTransparency;
-  const backgroundColor = glass
+  const waitingForGlass = wantsBackdrop && !glass && !giveUp;
+  const backgroundColor = glass || waitingForGlass
     ? 'transparent'
     : reduceTransparency
       ? theme.glass.solid[level]
@@ -158,7 +174,7 @@ export function GlassSurface({
         <BlurView intensity={theme.glass.blur[level]} tint="dark" style={StyleSheet.absoluteFill} />
       ) : null}
       {glass && backdropUri && spot ? (
-        <>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, revealStyle]}>
           <Animated.Image
             source={{ uri: backdropUri }}
             resizeMode="stretch"
@@ -166,7 +182,7 @@ export function GlassSurface({
             style={[{ position: 'absolute', left: 0, top: 0, width: screenWidth, height: screenHeight }, backdropStyle]}
           />
           <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(255,255,255,${veilAlpha})` }]} />
-        </>
+        </Animated.View>
       ) : null}
       {crisp ? (
         // Soft top-lit sheen: brightest at the top edge, gone by the middle. A native gradient

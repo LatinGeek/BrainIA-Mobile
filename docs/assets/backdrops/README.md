@@ -1,4 +1,4 @@
-﻿# Glass backdrop images
+# Glass backdrop images
 
 The blurred ambient-light images behind the app's glass surfaces, exported so they can be opened in an image
 editor to try effects.
@@ -23,6 +23,7 @@ adb read.
 
 The app renders each image once, saves it as a PNG file in its cache folder (named after the colours, screen size
 and blur it was made for) and warms all four before the splash screen hides. Every glass surface on every screen
-then shows the same file, and a later launch finds the files already there and renders nothing. To change how the
-glass looks, edit the shapes or colours in `GlassBackdrop.tsx` (the file names change with them, so old files are
-simply left unused) and, if you want a matching preview, in `scripts/export-backdrops.mjs`.
+then shows the same file, and a later launch finds the files already there and renders nothing. The file names come from the colours, size, blur and a `BACKDROP_VERSION` constant. To change how the glass looks, edit
+the shapes or blur in `GlassBackdrop.tsx` and **bump `BACKDROP_VERSION`** (otherwise phones that already have the old files keep showing them); update `scripts/export-backdrops.mjs` as well if you want a matching preview.
+
+These repo images are made by a browser, so they are not Skia's exact output, and they are 3x the size of the images the app itself uses (which are small and stretched to the screen). Editing them does not change the app. If you would like edited images to show in the app, say so and I can make it load a bundled backdrop from the repo instead.
