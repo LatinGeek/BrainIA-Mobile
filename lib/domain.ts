@@ -121,6 +121,8 @@ export type TransactionSummary = {
   evidenceCount?: number;
   excludedFromReports?: boolean;
   adjustmentTargetBalance?: string;
+  /** Sources and labels of the evidence behind the movement; rules match on them. */
+  hints?: string[];
   /** Values filled in by one of the user's rules because the backend had none. */
   assumed?: { field: 'currency' | 'category' | 'account'; ruleId: string }[];
 };

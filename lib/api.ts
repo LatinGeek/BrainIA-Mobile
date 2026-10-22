@@ -619,6 +619,7 @@ function normalizeTransaction(item: unknown, index = 0): TransactionSummary {
     primarySource: asString(record.primarySource ?? record.primary_source ?? record.source) || undefined,
     eventIds: asArray<unknown>(record.evidence).map((evidence) => asString(isRecord(evidence) ? evidence.rawEventId ?? evidence.raw_event_id : '')).filter(Boolean),
     evidenceCount: asNumber(record.evidenceCount ?? record.evidence?.length, 0) || undefined,
+    hints: asArray<unknown>(record.evidence).flatMap((evidence) => (isRecord(evidence) ? [asString(evidence.source), asString(evidence.merchantLabel)] : [])).filter(Boolean),
     excludedFromReports: Boolean(record.excludedFromReports ?? record.excluded_from_reports),
     adjustmentTargetBalance: asString(record.adjustmentTargetBalance ?? record.adjustment_target_balance) || undefined,
   };

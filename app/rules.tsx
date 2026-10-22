@@ -47,7 +47,7 @@ const examples: { title: string; draft: RuleDraft | Editor; ready: boolean }[] =
   { title: 'PedidosYa → categoría Delivery', ready: true, draft: { source: 'PedidosYa', text: '', currency: 'any', reference: '', action: { field: 'category', value: 'Food / Delivery' } } },
   { title: 'PedidosYa Market → categoría Supermercado', ready: true, draft: { source: 'PedidosYa', text: 'PedidosYa Market', currency: 'any', reference: '', action: { field: 'category', value: 'Food / Groceries' } } },
   { title: 'Prex en UYU → una de tus cuentas', ready: false, draft: { ...blankEditor, source: 'Prex', currency: 'UYU', kind: 'account' } },
-  { title: 'Un número de cuenta o tarjeta → una de tus cuentas', ready: false, draft: { ...blankEditor, kind: 'account' } },
+  { title: 'Una cuenta o tarjeta que el movimiento ya nombra → una de tus cuentas', ready: false, draft: { ...blankEditor, kind: 'account' } },
 ];
 
 const actionIcon = { currency: 'dollar-sign', category: 'tag', account: 'credit-card' } as const;
@@ -100,6 +100,18 @@ export default function RulesScreen() {
     toast.show(message, { tone: 'positive' });
   }, [invalidateFinancialData, toast]);
 
+  /** Runs a change to the rules; when it cannot be saved the list is already back to what it was. */
+  const attempt = useCallback(async (change: () => Promise<void>, message: string) => {
+    try {
+      await change();
+      changed(message);
+      return true;
+    } catch {
+      toast.show('No se pudo guardar la regla. Intenta de nuevo.', { tone: 'danger' });
+      return false;
+    }
+  }, [changed, toast]);
+
   const save = async () => {
     if (!editor) return;
     const account = accounts.find((item) => item.id === editor.accountId);
@@ -116,15 +128,13 @@ export default function RulesScreen() {
     };
     const problem = validateDraft(draft);
     if (problem) { setError(problem); return; }
-    if (editor.id) await update(editor.id, draft); else await add(draft);
-    setEditor(null);
-    changed(editor.id ? 'Regla actualizada' : 'Regla creada');
+    const saved = await attempt(() => (editor.id ? update(editor.id, draft) : add(draft)), editor.id ? 'Regla actualizada' : 'Regla creada');
+    if (saved) setEditor(null);
   };
 
   const addExample = async (example: (typeof examples)[number]) => {
     if (example.ready) {
-      await add(example.draft as RuleDraft);
-      changed('Regla añadida');
+      await attempt(() => add(example.draft as RuleDraft), 'Regla añadida');
     } else {
       open({ ...(example.draft as Editor) });
     }
@@ -160,7 +170,7 @@ export default function RulesScreen() {
                 leading={<IconTile icon={actionIcon[rule.action.field]} color={rule.enabled ? theme.colors.accent : theme.colors.textMuted} />}
                 accessory="switch"
                 switchValue={rule.enabled}
-                onSwitchChange={(value) => { void setEnabled(rule.id, value).then(() => invalidateFinancialData()); }}
+                onSwitchChange={(value) => { void attempt(() => setEnabled(rule.id, value), value ? 'Regla activada' : 'Regla desactivada'); }}
                 onPress={() => open(toEditor(rule))}
               />
             ))}
@@ -188,7 +198,7 @@ export default function RulesScreen() {
       ) : null}
 
       <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-        Las reglas solo rellenan lo que falta: nunca cambian un dato que Brain IA ya conoce. Lo asumido se marca en el movimiento. Se guardan en este teléfono.
+        Las reglas solo rellenan lo que falta y nunca cambian un dato que Brain IA ya conoce. Lo asumido se marca en el movimiento. Viven en este teléfono: no modifican los datos de Brain IA, no se ven en otros dispositivos y no mueven los saldos de tus cuentas.
       </Text>
 
       <BottomSheet
@@ -198,7 +208,7 @@ export default function RulesScreen() {
         footer={
           <View style={{ gap: theme.spacing.sm }}>
             <Button label="Guardar regla" onPress={() => { void save(); }} full />
-            {editor?.id ? <Button label="Eliminar regla" variant="danger" onPress={() => { const id = editor.id!; setEditor(null); void remove(id).then(() => changed('Regla eliminada')); }} full /> : null}
+            {editor?.id ? <Button label="Eliminar regla" variant="danger" onPress={() => { const id = editor.id!; setEditor(null); void attempt(() => remove(id), 'Regla eliminada'); }} full /> : null}
           </View>
         }
       >
@@ -211,7 +221,7 @@ export default function RulesScreen() {
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
               <SegmentedControl role="radio" accessibilityLabel="Moneda del movimiento" items={currencyItems} value={editor.currency} onChange={(currency) => set({ currency })} />
             </View>
-            <Field label="Cuenta o tarjeta" hint="Un número o sus últimos dígitos, tal como aparece en el movimiento." value={editor.reference} onChangeText={(reference) => set({ reference })} keyboardType="number-pad" autoCorrect={false} returnKeyType="done" />
+            <Field label="Cuenta o tarjeta" hint="Un número o sus últimos dígitos, si el movimiento ya nombra esa cuenta o tarjeta." value={editor.reference} onChangeText={(reference) => set({ reference })} keyboardType="number-pad" autoCorrect={false} returnKeyType="done" />
 
             <Text style={[theme.typography.overline, { color: theme.colors.textMuted, marginTop: theme.spacing.xs }]}>ENTONCES ASUMIR…</Text>
             <SegmentedControl role="radio" accessibilityLabel="Qué asumir" items={kindItems} value={editor.kind} onChange={(kind) => set({ kind })} />

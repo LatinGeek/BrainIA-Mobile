@@ -325,6 +325,11 @@ export default function TransactionDetailScreen() {
           </View>
         )}
       >
+        {assumed?.length ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.model }]}>
+            {`Tus reglas pusieron ${assumed.map((item) => (item.field === 'currency' ? 'la moneda' : item.field === 'category' ? 'la categoría' : 'la cuenta')).join(', ')}. Al guardar, esos valores quedan confirmados.`}
+          </Text>
+        ) : null}
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo de movimiento</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(['expense', 'income', 'transfer'] as const).map((kind) => (
