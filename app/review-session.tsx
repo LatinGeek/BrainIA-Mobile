@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, PixelRatio, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -357,15 +357,15 @@ export default function ReviewSessionScreen() {
           error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <StateView kind="loading" title="Cargando" skeleton="hero" skeletonCount={1} />
         ) : (
           <View style={styles.cardStage}>
-          <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax }]}>
+          <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax * Math.max(1, PixelRatio.getFontScale()) }]}>
             {/* The next card is not drawn behind the translucent front card: its text showed through. */}
             <GestureDetector gesture={pan}>
               <Animated.View style={[styles.cardLayer, cardStyle]}>
                 <Animated.View pointerEvents="none" style={[styles.stamp, styles.acceptStamp, { borderColor: `${theme.colors.accent}B3` }, acceptStamp]}>
-                  <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACCEPT</Text>
+                  <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACEPTAR</Text>
                 </Animated.View>
                 <Animated.View pointerEvents="none" style={[styles.stamp, styles.skipStamp, { borderColor: `${theme.colors.danger}B3` }, skipStamp]}>
-                  <Text style={[theme.typography.headline, { color: theme.colors.danger }]}>SKIP</Text>
+                  <Text style={[theme.typography.headline, { color: theme.colors.danger }]}>OMITIR</Text>
                 </Animated.View>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
                   <DecisionCard

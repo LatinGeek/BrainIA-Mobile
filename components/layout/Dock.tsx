@@ -11,6 +11,7 @@ import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { dockScroll } from '@/lib/dock-scroll';
 import { useReduceMotion } from '@/lib/hooks';
 import { reducedFade } from '@/lib/motion';
+import { refreshReviewQueueSize, useReviewQueueSize } from '@/lib/review-queue';
 
 type DockTab = {
   key: string;
@@ -41,7 +42,7 @@ export function Dock({
   const insets = useSafeAreaInsets();
   const client = useBrainIAClient();
   const { width } = useWindowDimensions();
-  const [reviewCount, setReviewCount] = useState(0);
+  const reviewCount = useReviewQueueSize() ?? 0;
   const [barWidth, setBarWidth] = useState(0);
   const reduceMotion = useReduceMotion();
   const pillOpacity = useSharedValue(1);
@@ -52,11 +53,7 @@ export function Dock({
   const compactDock = width >= 1024;
 
   useEffect(() => {
-    let active = true;
-    void client.listReviews('pending')
-      .then((items) => { if (active) setReviewCount(items.length); })
-      .catch(() => undefined);
-    return () => { active = false; };
+    void refreshReviewQueueSize(client);
   }, [client]);
 
   useEffect(() => {

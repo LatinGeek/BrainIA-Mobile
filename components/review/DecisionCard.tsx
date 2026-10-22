@@ -30,8 +30,8 @@ export function DecisionCard({
   const [createRule, setCreateRule] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const impact = decision.impact.transactions > 0
-    ? `Tidies ${decision.impact.transactions} transaction${decision.impact.transactions === 1 ? '' : 's'}${decision.impact.amount ? ` · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : ''}`
-    : 'No matching transactions in the cached cycle';
+    ? `Ordena ${decision.impact.transactions} ${decision.impact.transactions === 1 ? 'movimiento' : 'movimientos'}${decision.impact.amount ? ` · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : ''}`
+    : 'Sin movimientos relacionados en este ciclo';
 
   return (
     <GlassSurface level="strong" tone={decision.kind === 'relation' ? 'model' : 'review'} padding="lg" style={{ flex: 1 }} contentStyle={{ gap: 14, flexGrow: 1 }}>
@@ -104,7 +104,7 @@ export function DecisionCard({
                 <GlassPressable
                   key={option}
                   accessibilityRole="button"
-                  accessibilityLabel={`${option}${selected ? ', suggested' : ''}`}
+                  accessibilityLabel={`${option}${selected ? ', sugerida' : ''}`}
                   accessibilityState={{ selected }}
                   haptic="selection"
                   scaleTo={0.97}
@@ -134,7 +134,7 @@ export function DecisionCard({
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.rationale)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 6 }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>Aplicar esto automáticamente la próxima vez</Text>
-            <Chip label={createRule ? 'Rule on' : 'Once'} selected={createRule} onPress={() => setCreateRule((value) => !value)} icon={createRule ? 'repeat' : 'check'} />
+            <Chip label={createRule ? 'Siempre' : 'Solo esta vez'} selected={createRule} onPress={() => setCreateRule((value) => !value)} icon={createRule ? 'repeat' : 'check'} />
           </View>
         </View>
       ) : null}
@@ -144,7 +144,7 @@ export function DecisionCard({
           {decision.kind === 'relation' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}><Button label="No" variant="secondary" size="lg" onPress={() => onAnswer?.('no', undefined, false)} /></View>
-              <View style={{ flex: 1 }}><Button label="Yes, connect" size="lg" onPress={() => onAnswer?.('accept', undefined, createRule)} /></View>
+              <View style={{ flex: 1 }}><Button label="Sí, conectar" size="lg" onPress={() => onAnswer?.('accept', undefined, createRule)} /></View>
             </View>
           ) : decision.kind === 'category' || decision.kind === 'label' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -153,8 +153,8 @@ export function DecisionCard({
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}><Button label="Skip" variant="secondary" size="lg" onPress={onSkip ?? (() => onAnswer?.('skip'))} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
-              <View style={{ flex: 1 }}><Button label={decision.kind === 'batch' ? `Unify ${decision.variants?.length ?? decision.reviewIds.length}` : 'Accept'} size="lg" onPress={() => onAnswer?.('accept')} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
+              <View style={{ flex: 1 }}><Button label="Omitir" variant="secondary" size="lg" onPress={onSkip ?? (() => onAnswer?.('skip'))} icon={<Feather name="arrow-left" size={14} color={theme.colors.textPrimary} />} /></View>
+              <View style={{ flex: 1 }}><Button label={decision.kind === 'batch' ? `Unificar ${decision.variants?.length ?? decision.reviewIds.length}` : 'Aceptar'} size="lg" onPress={() => onAnswer?.('accept')} icon={<Feather name="check" size={14} color={theme.colors.onAccent} />} /></View>
             </View>
           )}
         </View>

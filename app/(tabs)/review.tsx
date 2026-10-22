@@ -17,7 +17,8 @@ import { loadReviewBundle } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
 import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
 import { listLayout } from '@/lib/motion';
-import { buildReviewQueue, decisionEffort } from '@/lib/review-session';
+import { setReviewQueueSize } from '@/lib/review-queue';
+import { buildReviewQueue, decisionSeconds } from '@/lib/review-session';
 
 export default function ReviewHomeScreen() {
   const theme = useTheme();
@@ -33,18 +34,20 @@ export default function ReviewHomeScreen() {
       client.listFinancialCategories().catch(() => ({ expense: [], income: [] })),
     ]);
     const resolved = await client.listReviews('resolved').catch(() => []);
+    const builtQueue = buildReviewQueue({ reviews: bundle.reviews, candidates, transactions, categories: [...categories.expense, ...categories.income] });
+    setReviewQueueSize(builtQueue.length);
     return {
       reviews: bundle.reviews,
       resolved,
       candidates,
-      queue: buildReviewQueue({ reviews: bundle.reviews, candidates, transactions, categories: [...categories.expense, ...categories.income] }),
+      queue: builtQueue,
     };
   }, [client]);
   const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
   useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
 
   const queue = useMemo(() => data?.queue ?? [], [data?.queue]);
-  const pendingCount = data?.reviews.length ?? 0;
+  const pendingCount = data?.queue.length ?? 0;
   const resolvedCount = data?.resolved.length ?? 0;
   const total = pendingCount + resolvedCount;
   const progress = total ? resolvedCount / total : 1;
@@ -83,13 +86,13 @@ export default function ReviewHomeScreen() {
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{`Progreso general · ${resolvedCount} de ${total}`}</Text>
                 <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, fontSize: 22, lineHeight: 27 }]}>
-                  {pendingCount ? decisionEffort(queue.length) : 'Todo al día'}
+                  {pendingCount ? `${queue.length} ${queue.length === 1 ? 'decisión rápida' : 'decisiones rápidas'}` : 'Todo al día'}
                 </Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
                   {pendingCount
                     ? tidyCount
-                      ? `Unos ${tidyCount} movimientos y ${formatCurrency(tidyAmount, 'UYU')} se vuelven más fáciles de reconocer.`
-                      : 'Cada respuesta mejora nombres, categorías y conexiones.'
+                      ? `Unos ${decisionSeconds(queue.length)} segundos. ${tidyCount} movimientos y ${formatCurrency(tidyAmount, 'UYU')} se vuelven más fáciles de reconocer.`
+                      : `Unos ${decisionSeconds(queue.length)} segundos. Cada respuesta mejora nombres, categorías y conexiones.`
                     : 'Las nuevas decisiones aparecen a medida que llega actividad, normalmente tras el cobro.'}
                 </Text>
               </View>
@@ -161,7 +164,7 @@ function GlassPressableTopic({ topic, count, onPress }: { topic: string; count: 
   return (
     <GlassPressable accessibilityRole="button" accessibilityLabel={`${topic}, ${count} por responder`} haptic="selection" scaleTo={0.96} onPress={onPress} style={{ minWidth: 110 }}>
       <GlassSurface level="thin" padding="sm" radius="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: theme.layout.minTarget - 16 }}>
-        <IconTile icon="tag" size="sm" color={theme.status.review} />
+        <IconTile icon={topic === 'Conexiones' ? 'link-2' : topic === 'Identidades' ? 'users' : 'tag'} size="sm" color={theme.status.review} />
         <View style={{ gap: 1 }}>
           <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{topic}</Text>
           <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>{count} por responder</Text>

@@ -99,8 +99,9 @@ function StatusFade({ height, color, from = 'top' }: { height: number; color: st
       <Svg width="100%" height="100%">
         <Defs>
           <LinearGradient id={`status-fade-${id}`} x1="0" y1={from === 'bottom' ? 1 : 0} x2="0" y2={from === 'bottom' ? 0 : 1}>
-            <Stop offset="0" stopColor={color} stopOpacity={0.94} />
-            <Stop offset="0.6" stopColor={color} stopOpacity={0.7} />
+            <Stop offset="0" stopColor={color} stopOpacity={1} />
+            <Stop offset="0.45" stopColor={color} stopOpacity={0.96} />
+            <Stop offset="0.7" stopColor={color} stopOpacity={0.6} />
             <Stop offset="1" stopColor={color} stopOpacity={0} />
           </LinearGradient>
         </Defs>

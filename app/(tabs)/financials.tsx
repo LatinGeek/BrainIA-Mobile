@@ -222,7 +222,7 @@ export default function FinancialsScreen() {
     [settings.financialPeriodStartDay, transactionCycleOffset],
   );
   const selectedTransactionCycleLabel = financialPeriodLabel(selectedTransactionCycleRange);
-  const selectedTransactionCycleMonth = new Date(selectedTransactionCycleRange.to).toLocaleDateString(undefined, { month: 'short' });
+  const selectedTransactionCycleMonth = (() => { const label = new Date(selectedTransactionCycleRange.to).toLocaleDateString('es-UY', { month: 'long', year: 'numeric' }); return label.charAt(0).toUpperCase() + label.slice(1); })();
 
   useEffect(() => {
     if (transactionCycleOffset === 0) return;
@@ -279,8 +279,16 @@ export default function FinancialsScreen() {
     const convertedBalance = convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency);
     return { id: account.id, label: account.name, value: Math.abs(convertedBalance), displayValue: convertedBalance, color: account.color };
   });
+  // Slices under 2% fold into "Otros" so no sliver reads as a rendering glitch, and the unreviewed bucket
+  // gets the warning tone instead of the brand accent.
+  const mixTotal = mixGroups.reduce((sum, group) => sum + group.total, 0);
+  const mixMajor = mixGroups.filter((group) => mixTotal <= 0 || group.total / mixTotal >= 0.02);
+  const mixMinorTotal = mixGroups.filter((group) => !mixMajor.includes(group)).reduce((sum, group) => sum + group.total, 0);
   const mixSegments = mixGroups.length
-    ? mixGroups.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier }))
+    ? [
+        ...mixMajor.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? theme.status.warning : undefined })),
+        ...(mixMinorTotal > 0 ? [{ id: 'others', label: 'Otros', value: mixMinorTotal * periodMultiplier, color: theme.colors.textMuted }] : []),
+      ]
     : [];
   const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
 

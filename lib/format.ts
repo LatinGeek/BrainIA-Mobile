@@ -97,7 +97,7 @@ export type SupportedCurrency = 'UYU' | 'USD';
  */
 export const UYU_PER_USD = 40;
 
-export const FIXED_FX_LABEL = `${UYU_PER_USD.toFixed(4)} UYU/USD · referencia fija de la app`;
+export const FIXED_FX_LABEL = `1 USD = ${UYU_PER_USD} UYU · tasa fija`;
 
 export function formatConvertedCurrency(value: number, currency: SupportedCurrency) {
   return `≈ ${formatCurrency(value, currency)} convertido a ${UYU_PER_USD.toFixed(4)} UYU/USD`;

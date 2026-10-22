@@ -116,7 +116,7 @@ export function buildReviewQueue({
   singles.forEach((item) => {
     const suggestion = (item.normalizedValue ?? item.alias).trim();
     const isSame = /merge|same|duplicate/i.test(item.reason);
-    const kind: DecisionKind = isSame && item.entityId ? 'same' : item.categoryPath.length ? 'name' : 'category';
+    const kind: DecisionKind = isSame && item.entityId ? 'same' : item.categoryPath.length || /merchant|identity/i.test(item.reason) ? 'name' : 'category';
     decisions.push(makeAliasDecision(kind, item, [item], suggestion, transactions, categories));
   });
 
@@ -127,7 +127,7 @@ export function buildReviewQueue({
       kind: 'relation',
       reviewIds: [],
       candidateId: candidate.id,
-      title: candidate.rationale ?? `${candidate.subjectValue ?? 'Este elemento'} → ${candidate.targetValue}`,
+      title: candidate.targetValue ? `${candidate.subjectValue ?? 'Este elemento'} → ${candidate.targetValue}` : candidate.rationale ?? 'Conexión sugerida',
       raw: candidate.subjectValue ?? candidate.targetValue,
       suggestion: candidate.targetValue,
       alternatives: candidate.alternatives.slice(0, 3).map((alternative) => alternative.value),
@@ -226,6 +226,10 @@ export function describeDecision(decision: ReviewDecision) {
   return `¿“${decision.raw}” es ${decision.suggestion}?`;
 }
 
+export function decisionSeconds(count: number) {
+  return Math.max(20, Math.round(count * 8));
+}
+
 export function decisionEffort(count: number) {
   const seconds = Math.max(20, Math.round(count * 8));
   return `${count} ${count === 1 ? 'decisión rápida' : 'decisiones rápidas'} · unos ${seconds} segundos`;
@@ -235,6 +239,6 @@ function reviewReasonLabel(reason?: string) {
   const text = (reason ?? '').trim();
   if (!text) return 'Detectado en la actividad reciente.';
   if (/\s/.test(text)) return text;
-  const labels: Record<string, string> = { merchantidentitycandidate: 'Posible comercio repetido', categorycandidate: 'Categoría sugerida', relationcandidate: 'Posible conexión', namecandidate: 'Nombre sugerido' };
+  const labels: Record<string, string> = { merchantidentitycandidate: 'Nombre de comercio por confirmar', categorycandidate: 'Categoría sugerida', relationcandidate: 'Posible conexión', namecandidate: 'Nombre sugerido' };
   return labels[text.toLowerCase().replace(/[\s_-]+/g, '')] ?? 'Sugerido a partir de actividad relacionada.';
 }

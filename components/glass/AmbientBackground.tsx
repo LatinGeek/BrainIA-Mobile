@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Stop, Mask, Rect } from 'react-native-svg';
 
 import { useTheme } from '@/lib/app-state';
@@ -20,7 +20,8 @@ export function AmbientBackground({ animated = false }: { animated?: boolean }) 
       drift.value = 0;
       return;
     }
-    drift.value = withRepeat(withTiming(1, { duration: 28_000, easing: Easing.inOut(Easing.quad) }), -1, true);
+    // One slow settle instead of an endless loop: an infinite animation keeps the GPU rendering at full refresh rate while the screen is idle.
+    drift.value = withTiming(1, { duration: 18_000, easing: Easing.inOut(Easing.quad) });
   }, [animated, drift, reduceMotion]);
 
   const orbStyle = useAnimatedStyle(() => ({

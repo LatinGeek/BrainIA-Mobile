@@ -14,9 +14,10 @@ import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatCategoryInsight, formatCategoryLabel, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
+import { formatCategoryInsight, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
 import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
+import { useReviewQueueSize } from '@/lib/review-queue';
 
 const quickActions = [
   { id: 'expense', label: 'Gasto', icon: 'arrow-up-right' as const, href: { pathname: '/capture', params: { mode: 'expense' } } },
@@ -49,7 +50,8 @@ export default function HomeScreen() {
   const primaryInsight = insights[0];
   const primaryDigest = digests[0];
   const net = financialSummary.income - financialSummary.expenses;
-  const pendingCount = pendingReviews?.length ?? 0;
+  const queueSize = useReviewQueueSize();
+  const pendingCount = queueSize ?? pendingReviews?.length ?? 0;
 
   const startReview = () => {
     router.push('/review-session' as never);
@@ -120,8 +122,10 @@ export default function HomeScreen() {
       onRefresh={refresh}
       actions={
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'} tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'} live={Boolean(data?.live)} />
-          <GlassPressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
+          <View style={{ alignSelf: 'center' }}>
+            <Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'} tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'} live={Boolean(data?.live)} />
+          </View>
+          <GlassPressable accessibilityRole="button" accessibilityLabel="Abrir ajustes" onPress={() => router.push('/settings')} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
             <Feather name="settings" size={18} color={theme.colors.textPrimary} />
           </GlassPressable>
         </View>
@@ -167,7 +171,7 @@ export default function HomeScreen() {
                 >
                   <GlassSurface level="thin" padding="none" radius="md" contentStyle={{ minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                     <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
-                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 10 }]}>{action.label}</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 12 }]}>{action.label}</Text>
                   </GlassSurface>
                 </GlassPressable>
               ))}
@@ -210,10 +214,10 @@ export default function HomeScreen() {
               <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <IconTile icon="pie-chart" color={theme.colors.model} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{formatCategoryLabel(topCategory.label)}</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Principal área de gasto</Text>
                   <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, 'UYU'))}</Text>
                 </View>
-                <Chip label={`${topCategory.count}`} static />
+                <Chip label={`${topCategory.count} ${topCategory.count === 1 ? 'movimiento' : 'movimientos'}`} static />
               </GlassSurface>
             </Section>
           ) : null}

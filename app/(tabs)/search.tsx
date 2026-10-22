@@ -113,7 +113,7 @@ export default function SearchScreen() {
   return (
     <Screen
       title="Descubrir"
-      overline={`${entities?.length ?? 0} nodos`}
+      overline={`${displayGraph?.stats.nodesCount ?? entities?.length ?? 0} nodos`}
       subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
       refreshing={activeRefreshing}
       onRefresh={activeRefresh}
@@ -151,14 +151,14 @@ export default function SearchScreen() {
           <GlassSurface level="thin" padding="none">
             <Row title="Conocimiento" subtitle="Pregunta, descubre y conserva lo que importa" leading={<IconTile icon="zap" />} onPress={() => router.push('/intelligence')} />
           </GlassSurface>
-          <Section title="Mapa de conocimiento" subtitle="Explora las conexiones entre tus actividades.">
+          <Section title="Tus conexiones" subtitle="Cómo se relacionan tus actividades, comercios y personas.">
             {entitiesError || graphError ? <StateView kind="error" title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} actionLabel="Reintentar" onAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
             {(entitiesLoading && !entities) || (graphLoading && !graph) ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
             {displayGraph?.nodes.length ? (
               <GlassSurface level="regular" tone="accent" padding="md" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa de conocimiento interactivo</Text>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa interactivo</Text>
                     <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca un nodo para enfocarlo; abre el elemento para ver todo lo que BrainIA sabe de él.</Text>
                   </View>
                   <Tag label={`${displayGraph.stats.nodesCount} nodos`} tone="info" />

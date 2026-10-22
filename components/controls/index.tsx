@@ -463,11 +463,11 @@ export function ConfidenceMeter({ value, showValue = false }: { value?: number; 
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const normalized = Math.max(0, Math.min(1, value));
   const level = normalized >= 0.85 ? 3 : normalized >= 0.5 ? 2 : 1;
-  const word = normalized >= 0.85 ? 'Clear' : normalized >= 0.5 ? 'Unsure' : 'Guess';
+  const word = normalized >= 0.85 ? 'Segura' : normalized >= 0.5 ? 'Dudosa' : 'Posible';
   const color = normalized >= 0.85 ? theme.colors.success : normalized >= 0.5 ? theme.colors.warning : theme.colors.danger;
 
   return (
-    <View accessibilityLabel={`${word} confidence${showValue ? `, ${Math.round(normalized * 100)} percent` : ''}`} style={styles.confidence}>
+    <View accessibilityLabel={`Confianza ${word.toLowerCase()}${showValue ? `, ${Math.round(normalized * 100)} por ciento` : ''}`} style={styles.confidence}>
       <View style={styles.confidenceBars}>
         {[1, 2, 3].map((bar) => (
           <View key={bar} style={[styles.confidenceBar, { height: 4 + bar * 3, backgroundColor: bar <= level ? color : theme.glass.divider }]} />
@@ -523,7 +523,7 @@ export function Field({
         ]}
       >
         <View style={styles.fieldRow}>
-          {leading ? <View style={{ marginRight: 8 }}>{leading}</View> : null}
+          {leading ? <View style={{ marginLeft: 16, marginRight: -4 }}>{leading}</View> : null}
           <TextInput
             ref={inputRef}
             accessibilityLabel={props.accessibilityLabel ?? label}
