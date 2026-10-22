@@ -295,9 +295,10 @@ export default function TransactionDetailScreen() {
             <Button label="Eliminar movimiento" variant="danger" onPress={() => confirmRemoveTransaction('delete')} disabled={removingTransaction} />
           </Section>
         </>
-      ) : (
+      ) : !loading && !error ? (
+        // Not while loading (the skeleton above stands in) or after an error (it has its own message).
         <StateView title="Movimiento no disponible" description="Todavía no hay detalles de este movimiento." />
-      )}
+      ) : null}
 
       <BottomSheet
         visible={editorOpen}

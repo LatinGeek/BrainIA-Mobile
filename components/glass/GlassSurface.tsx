@@ -126,6 +126,14 @@ export function GlassSurface({
   useEffect(() => {
     if (settled) onLayout();
   }, [settled, onLayout]);
+  // A card that mounts while its screen rises into place (a tab, or a segment switch inside a screen that replays
+  // the rise) is measured mid-rise; measure it again when the longest entrance has finished.
+  const entranceMs = theme.motion.duration.enter + theme.motion.staggerMax * theme.motion.stagger + 40;
+  useEffect(() => {
+    if (!wantsBackdrop) return;
+    const timer = setTimeout(onLayout, entranceMs);
+    return () => clearTimeout(timer);
+  }, [wantsBackdrop, onLayout, entranceMs]);
   const backdropUri = useAmbientBackdrop(wantsBackdrop ? backdropBlur[level] : 0, theme.ambient, screenWidth, screenHeight);
   const childGlass = { veil: wantsBackdrop ? veilAlpha : parent?.veil ?? 0, chrome: chrome || (parent?.chrome ?? false) };
   const glass = backdropUri !== null && spot !== null;
