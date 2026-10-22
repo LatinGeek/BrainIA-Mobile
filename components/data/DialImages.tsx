@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { PixelRatio } from 'react-native';
+import { PixelRatio, Platform } from 'react-native';
+import { File, Paths } from 'expo-file-system';
 import { BlurMask, Circle, Group, ImageFormat, LinearGradient, Path, Skia, drawAsImage, vec } from '@shopify/react-native-skia';
 
 /**
@@ -127,6 +128,13 @@ function OverlayScene({ arc, scale }: { arc: DialArc; scale: number }) {
     </Group>
   );
 }
+/** A short, stable file name for a cache key. */
+function hashKey(value: string) {
+  let h = 5381;
+  for (let i = 0; i < value.length; i++) h = ((h * 33) ^ value.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 const cache = new Map<string, string>();
 // One render at a time keeps the GPU and JS work off the critical path when a screen mounts.
 let queue: Promise<unknown> = Promise.resolve();
@@ -140,7 +148,17 @@ function render(key: string, scene: (scale: number) => React.ReactElement, pixel
     const scale = pixels / DIAL.BOX;
     const image = await drawAsImage(scene(scale), { width: pixels, height: pixels });
     if (!image) return null;
-    const uri = `data:image/png;base64,${image.encodeToBase64(ImageFormat.PNG, 100)}`;
+    // Written to a cache file and shown by file:// URI: holding a dozen multi-hundred-KB base64 strings on the
+    // JS heap made garbage collection stall switching on the crowded dial.
+    let uri: string;
+    if (Platform.OS === 'web') {
+      uri = `data:image/png;base64,${image.encodeToBase64(ImageFormat.PNG, 100)}`;
+    } else {
+      const file = new File(Paths.cache, `dial-${hashKey(key)}.png`);
+      file.create({ overwrite: true });
+      file.write(image.encodeToBytes(ImageFormat.PNG, 100));
+      uri = file.uri;
+    }
     cache.set(key, uri);
     return uri;
   });

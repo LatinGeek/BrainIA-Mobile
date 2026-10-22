@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -136,14 +136,6 @@ export function MixCard({
   const activeArc = arcs.find((arc) => arc.id === activeId);
   const images = useDialImages(arcs, size);
 
-  // Remember which arc was selected before, so its overlay can fade out while the new one comes in.
-  const [tracked, setTracked] = useState<{ id: string | null; arc: Arc | null }>({ id: activeId ?? null, arc: activeArc ?? null });
-  const [leaving, setLeaving] = useState<Arc | null>(null);
-  if ((activeId ?? null) !== tracked.id) {
-    setLeaving(tracked.arc);
-    setTracked({ id: activeId ?? null, arc: activeArc ?? null });
-  }
-
   const select = (segment: MixSegment | null) => {
     setInternalSelected(segment?.id ?? null);
     onSelect?.(segment);
@@ -153,20 +145,24 @@ export function MixCard({
   // the shortest way on a spring; a first selection sweeps in from a little before its own angle.
   const activeMid = activeArc ? (activeArc.s0 + activeArc.s1) / 2 : null;
   const travel = useSharedValue(activeMid ?? 0);
+  const lastActiveMid = useRef<number | null>(activeMid);
   useEffect(() => {
-    if (activeMid === null) return;
+    if (activeMid === null) {
+      lastActiveMid.current = null;
+      return;
+    }
     if (reduceMotion) {
       travel.set(activeMid);
+      lastActiveMid.current = activeMid;
       return;
     }
     const current = travel.get();
     const delta = ((((activeMid - current) % 1) + 1.5) % 1) - 0.5; // shortest way round, in (-0.5, 0.5]
-    const wasIdle = !leaving;
+    const wasIdle = lastActiveMid.current === null;
     const from = wasIdle ? activeMid - 0.07 : current;
     travel.set(from);
     travel.set(withSpring(wasIdle ? activeMid : current + delta, { damping: 17, stiffness: 120, mass: 1 }));
-    // `leaving` is the split that was selected before this change (null when nothing was).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    lastActiveMid.current = activeMid;
   }, [activeMid, reduceMotion, travel]);
 
   // A tap on the ring picks the split under the finger (the arcs are images, so this is angle maths).
@@ -221,9 +217,10 @@ export function MixCard({
           {images.rings ? <Image source={{ uri: images.rings }} fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
           <ArcsLayer uri={images.arcs} anySelected={anySelected} introKey={introKey} reduceMotion={reduceMotion} />
           {/* Overlay images are decoded ahead of the first tap (drawn at near-zero opacity), so selecting never waits on a decode. */}
-          {arcs.map((arc) => (images.overlays[arc.id] && arc.id !== activeId && arc.id !== leaving?.id ? <Image key={`warm-${arc.id}`} source={{ uri: images.overlays[arc.id] as string }} fadeDuration={0} style={[StyleSheet.absoluteFill, { opacity: 0.01 }]} /> : null))}
-          {leaving && leaving.id !== activeArc?.id ? <SelectedOverlay key={`leave-${leaving.id}`} uri={images.overlays[leaving.id] ?? null} visible={false} reduceMotion={reduceMotion} travel={null} fixedTurn={(leaving.s0 + leaving.s1) / 2} /> : null}
-          {activeArc ? <SelectedOverlay key={`on-${activeArc.id}`} uri={images.overlays[activeArc.id] ?? null} visible reduceMotion={reduceMotion} travel={travel} /> : null}
+          {/* One persistent overlay per split: selecting only changes props, nothing mounts or unmounts. */}
+          {arcs.map((arc) => (
+            <SelectedOverlay key={arc.id} uri={images.overlays[arc.id] ?? null} visible={arc.id === activeId} reduceMotion={reduceMotion} travel={travel} ownTurn={(arc.s0 + arc.s1) / 2} />
+          ))}
 
           <Pressable
             accessibilityElementsHidden
@@ -326,8 +323,8 @@ function CenterAmountNative({ target, animate, hasActive, centerValue, currency,
   // Prototype behaviour: the figure counts from the old value to the new one over ~650 ms. The in-between
   // numbers are formatted once and an animated TextInput shows the frame for the current progress, so the
   // count costs no React render or layout per frame.
-  const [pair, setPair] = useState({ from: target, to: target });
-  if (pair.to !== target) setPair({ from: pair.to, to: target });
+  const [pair, setPair] = useState({ from: target, to: target, n: 0 });
+  if (pair.to !== target) setPair({ from: pair.to, to: target, n: pair.n + 1 });
 
   const frames = useMemo(() => {
     const format = (value: number) => (!animate ? amountLabel : hasActive ? formatValue(value) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(value, currency) : formatValue(value)}`);
@@ -340,21 +337,25 @@ function CenterAmountNative({ target, animate, hasActive, centerValue, currency,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pair.from, pair.to, animate, hasActive, centerValue, currency, amountLabel]);
 
-  const index = useSharedValue(COUNT_STEPS - 1);
-  useEffect(() => {
+  // The progress counter only ever increases: each change owns the range [base, base + COUNT_STEPS - 1].
+  // When the new frames reach the UI thread a moment before the reset does, the stale counter sits just
+  // below the new base and maps to frame 0 (the old value), never to the destination.
+  const base = pair.n * COUNT_STEPS;
+  const index = useSharedValue(base + COUNT_STEPS - 1);
+  useLayoutEffect(() => {
     if (!animate || reduceMotion) {
-      index.set(COUNT_STEPS - 1);
+      index.set(base + COUNT_STEPS - 1);
       return;
     }
-    index.set(0);
-    index.set(withTiming(COUNT_STEPS - 1, { duration: 650, easing: Easing.linear }));
-  }, [animate, index, pair.from, pair.to, reduceMotion]);
+    index.set(base);
+    index.set(withTiming(base + COUNT_STEPS - 1, { duration: 650, easing: Easing.linear }));
+  }, [animate, base, index, reduceMotion]);
 
   const animatedProps = useAnimatedProps(() => {
-    const i = Math.min(COUNT_STEPS - 1, Math.max(0, Math.round(index.value)));
+    const i = Math.min(COUNT_STEPS - 1, Math.max(0, Math.round(index.value - base)));
     // Reanimated writes `text` straight to the native input (not part of TextInputProps).
     return { text: frames[i] } as unknown as TextInputProps;
-  }, [frames]);
+  }, [frames, base]);
 
   // A TextInput cannot auto-fit, so long figures shrink to the disc up front.
   const longest = frames.reduce((n, text) => Math.max(n, text.length), 1);
@@ -405,10 +406,17 @@ function ArcsLayer({ uri, anySelected, introKey, reduceMotion }: { uri: string |
 }
 
 /** The selected arc: wider, with a soft halo and its share of the tick ring lit. It fades and springs in or out. */
-function SelectedOverlay({ uri, visible, reduceMotion, travel, fixedTurn = 0 }: { uri: string | null; visible: boolean; reduceMotion: boolean; travel: SharedValue<number> | null; fixedTurn?: number }) {
+function SelectedOverlay({ uri, visible, reduceMotion, travel, ownTurn }: { uri: string | null; visible: boolean; reduceMotion: boolean; travel: SharedValue<number>; ownTurn: number }) {
   const theme = useTheme();
   const ready = Boolean(uri);
-  const progress = useSharedValue(visible ? 0 : 1);
+  const progress = useSharedValue(0);
+  // 1 while this overlay is the selected one (it turns with the shared angle); 0 otherwise (it stays at its own angle).
+  const following = useSharedValue(0);
+
+  // Layout effect: the flag flips before paint, so the first frame of a selection is already correct.
+  useLayoutEffect(() => {
+    following.set(visible ? 1 : 0);
+  }, [following, visible]);
 
   useEffect(() => {
     // The spring waits for the image, so the capsule never pops in without animating.
@@ -421,10 +429,11 @@ function SelectedOverlay({ uri, visible, reduceMotion, travel, fixedTurn = 0 }: 
   }, [visible, ready, progress, reduceMotion, theme.motion.easing.in]);
 
   const style = useAnimatedStyle(() => ({
-    opacity: Math.min(1, progress.value * 1.4),
-    // The image is drawn centred at 12 o'clock. The incoming overlay turns with the shared angle; the
-    // outgoing one stays where it was and fades there, so it never sweeps across the ring.
-    transform: [{ rotate: `${(travel ? travel.value : fixedTurn) * 360}deg` }, { scale: 0.96 + 0.04 * progress.value }],
+    // A faint floor keeps the (always mounted) image decoded, so a selection never waits on a decode or a mount.
+    opacity: Math.max(0.01, Math.min(1, progress.value * 1.4)),
+    // The image is drawn centred at 12 o'clock. The selected overlay turns with the shared angle; one that is
+    // leaving stays where it was and fades there, so it never sweeps across the ring.
+    transform: [{ rotate: `${(following.value ? travel.value : ownTurn) * 360}deg` }, { scale: 0.96 + 0.04 * progress.value }],
   }));
 
   return (
