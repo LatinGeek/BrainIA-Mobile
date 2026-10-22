@@ -32,10 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [screenReader, setScreenReader] = useState(true);
   const [overlays, setOverlays] = useState(0);
   const [inset, setInset] = useState(0);
-  const registerOverlay = useCallback(() => {
-    setOverlays((count) => count + 1);
-    return () => setOverlays((count) => Math.max(0, count - 1));
-  }, []);
+  const shownAt = useRef(0);
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -43,8 +40,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToast(null);
   }, []);
 
+  const registerOverlay = useCallback(() => {
+    // A toast from before a sheet opened belongs to the screen underneath; hosted in the sheet it would sit on its footer button.
+    if (Date.now() - shownAt.current > 300) hide();
+    setOverlays((count) => count + 1);
+    return () => setOverlays((count) => Math.max(0, count - 1));
+  }, [hide]);
+
   const show = useCallback<ToastContextValue['show']>((message, options) => {
     if (timer.current) clearTimeout(timer.current);
+    shownAt.current = Date.now();
     setToast({ id: ++sequence.current, message, action: options?.action, tone: options?.tone, duration: options?.duration ?? Math.min(8000, 3000 + message.length * 50) });
   }, []);
 
