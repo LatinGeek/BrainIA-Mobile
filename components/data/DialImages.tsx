@@ -135,6 +135,7 @@ function hashKey(value: string) {
   return h.toString(36);
 }
 
+const MAX_CACHED = 40;
 const cache = new Map<string, string>();
 // One render at a time keeps the GPU and JS work off the critical path when a screen mounts.
 let queue: Promise<unknown> = Promise.resolve();
@@ -160,6 +161,11 @@ function render(key: string, scene: (scale: number) => React.ReactElement, pixel
       uri = file.uri;
     }
     cache.set(key, uri);
+    // Keep the most recent images only: a changing data set would otherwise grow the cache without bound.
+    if (cache.size > MAX_CACHED) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
     return uri;
   });
   queue = job.catch(() => null);

@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -111,7 +111,7 @@ export function MixCard({
   // Drawn layout only: every slice keeps its own slot (nothing is merged). A slice too thin for a
   // round-capped capsule becomes a slim bar of its exact width, floored at 1% of the ring so it stays
   // visible, and the shares are renormalised. The legend and the centre keep the true values.
-  const arcs: Arc[] = (() => {
+  const arcs: Arc[] = useMemo(() => {
     const floored = source.map((segment) => (segment.value > 0 ? Math.max(segment.value / total, MIN_SHARE) : 0));
     const flooredTotal = floored.reduce((sum, share) => sum + share, 0) || 1;
     const shares = floored.map((share) => share / flooredTotal);
@@ -132,14 +132,15 @@ export function MixCard({
         s1,
       };
     });
-  })();
+  }, [source, total, theme.colors.chart]);
   const activeArc = arcs.find((arc) => arc.id === activeId);
   const images = useDialImages(arcs, size);
 
-  const select = (segment: MixSegment | null) => {
+  const select = useCallback((segment: MixSegment | null) => {
     setInternalSelected(segment?.id ?? null);
     onSelect?.(segment);
-  };
+  }, [onSelect]);
+  const toggleArc = useCallback((arc: MixSegment, wasSelected: boolean) => select(wasSelected ? null : arc), [select]);
 
   // The highlight's angle (in turns, from 12 o'clock). Switching splits glides it around the ring by
   // the shortest way on a spring; a first selection sweeps in from a little before its own angle.
@@ -268,7 +269,7 @@ export function MixCard({
             valueLabel={formatValue(arc.displayValue ?? arc.value)}
             accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} ${percentageNoun}`}
             reduceMotion={reduceMotion}
-            onPress={() => select(arc.id === activeId ? null : arc)}
+            onToggle={toggleArc}
           />
         ))}
       </View>
@@ -327,7 +328,9 @@ function CenterAmountNative({ target, animate, hasActive, centerValue, currency,
   if (pair.to !== target) setPair({ from: pair.to, to: target, n: pair.n + 1 });
 
   const frames = useMemo(() => {
-    const format = (value: number) => (!animate ? amountLabel : hasActive ? formatValue(value) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(value, currency) : formatValue(value)}`);
+    const approx = centerValue.startsWith('≈ ') ? '≈ ' : '';
+    // The same prefix before, during and after the count, so the figure never shifts sideways when it starts.
+    const format = (value: number) => (!animate ? amountLabel : `${approx}${hasActive ? formatValue(value) : currency ? formatCurrency(value, currency) : formatValue(value)}`);
     return Array.from({ length: COUNT_STEPS }, (_, i) => {
       const x = i / (COUNT_STEPS - 1);
       const eased = 1 - (1 - x) * (1 - x) * (1 - x);
@@ -443,7 +446,7 @@ function SelectedOverlay({ uri, visible, reduceMotion, travel, ownTurn }: { uri:
   );
 }
 
-function MixRow({
+const MixRow = memo(function MixRow({
   arc,
   selected,
   anySelected,
@@ -453,7 +456,7 @@ function MixRow({
   valueLabel,
   accessibilityLabel,
   reduceMotion,
-  onPress,
+  onToggle,
 }: {
   arc: Arc;
   selected: boolean;
@@ -464,7 +467,7 @@ function MixRow({
   valueLabel: string;
   accessibilityLabel: string;
   reduceMotion: boolean;
-  onPress: () => void;
+  onToggle: (arc: MixSegment, wasSelected: boolean) => void;
 }) {
   const theme = useTheme();
   const dim = useSharedValue(anySelected && !selected ? 0.45 : 1);
@@ -487,7 +490,7 @@ function MixRow({
   const barStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: bar.value }] }));
 
   return (
-    <GlassPressable accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={accessibilityLabel} haptic="selection" scaleTo={0.98} onPress={onPress}>
+    <GlassPressable accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={accessibilityLabel} haptic="selection" scaleTo={0.98} onPress={() => onToggle(arc, selected)}>
       <Animated.View
         style={[
           styles.row,
@@ -510,7 +513,7 @@ function MixRow({
       </Animated.View>
     </GlassPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   between: {
