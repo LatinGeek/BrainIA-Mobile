@@ -13,7 +13,8 @@ import { StateView } from '@/components/data/StateView';
 import { TrendChart } from '@/components/data/TrendChart';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { Screen, Section, StaggerGroup } from '@/components/layout/Screen';
+import { KeepAliveViews } from '@/components/layout/KeepAliveViews';
+import { Screen, Section } from '@/components/layout/Screen';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
@@ -539,8 +540,8 @@ export default function FinancialsScreen() {
             </View>
           </View>
 
-          <StaggerGroup key={view}>
-          {view === 'overview' ? (
+          <KeepAliveViews active={view} views={{
+            overview: () => (
             <>
               <MixCard
                 overline={`Gastos · ${period === 'year' ? 'año proyectado' : cycleLabel}`}
@@ -656,9 +657,9 @@ export default function FinancialsScreen() {
                 </Section>
               ) : null}
             </>
-          ) : null}
+            ),
 
-          {view === 'accounts' ? (
+            accounts: () => (
             <>
               <MixCard
                 overline="Cartera · hoy"
@@ -689,9 +690,9 @@ export default function FinancialsScreen() {
               )) : <StateView title="Todavía no hay cuentas" description="Crea una cuenta y luego establece su saldo actual con un ajuste." actionLabel="Crear cuenta" onAction={openCreateAccount} />}
               </View>
             </>
-          ) : null}
+            ),
 
-          {view === 'activity' ? (
+            activity: () => (
             <>
               <GlassSurface level="thin" padding="sm" contentStyle={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 1 }}>
@@ -749,8 +750,8 @@ export default function FinancialsScreen() {
                 )) : <StateView title="No hay pendientes" description="Anota un cobro o una deuda futura para tenerla presente sin alterar tu balance." actionLabel="Crear pendiente" onAction={() => openEntryEditor(true)} />}
               </Section>
             </>
-          ) : null}
-          </StaggerGroup>
+            ),
+          }} />
         </>
       ) : null}
 
