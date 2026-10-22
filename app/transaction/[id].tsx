@@ -57,7 +57,9 @@ export default function TransactionDetailScreen() {
       : [];
   const originEventId = evidenceItems.find((item) => item.rawEventId)?.rawEventId;
   const originLoader = useMemo(() => async () => originEventId ? client.getEvent(originEventId) : undefined, [client, originEventId]);
-  const { data: originEvent } = useAsyncResource(originLoader, [originLoader]);
+  const { data: originEvent, error: originError } = useAsyncResource(originLoader, [originLoader]);
+  // The captured event arrives after the page; hold one neutral loading state instead of showing fallback copy that then changes.
+  const originPending = Boolean(originEventId) && !originEvent && !originError;
   const originSource = originEvent?.source ?? evidenceItems[0]?.source ?? transaction?.primarySource;
   const displayMerchantLabel = transaction?.displayMerchantLabel ?? transaction?.merchantLabel;
   const [title, setTitle] = useState('');
@@ -242,9 +244,9 @@ export default function TransactionDetailScreen() {
           <Section title="Origen" subtitle={transaction.excludedFromReports ? 'Creado manualmente para conciliar el saldo de una cuenta.' : 'El registro capturado que creó este movimiento.'}>
             <GlassSurface level="thin" padding="md" contentStyle={{ gap: 8 }}>
               <Row
-                title={originEvent?.title ?? (transaction.excludedFromReports ? 'Ajuste manual de saldo' : formatSourceLabel(originSource))}
-                subtitle={originEvent ? `${formatSourceLabel(originEvent.source)} · ${formatEventKind(originEvent.kind)}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
-                description={originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Abre el evento capturado original para ver su contenido.' : transaction.excludedFromReports ? 'Este registro cambia el saldo de la cuenta, pero no cuenta como ingreso ni gasto.' : 'Todavía no hay un evento capturado vinculado.'}
+                title={originPending ? 'Evento capturado' : originEvent?.title ?? (transaction.excludedFromReports ? 'Ajuste manual de saldo' : formatSourceLabel(originSource))}
+                subtitle={originPending ? 'Cargando…' : originEvent ? `${formatSourceLabel(originEvent.source)} · ${formatEventKind(originEvent.kind)}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
+                description={originPending ? 'Abriendo el contenido original…' : originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Abre el evento capturado original para ver su contenido.' : transaction.excludedFromReports ? 'Este registro cambia el saldo de la cuenta, pero no cuenta como ingreso ni gasto.' : 'Todavía no hay un evento capturado vinculado.'}
                 leading={<IconTile icon={transaction.excludedFromReports ? 'user' : 'inbox'} color={transaction.excludedFromReports ? theme.colors.user : theme.colors.captured} />}
                 trailing={originEventId ? <Tag label="Abrir" tone="info" /> : undefined}
                 onPress={originEventId ? () => router.push({ pathname: '/event/[id]', params: { id: originEventId } }) : undefined}

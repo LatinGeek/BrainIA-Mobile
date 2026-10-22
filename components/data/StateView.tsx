@@ -1,11 +1,13 @@
 import { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeOut } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Button } from '@/components/controls';
 import { IconTile } from './Row';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
+import { useReduceMotion } from '@/lib/hooks';
 
 export type StateKind = 'empty' | 'error' | 'success' | 'loading';
 
@@ -37,16 +39,19 @@ export function StateView({
   children?: ReactNode;
 }) {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
 
   if (kind === 'loading') {
-    const height = skeleton === 'chart' ? 160 : skeleton === 'hero' ? 120 : skeleton === 'detail' ? 88 : 60;    return (
-      <View accessibilityRole="progressbar" accessibilityLabel={'Cargando contenido'} style={{ gap: theme.spacing.sm }}>
+    const height = skeleton === 'chart' ? 160 : skeleton === 'hero' ? 120 : skeleton === 'detail' ? 88 : 60;
+    return (
+      // Fades out instead of vanishing, so the content rising in behind it never meets an empty screen.
+      <Animated.View exiting={reduceMotion ? undefined : FadeOut.duration(220)} accessibilityRole="progressbar" accessibilityLabel={'Cargando contenido'} style={{ gap: theme.spacing.sm }}>
         {Array.from({ length: skeletonCount }).map((_, index) => (
           <GlassSurface key={index} level="thin" padding="none" style={{ height }} contentStyle={{ height }}>
             <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.glass.inner }]} />
           </GlassSurface>
         ))}
-      </View>
+      </Animated.View>
     );
   }
 

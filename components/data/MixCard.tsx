@@ -241,8 +241,8 @@ export function MixCard({
               onPress={() => select(null)}
               style={[styles.disc, { width: discSize, height: discSize, borderRadius: discSize / 2, borderColor: 'rgba(255,255,255,0.09)', experimental_backgroundImage: 'radial-gradient(circle at 50% 22%, rgba(255,255,255,0.14), rgba(255,255,255,0.025) 68%)' }]}
             >
-              <Animated.Text key={activeId ?? 'total'} entering={reduceMotion ? undefined : FadeInDown.duration(260)} exiting={reduceMotion ? undefined : FadeOutUp.duration(140)} numberOfLines={1} style={[styles.discLabel, { color: active ? activeArc?.color ?? theme.colors.accent : theme.colors.textMuted, maxWidth: discSize - 24 }]}>
-                {cleanDisplayText(active ? active.label : centerLabel ?? 'Total')}
+              <Animated.Text key={activeId ?? 'total'} entering={reduceMotion ? undefined : FadeInDown.duration(260)} exiting={reduceMotion ? undefined : FadeOutUp.duration(140)} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.discLabel, { color: active ? activeArc?.color ?? theme.colors.accent : theme.colors.textMuted, maxWidth: discSize - 24 }]}>
+                {cleanDisplayText(active ? active.label : centerLabel ?? 'Total').toLocaleUpperCase('es')}
               </Animated.Text>
               <CenterAmount target={amountTarget} animate={centerAmount !== undefined} hasActive={Boolean(active)} centerValue={centerValue} currency={currency} formatValue={formatValue} amountLabel={amountLabel} maxWidth={discSize - 20} fontSize={width < 360 ? 20 : 24} lineHeight={width < 360 ? 25 : 29} reduceMotion={reduceMotion} />
               {sharePill ? (
@@ -544,7 +544,6 @@ const styles = StyleSheet.create({
   discLabel: {
     fontSize: 9.5,
     letterSpacing: 1.1,
-    textTransform: 'uppercase',
     textAlign: 'center',
     fontWeight: '600',
   },
