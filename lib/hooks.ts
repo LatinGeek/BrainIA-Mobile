@@ -38,8 +38,12 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
   useEffect(() => {
     let active = true;
 
-    setLoading(true);
-    setError(null);
+    // Reset in a microtask (still before the loader can settle) rather than synchronously in the effect.
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      setLoading(true);
+      setError(null);
+    });
 
     loader()
       .then((result) => {
