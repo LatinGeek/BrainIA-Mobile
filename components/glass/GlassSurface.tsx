@@ -100,15 +100,32 @@ export function GlassSurface({
   const [spot, setSpot] = useState<{ contentX: number; contentY: number } | null>(null);
   const wantsBackdrop = android && !reduceTransparency && !chrome && !parent?.chrome;
   const veilAlpha = backdropVeil[level] + (parent?.veil ?? 0);
+  // The spot also lives in shared values: a card measured while its screen is still rising into place is measured
+  // again once the entrance ends, and that correction glides instead of stepping.
+  const spotX = useSharedValue(0);
+  const spotY = useSharedValue(0);
+  const hasSpot = useRef(false);
   const onLayout = useCallback(() => {
     if (!wantsBackdrop) return;
     viewRef.current?.measureInWindow((x, y, w, h) => {
       if (w <= 0 || h <= 0) return;
       const contentX = x + (scrollX ? scrollX.get() : 0);
       const contentY = y + (scrollY ? scrollY.get() : 0);
+      if (!hasSpot.current) {
+        hasSpot.current = true;
+        spotX.set(contentX);
+        spotY.set(contentY);
+      } else if (Math.abs(spotX.get() - contentX) >= 1 || Math.abs(spotY.get() - contentY) >= 1) {
+        spotX.set(withTiming(contentX, { duration: 160 }));
+        spotY.set(withTiming(contentY, { duration: 160 }));
+      }
       setSpot((prev) => (prev && Math.abs(prev.contentX - contentX) < 1 && Math.abs(prev.contentY - contentY) < 1 ? prev : { contentX, contentY }));
     });
-  }, [wantsBackdrop, scrollX, scrollY]);
+  }, [wantsBackdrop, scrollX, scrollY, spotX, spotY]);
+  const settled = glassScroll?.settled;
+  useEffect(() => {
+    if (settled) onLayout();
+  }, [settled, onLayout]);
   const backdropUri = useAmbientBackdrop(wantsBackdrop ? backdropBlur[level] : 0, theme.ambient, screenWidth, screenHeight);
   const childGlass = { veil: wantsBackdrop ? veilAlpha : parent?.veil ?? 0, chrome: chrome || (parent?.chrome ?? false) };
   const glass = backdropUri !== null && spot !== null;
@@ -129,11 +146,11 @@ export function GlassSurface({
   const backdropStyle = useAnimatedStyle(
     () => ({
       transform: [
-        { translateX: (scrollX ? scrollX.value : 0) - (spot ? spot.contentX : 0) },
-        { translateY: (scrollY ? scrollY.value : 0) - (spot ? spot.contentY : 0) },
+        { translateX: (scrollX ? scrollX.value : 0) - spotX.value },
+        { translateY: (scrollY ? scrollY.value : 0) - spotY.value },
       ],
     }),
-    [scrollX, scrollY, spot],
+    [scrollX, scrollY, spotX, spotY],
   );
 
   // iOS and web keep the native blur view.

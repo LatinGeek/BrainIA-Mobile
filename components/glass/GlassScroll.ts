@@ -7,6 +7,11 @@ import type { SharedValue } from 'react-native-reanimated';
  * offset for the surfaces inside it. Glass surfaces slide their backdrop image against the
  * card by these offsets, so the blur keeps showing what is actually behind the card.
  */
-export type GlassScroll = { y: SharedValue<number> | null; x: SharedValue<number> | null };
+export type GlassScroll = {
+  y: SharedValue<number> | null;
+  x: SharedValue<number> | null;
+  /** Bumped when the screen's entrance has finished: cards measured mid-rise measure again. */
+  settled?: number;
+};
 
 export const GlassScrollContext = createContext<GlassScroll | null>(null);

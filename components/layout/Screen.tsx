@@ -157,7 +157,8 @@ export function Screen({
   const { width, fontScale } = useWindowDimensions();
   const desktop = width >= 1024;
   const scrollY = useSharedValue(0);
-  const glassScroll = useMemo(() => ({ y: scrollY, x: null }), [scrollY]);
+  const [settledKey, setSettledKey] = useState(0);
+  const glassScroll = useMemo(() => ({ y: scrollY, x: null, settled: settledKey }), [scrollY, settledKey]);
   const [compactVisible, setCompactVisible] = useState(false);
   // A pinned action bar sits above the dock; toasts must clear it too.
   const [barHeight, setBarHeight] = useState(0);
@@ -168,7 +169,10 @@ export function Screen({
     setEntering(true);
     dockTarget.set(0);
     dockScroll.value = reduceMotion ? 0 : withTiming(0, { duration: M.duration.quick, easing: Easing.bezier(...M.easing.out) });
-    const timer = setTimeout(() => setEntering(false), M.duration.enter + M.staggerMax * M.stagger);
+    const timer = setTimeout(() => {
+      setEntering(false);
+      setSettledKey((key) => key + 1);
+    }, M.duration.enter + M.staggerMax * M.stagger);
     return () => {
       clearTimeout(timer);
       dockScroll.value = 0;

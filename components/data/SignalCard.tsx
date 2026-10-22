@@ -141,7 +141,7 @@ export function SignalCarousel({
   // The rail's horizontal offset moves each card's glass backdrop with the card.
   const parentScroll = useContext(GlassScrollContext);
   const scrollX = useSharedValue(0);
-  const glassScroll = useMemo(() => ({ y: parentScroll?.y ?? null, x: scrollX }), [parentScroll, scrollX]);
+  const glassScroll = useMemo(() => ({ y: parentScroll?.y ?? null, x: scrollX, settled: parentScroll?.settled }), [parentScroll, scrollX]);
   const onScroll = useAnimatedScrollHandler((event) => {
     scrollX.set(event.contentOffset.x);
   });
