@@ -124,7 +124,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
               background={theme.ambient.base}
             />
           </Animated.View>
-        ) : null}
+        ) : <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center', marginTop: 150 }]}>Cargando el mapa…</Text>}
         <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 22 }} />
         <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 22 }} />
       </View>
