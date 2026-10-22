@@ -281,7 +281,10 @@ export default function FinancialsScreen() {
     return { id: account.id, label: account.name, value: Math.abs(convertedBalance), displayValue: convertedBalance, color: account.color };
   });
   // The unreviewed bucket gets the warning tone instead of the brand accent.
-  const mixSegments = mixGroups.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? theme.status.warning : undefined }));  const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
+  // Stable between selections: a selection re-renders this screen, and fresh segment objects every time would defeat the dial's own memoisation.
+  const warningColor = theme.status.warning;
+  const mixSegments = useMemo(() => mixGroups.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? warningColor : undefined })), [mixGroups, periodMultiplier, warningColor]);
+  const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
 
   function openCreateAccount() {
     setEditingAccount(null);
@@ -624,7 +627,7 @@ export default function FinancialsScreen() {
               </Section>
 
               {selectedMixGroup ? (
-                <Section title={selectedMixGroup.label} subtitle={`${selectedMixGroup.count} transactions in this group`} actionLabel="Clear" onActionPress={() => setSelectedMixId(null)}>
+                <Section title={selectedMixGroup.label} subtitle={`${selectedMixGroup.count} ${selectedMixGroup.count === 1 ? 'movimiento' : 'movimientos'} en este grupo`} actionLabel="Quitar" onActionPress={() => setSelectedMixId(null)}>
                   {selectedMixGroup.items.slice(0, 3).map((transaction) => (
                     <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(`/transaction/${transaction.id}`)} />
                   ))}
