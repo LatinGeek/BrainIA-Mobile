@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { TransactionSummary } from '@/lib/domain';
+import { translateKnownLabel } from '@/lib/format';
 import { readStoredValue, writeStoredValue } from '@/lib/storage';
 
 /**
@@ -122,7 +123,7 @@ export function describeConditions(rule: Pick<Rule, 'source' | 'text' | 'currenc
 /** "Asumir categoría Delivery" */
 export function describeAction(action: RuleAction) {
   if (action.field === 'currency') return `Asumir moneda ${action.value}`;
-  if (action.field === 'category') return `Asumir categoría ${action.value}`;
+  if (action.field === 'category') return `Asumir categoría ${translateKnownLabel(action.value)}`;
   return `Asignar a la cuenta ${action.accountName}`;
 }
 

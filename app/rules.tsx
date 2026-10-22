@@ -30,7 +30,7 @@ type Editor = {
 const blankEditor: Editor = { source: '', text: '', currency: 'any', reference: '', kind: 'category', currencyValue: 'UYU', category: '', accountId: '' };
 
 const currencyItems = [
-  { value: 'any', label: 'Cualquiera' },
+  { value: 'any', label: 'Todas' },
   { value: 'unknown', label: 'Incierta' },
   { value: 'UYU', label: 'UYU' },
   { value: 'USD', label: 'USD' },
@@ -147,7 +147,7 @@ export default function RulesScreen() {
     >
       <Section title="Tus reglas" subtitle="La más específica gana cuando varias aplican." actionLabel="Nueva regla" onActionPress={() => open({ ...blankEditor })}>
         {ready && !rules.length ? (
-          <StateView title="Todavía no tienes reglas" description="Crea una regla o parte de uno de los ejemplos de abajo." actionLabel="Crear una regla" onAction={() => open({ ...blankEditor })} />
+          <StateView icon="sliders" title="Todavía no tienes reglas" description="Crea una regla o parte de uno de los ejemplos de abajo." actionLabel="Crear una regla" onAction={() => open({ ...blankEditor })} />
         ) : (
           <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.xs }}>
             {rules.map((rule) => (
