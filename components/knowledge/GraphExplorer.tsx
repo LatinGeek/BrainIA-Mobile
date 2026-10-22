@@ -1,11 +1,14 @@
+import { useIsFocused } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import GraphForceCanvas from './GraphForceCanvas';
 import { ExploreGraph, ExploreGraphNode } from '@/lib/domain';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 import { translateKnownLabel } from '@/lib/format';
+import { useReduceMotion } from '@/lib/hooks';
 
 export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
   graph: ExploreGraph;
@@ -14,6 +17,17 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
   onOpen: (entity: ExploreGraphNode) => void;
 }) {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  // The map starts a ~2 s force simulation inside a web view. Mounted at once it competes with the screen's entrance
+  // motion (every frame over 50 ms on a mid-range phone), so it waits until the entrance has finished.
+  // A tab warmed in the background stays unfocused, and its map waits for the first real visit.
+  const screenFocused = useIsFocused();
+  const [mapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (!screenFocused) return;
+    const timer = setTimeout(() => setMapReady(true), theme.motion.duration.enter + theme.motion.staggerMax * theme.motion.stagger + 60);
+    return () => clearTimeout(timer);
+  }, [screenFocused, theme.motion.duration.enter, theme.motion.stagger, theme.motion.staggerMax]);
   const visualGraph = useMemo(() => {
     const evidenceTypes = new Set(['activity_instance', 'financial_event', 'email_message']);
     const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -98,15 +112,19 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
 
       {/* The map handles its own drag gestures, so two transparent strips over its edges hand a swipe to the page. */}
       <View style={{ height: 332, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.glass.divider, backgroundColor: theme.ambient.base }}>
-        <GraphForceCanvas
-          nodes={visualGraph.nodes}
-          relations={visualGraph.relations}
-          communities={visualGraph.communities}
-          focusedEntityId={focusedEntityId}
-          onFocus={focusById}
-          dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: theme.ambient.base } }}
-          background={theme.ambient.base}
-        />
+        {mapReady ? (
+          <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(320)} style={{ flex: 1 }}>
+            <GraphForceCanvas
+              nodes={visualGraph.nodes}
+              relations={visualGraph.relations}
+              communities={visualGraph.communities}
+              focusedEntityId={focusedEntityId}
+              onFocus={focusById}
+              dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: theme.ambient.base } }}
+              background={theme.ambient.base}
+            />
+          </Animated.View>
+        ) : null}
         <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 22 }} />
         <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 22 }} />
       </View>
