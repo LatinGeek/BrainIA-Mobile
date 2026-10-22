@@ -275,23 +275,13 @@ export default function FinancialsScreen() {
   const totalAccountBalance = accounts.reduce((total, account) => total + convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency), 0);
   const hasCurrencyConversion = hasFinancialCurrencyConversion(transactions, displayCurrency) || accounts.some((account) => (account.currency ?? 'UYU') !== displayCurrency);
   const displayTotal = (value: number) => `${hasCurrencyConversion ? '≈ ' : ''}${formatCurrency(value, displayCurrency)}`;
+  // Every account and every category keeps its own slice; the dial itself makes crowded splits readable.
   const portfolioSegments = accounts.map((account) => {
     const convertedBalance = convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency);
     return { id: account.id, label: account.name, value: Math.abs(convertedBalance), displayValue: convertedBalance, color: account.color };
   });
-  // Slices under 2% fold into "Otros" so no sliver reads as a rendering glitch, and the unreviewed bucket
-  // gets the warning tone instead of the brand accent.
-  const mixTotal = mixGroups.reduce((sum, group) => sum + group.total, 0);
-  const mixMinorCandidates = mixGroups.filter((group) => mixTotal > 0 && group.total / mixTotal < 0.02);
-  const mixMajor = mixMinorCandidates.length >= 2 ? mixGroups.filter((group) => !mixMinorCandidates.includes(group)) : mixGroups;
-  const mixMinorTotal = mixGroups.filter((group) => !mixMajor.includes(group)).reduce((sum, group) => sum + group.total, 0);
-  const mixSegments = mixGroups.length
-    ? [
-        ...mixMajor.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? theme.status.warning : undefined })),
-        ...(mixMinorTotal > 0 ? [{ id: 'others', label: 'Otros', value: mixMinorTotal * periodMultiplier, color: theme.colors.textMuted }] : []),
-      ]
-    : [];
-  const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
+  // The unreviewed bucket gets the warning tone instead of the brand accent.
+  const mixSegments = mixGroups.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? theme.status.warning : undefined }));  const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
 
   function openCreateAccount() {
     setEditingAccount(null);

@@ -1,15 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions, Platform } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
+import { Feather } from '@expo/vector-icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeOutUp,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
+import { DIAL, DIAL_CIRC, DialArc, useDialImages } from '@/components/data/DialImages';
+import { useCountedAmount } from '@/components/data/Row';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText, formatCurrency } from '@/lib/format';
-import { useCountedAmount } from '@/components/data/Row';
 import { useReduceMotion } from '@/lib/hooks';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export type MixSegment = {
   id: string;
@@ -19,11 +30,28 @@ export type MixSegment = {
   color?: string;
 };
 
+/**
+ * SpendingRadial, as in the prototype: round-capped gradient arcs from 12 o'clock with even gaps,
+ * an outer tick ring that lights the selected share, a glass disc in the middle and legend rows
+ * with share bars. Selecting a split widens its arc with a spring and a glow, dims the others,
+ * lights its ticks, counts the centre figure to the new value and bumps the disc.
+ *
+ * The dial itself is three kinds of cached Skia image (rings and ticks, arcs, one overlay per
+ * split), so every animation here is view opacity and scale: nothing re-rasterises while it moves.
+ */
+const { R, W, GAP, C } = DIAL;
+const CIRC = DIAL_CIRC;
+const MIN_SHARE = 0.01; // thinnest drawn slice, as a share of the ring
+const THIN_GAP = 2.4; // gap between a thin bar and its neighbours
+const THIN_EXTRA = 4; // a slice shorter than a capsule plus this becomes a bar
+
 function percent(value: number, total: number) {
   if (total <= 0) return '0%';
   const share = (value / total) * 100;
   return `${share >= 10 ? share.toFixed(0) : share.toFixed(1).replace('.', ',')}%`;
 }
+
+type Arc = MixSegment & DialArc & { index: number };
 
 export function MixCard({
   overline,
@@ -39,7 +67,7 @@ export function MixCard({
   formatValue = (value) => String(Math.round(value)),
   selectedId,
   onSelect,
-  emptyLabel = 'No spend',
+  emptyLabel = 'Sin gasto',
   percentageNoun = 'del gasto',
 }: {
   overline?: string;
@@ -63,57 +91,115 @@ export function MixCard({
   const { width, fontScale } = useWindowDimensions();
   const [internalSelected, setInternalSelected] = useState<string | null>(null);
   const activeId = selectedId === undefined ? internalSelected : selectedId;
+
   const source = useMemo(
     () => (segments.some((segment) => segment.value > 0) ? segments.filter((segment) => segment.value > 0) : [{ id: 'empty', label: emptyLabel, value: 1, color: theme.glass.solid.strong }]),
     [emptyLabel, segments, theme.glass.solid.strong],
   );
   const total = source.reduce((sum, segment) => sum + Math.max(0, segment.value), 0) || 1;
+  const maxValue = Math.max(...source.map((segment) => segment.value), 1);
   const active = source.find((segment) => segment.id === activeId);
+  const anySelected = Boolean(active);
+  const introKey = source.map((segment) => segment.id).join('|');
+
   const amountTarget = active ? active.displayValue ?? active.value : centerAmount ?? 0;
-  const countedAmount = useCountedAmount(amountTarget, centerAmount !== undefined);
   const amountLabel = active ? formatValue(amountTarget) : cleanDisplayText(centerValue);
-  const amountText = centerAmount === undefined ? amountLabel : active ? formatValue(countedAmount) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(countedAmount, currency) : formatValue(countedAmount)}`;
   const size = Math.round(Math.min(268, Math.max(204, width - (fontScale >= 1.3 ? 76 : 92))));
-  const strokeWidth = 22;
-  const radius = size / 2 - strokeWidth / 2 - 4;
-  const circumference = 2 * Math.PI * radius;
-  const centerDiameter = radius * 2 - strokeWidth - 6;
-  const gap = circumference * 0.012;
+  const discSize = size * 0.61;
 
-  const reveal = useSharedValue(reduceMotion ? 1 : 0);
-  useEffect(() => {
-    reveal.value = reduceMotion ? 1 : 0;
-    if (!reduceMotion) reveal.value = withTiming(1, { duration: theme.motion.duration.count, easing: Easing.bezier(...theme.motion.easing.out) });
-  }, [reduceMotion, theme.motion.easing.out, reveal, source.length, theme.motion.duration.count]);
-
-  const totalProps = useAnimatedProps(() => ({ opacity: reveal.value }));
-
-  // Drawn layout only: every slice gets at least 2% of the ring (then all shares are renormalised), so a
-  // tiny category stays a visible arc with a gap on both sides. The legend and the centre keep true values.
-  const drawnShares = (() => {
-    const floored = source.map((segment) => (segment.value > 0 ? Math.max(segment.value / total, 0.02) : 0));
+  // Drawn layout only: every slice keeps its own slot (nothing is merged). A slice too thin for a
+  // round-capped capsule becomes a slim bar of its exact width, floored at 1% of the ring so it stays
+  // visible, and the shares are renormalised. The legend and the centre keep the true values.
+  const arcs: Arc[] = (() => {
+    const floored = source.map((segment) => (segment.value > 0 ? Math.max(segment.value / total, MIN_SHARE) : 0));
     const flooredTotal = floored.reduce((sum, share) => sum + share, 0) || 1;
-    return floored.map((share) => share / flooredTotal);
+    const shares = floored.map((share) => share / flooredTotal);
+    return source.map((segment, index) => {
+      const s0 = shares.slice(0, index).reduce((sum, share) => sum + share, 0);
+      const s1 = s0 + shares[index];
+      const length = shares[index] * CIRC;
+      const thin = length < GAP + W + THIN_EXTRA;
+      return {
+        ...segment,
+        index,
+        color: segment.color ?? theme.colors.chart[index % theme.colors.chart.length],
+        cap: thin ? ('butt' as const) : ('round' as const),
+        dash: thin ? Math.max(length - THIN_GAP, 1.2) : Math.max(length - GAP - W, 0.1),
+        startAt: thin ? ((0.75 + s0) * CIRC + THIN_GAP / 2) % CIRC : ((0.75 + s0) * CIRC + GAP / 2 + W / 2) % CIRC,
+        selDash: Math.max(length - GAP - W, 0.1),
+        s0,
+        s1,
+      };
+    });
   })();
-  const arcs = source.map((segment, index) => {
-    const slice = drawnShares[index] * circumference;
-    const start = drawnShares.slice(0, index).reduce((sum, share) => sum + share * circumference, 0);
-    return {
-      ...segment,
-      index,
-      length: Math.max(0, slice - gap),
-      offset: start,
-      color: segment.color ?? theme.colors.chart[index % theme.colors.chart.length],
-    };
-  });
+  const activeArc = arcs.find((arc) => arc.id === activeId);
+  const images = useDialImages(arcs, size);
+
+  // Remember which arc was selected before, so its overlay can fade out while the new one comes in.
+  const [tracked, setTracked] = useState<{ id: string | null; arc: Arc | null }>({ id: activeId ?? null, arc: activeArc ?? null });
+  const [leaving, setLeaving] = useState<Arc | null>(null);
+  if ((activeId ?? null) !== tracked.id) {
+    setLeaving(tracked.arc);
+    setTracked({ id: activeId ?? null, arc: activeArc ?? null });
+  }
 
   const select = (segment: MixSegment | null) => {
     setInternalSelected(segment?.id ?? null);
     onSelect?.(segment);
   };
 
+  // The highlight's angle (in turns, from 12 o'clock). Switching splits glides it around the ring by
+  // the shortest way on a spring; a first selection sweeps in from a little before its own angle.
+  const activeMid = activeArc ? (activeArc.s0 + activeArc.s1) / 2 : null;
+  const travel = useSharedValue(activeMid ?? 0);
+  useEffect(() => {
+    if (activeMid === null) return;
+    if (reduceMotion) {
+      travel.set(activeMid);
+      return;
+    }
+    const current = travel.get();
+    const delta = ((((activeMid - current) % 1) + 1.5) % 1) - 0.5; // shortest way round, in (-0.5, 0.5]
+    const wasIdle = !leaving;
+    const from = wasIdle ? activeMid - 0.07 : current;
+    travel.set(from);
+    travel.set(withSpring(wasIdle ? activeMid : current + delta, { damping: 17, stiffness: 120, mass: 1 }));
+    // `leaving` is the split that was selected before this change (null when nothing was).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMid, reduceMotion, travel]);
+
+  // A tap on the ring picks the split under the finger (the arcs are images, so this is angle maths).
+  const onDialPress = (x: number, y: number) => {
+    const k = DIAL.BOX / size;
+    const dx = x * k - C;
+    const dy = y * k - C;
+    if (Math.abs(Math.hypot(dx, dy) - R) > W / 2 + 6) {
+      if (active) select(null);
+      return;
+    }
+    let turn = Math.atan2(dx, -dy) / (2 * Math.PI);
+    if (turn < 0) turn += 1;
+    const arc = arcs.find((candidate) => turn >= candidate.s0 && turn < candidate.s1) ?? arcs[arcs.length - 1];
+    select(active?.id === arc.id ? null : arc);
+  };
+
+  // The disc bumps on every change of selection (not on first paint).
+  const bump = useSharedValue(1);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (reduceMotion) return;
+    bump.set(withSequence(withTiming(0.95, { duration: 140 }), withSpring(1, theme.motion.spring.thumb)));
+  }, [activeId, bump, reduceMotion, theme.motion.spring.thumb]);
+  const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
+
+  const sharePill = active ? percent(active.value, total) : null;
+
   return (
-    <GlassSurface level="regular" padding="lg" contentStyle={{ gap: 12 }}>
+    <GlassSurface level="regular" padding="lg" contentStyle={{ gap: 18 }}>
       <View style={styles.between}>
         <View style={{ flex: 1, gap: 2 }}>
           {overline ? <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{cleanDisplayText(overline)}</Text> : null}
@@ -126,81 +212,271 @@ export function MixCard({
       </View>
 
       <View style={{ alignItems: 'center' }}>
-        <Pressable
-          accessibilityRole={active ? 'button' : undefined}
-          accessibilityLabel={active ? `Clear ${active.label} selection` : `${title} radial chart`}
-          disabled={!active}
-          onPress={() => select(null)}
+        <View
+          accessibilityRole="image"
+          accessibilityLabel={`${title}: ${amountLabel}, repartido en ${source.length} ${source.length === 1 ? 'grupo' : 'grupos'}`}
           style={{ width: size, height: size }}
         >
-          <Svg width={size} height={size}>
-            <Circle cx={size / 2} cy={size / 2} r={radius + strokeWidth / 2 + 5} stroke={theme.glass.divider} strokeWidth={1} fill="none" />
-            <Circle cx={size / 2} cy={size / 2} r={radius + strokeWidth / 2 + 2} stroke={theme.glass.edge[0]} strokeWidth={1} strokeDasharray="1 5" fill="none" />
-            <Circle cx={size / 2} cy={size / 2} r={radius} stroke={theme.glass.inner} strokeWidth={strokeWidth} fill="none" />
-            {arcs.map((arc) => (
-              <AnimatedCircle
-                key={arc.id}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                stroke={arc.color}
-                strokeWidth={arc.id === activeId ? strokeWidth + 3 : strokeWidth}
-                fill="none"
-                strokeLinecap="butt"
-                strokeDasharray={`${arc.length} ${circumference - arc.length}`}
-                strokeDashoffset={circumference * 0.25 - arc.offset}
-                animatedProps={totalProps}
-                onPress={Platform.OS === 'web' ? undefined : () => select(active?.id === arc.id ? null : arc)}
-                pointerEvents={Platform.OS === 'web' ? 'none' : 'auto'}
-              />
-            ))}
-          </Svg>
-          <View pointerEvents="none" style={styles.center}>
-            <View style={[styles.centerPlate, { width: centerDiameter, height: centerDiameter, borderRadius: centerDiameter / 2, backgroundColor: `${theme.ambient.base}B8`, borderColor: active ? `${arcColor(active, theme.colors.accent)}66` : theme.glass.divider }]}>
-              <Text numberOfLines={1} style={[theme.typography.caption, { color: active ? arcColor(active, theme.colors.accent) : theme.colors.textMuted, textAlign: 'center' }]}>
-                {active ? cleanDisplayText(active.label) : cleanDisplayText(centerLabel ?? 'Total')}
-              </Text>
-              <Text accessibilityLabel={amountLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: width < 360 ? 20 : 26, lineHeight: width < 360 ? 25 : 32, textAlign: 'center' }]}>
-                {amountText}
-              </Text>
-              {active ? (
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} {percentageNoun}</Text>
-              ) : delta ? (
-                <Text style={[theme.typography.caption, { color: delta.tone === 'bad' ? theme.status.expense : delta.tone === 'good' ? theme.status.income : theme.colors.textMuted, textAlign: 'center', fontSize: 10 }]}>{cleanDisplayText(delta.text)}</Text>
-              ) : null}
-            </View>
-          </View>
-        </Pressable>
-      </View>
+          {images.rings ? <Image source={{ uri: images.rings }} fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
+          <ArcsLayer uri={images.arcs} anySelected={anySelected} introKey={introKey} reduceMotion={reduceMotion} />
+          {leaving && leaving.id !== activeArc?.id ? <SelectedOverlay key={`leave-${leaving.id}`} uri={images.overlays[leaving.id] ?? null} visible={false} reduceMotion={reduceMotion} travel={travel} /> : null}
+          {activeArc ? <SelectedOverlay key={`on-${activeArc.id}`} uri={images.overlays[activeArc.id] ?? null} visible reduceMotion={reduceMotion} travel={travel} /> : null}
 
-      <View style={{ gap: 2 }}>
-        {arcs.map((arc) => {
-          const selected = arc.id === activeId;
-          return (
+          <Pressable
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            onPress={(event) => onDialPress(event.nativeEvent.locationX, event.nativeEvent.locationY)}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <Animated.View style={[styles.center, bumpStyle]} pointerEvents="box-none">
             <Pressable
-              key={arc.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} ${percentageNoun}`}
-              onPress={() => select(selected ? null : arc)}
-              style={[styles.legendRow, { backgroundColor: selected ? theme.glass.inner : 'transparent' }]}
+              accessibilityRole={active ? 'button' : undefined}
+              accessibilityLabel={active ? `Quitar la selección de ${active.label}` : undefined}
+              disabled={!active}
+              onPress={() => select(null)}
+              style={[styles.disc, { width: discSize, height: discSize, borderRadius: discSize / 2, borderColor: 'rgba(255,255,255,0.09)', experimental_backgroundImage: 'radial-gradient(circle at 50% 22%, rgba(255,255,255,0.14), rgba(255,255,255,0.025) 68%)' }]}
             >
-              <View style={[styles.legendDot, { backgroundColor: arc.color }]} />
-              <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1, fontSize: 13 }]}>{cleanDisplayText(arc.label)}</Text>
-              <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.caption, { color: theme.colors.textPrimary, width: 84, textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{formatValue(arc.displayValue ?? arc.value)}</Text>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted, width: 42, textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{percent(arc.value, total)}</Text>
+              <Animated.Text key={activeId ?? 'total'} entering={reduceMotion ? undefined : FadeInDown.duration(260)} exiting={reduceMotion ? undefined : FadeOutUp.duration(140)} numberOfLines={1} style={[styles.discLabel, { color: active ? activeArc?.color ?? theme.colors.accent : theme.colors.textMuted, maxWidth: discSize - 24 }]}>
+                {cleanDisplayText(active ? active.label : centerLabel ?? 'Total')}
+              </Animated.Text>
+              <CenterAmount target={amountTarget} animate={centerAmount !== undefined} hasActive={Boolean(active)} centerValue={centerValue} currency={currency} formatValue={formatValue} amountLabel={amountLabel} maxWidth={discSize - 20} fontSize={width < 360 ? 20 : 24} lineHeight={width < 360 ? 25 : 29} reduceMotion={reduceMotion} />
+              {sharePill ? (
+                <Animated.View key={`pill-${activeId}`} entering={reduceMotion ? undefined : FadeInDown.delay(80).duration(280)} style={[styles.pill, { backgroundColor: theme.glass.selected }]}>
+                  <Text style={[styles.pillText, { color: theme.glass.onSelected, fontFamily: theme.typography.mono.fontFamily }]}>{`${sharePill} ${percentageNoun}`}</Text>
+                </Animated.View>
+              ) : delta ? (
+                <Animated.View key="pill-total" entering={reduceMotion ? undefined : FadeInDown.delay(80).duration(280)} style={[styles.pill, { backgroundColor: delta.tone === 'good' ? `${theme.status.income}1A` : 'rgba(255,255,255,0.08)' }]}>
+                  <Text style={[styles.pillText, { color: delta.tone === 'bad' ? theme.status.expense : delta.tone === 'good' ? theme.status.income : theme.colors.textSecondary }]}>{cleanDisplayText(delta.text)}</Text>
+                </Animated.View>
+              ) : null}
             </Pressable>
-          );
-        })}
+          </Animated.View>
+        </View>
       </View>
 
-      {note ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{cleanDisplayText(note)}</Text> : null}
+      <View style={{ gap: 2, marginHorizontal: -8 }}>
+        {arcs.map((arc) => (
+          <MixRow
+            key={arc.id}
+            arc={arc}
+            selected={arc.id === activeId}
+            anySelected={anySelected}
+            introKey={introKey}
+            barShare={arc.value / maxValue}
+            percentLabel={percent(arc.value, total)}
+            valueLabel={formatValue(arc.displayValue ?? arc.value)}
+            accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} ${percentageNoun}`}
+            reduceMotion={reduceMotion}
+            onPress={() => select(arc.id === activeId ? null : arc)}
+          />
+        ))}
+      </View>
+
+      {note ? (
+        <View style={[styles.note, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+          <Feather name="zap" size={15} color={theme.colors.accent} style={{ marginTop: 1 }} />
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1, lineHeight: 18 }]}>{cleanDisplayText(note)}</Text>
+        </View>
+      ) : null}
     </GlassSurface>
   );
 }
 
-function arcColor(segment: MixSegment | undefined, fallback: string) {
-  return segment?.color ?? fallback;
+/**
+ * The centre figure. On device it rolls between values (opacity and transform only); on web a plain Text with a JS count-up is used.
+ */
+type CenterAmountProps = {
+  target: number;
+  animate: boolean;
+  hasActive: boolean;
+  centerValue: string;
+  currency?: string;
+  formatValue: (value: number) => string;
+  amountLabel: string;
+  maxWidth: number;
+  fontSize: number;
+  lineHeight: number;
+  reduceMotion: boolean;
+};
+
+function CenterAmount(props: CenterAmountProps) {
+  return Platform.OS === 'web' ? <CenterAmountWeb {...props} /> : <CenterAmountNative {...props} />;
+}
+
+function CenterAmountWeb({ target, animate, hasActive, centerValue, currency, formatValue, amountLabel, maxWidth, fontSize, lineHeight }: CenterAmountProps) {
+  const theme = useTheme();
+  const counted = useCountedAmount(target, animate);
+  const text = !animate ? amountLabel : hasActive ? formatValue(counted) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(counted, currency) : formatValue(counted)}`;
+  return (
+    <Text accessibilityLabel={amountLabel} numberOfLines={1} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize, lineHeight, textAlign: 'center', maxWidth }]}>
+      {text}
+    </Text>
+  );
+}
+
+function CenterAmountNative({ target, animate, hasActive, centerValue, currency, formatValue, amountLabel, maxWidth, fontSize, lineHeight, reduceMotion }: CenterAmountProps) {
+  const theme = useTheme();
+  const text = !animate ? amountLabel : hasActive ? formatValue(target) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(target, currency) : formatValue(target)}`;
+
+  // The figure rolls: the old one lifts away while the new one rises in. Only opacity and transform
+  // animate, so it stays on the UI thread (changing text every frame forced a layout pass per frame).
+  const [shown, setShown] = useState({ from: text, to: text });
+  if (shown.to !== text) setShown({ from: shown.to, to: text });
+  const roll = useSharedValue(1);
+  useEffect(() => {
+    if (reduceMotion || shown.from === shown.to) {
+      roll.set(1);
+      return;
+    }
+    roll.set(0);
+    roll.set(withTiming(1, { duration: 480, easing: Easing.bezier(...theme.motion.easing.out) }));
+  }, [reduceMotion, roll, shown.from, shown.to, theme.motion.easing.out]);
+
+  const lift = lineHeight * 0.55;
+  const outStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, roll.value * 1.8), transform: [{ translateY: -lift * roll.value }] }));
+  const inStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, roll.value * 1.6), transform: [{ translateY: lift * (1 - roll.value) }] }));
+  const figure = [theme.typography.numeral, { color: theme.colors.textPrimary, fontSize, lineHeight, width: maxWidth, textAlign: 'center' as const }];
+
+  return (
+    <View accessibilityLabel={amountLabel} style={{ width: maxWidth, height: lineHeight, overflow: 'hidden' }}>
+      {shown.from !== shown.to ? (
+        <Animated.Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[figure, StyleSheet.absoluteFill, outStyle]}>
+          {shown.from}
+        </Animated.Text>
+      ) : null}
+      <Animated.Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[figure, inStyle]}>
+        {shown.to}
+      </Animated.Text>
+    </View>
+  );
+}
+/** The arcs, as one image. The ring settles in on first show (and when the groups change) and recedes while a split is selected. */
+function ArcsLayer({ uri, anySelected, introKey, reduceMotion }: { uri: string | null; anySelected: boolean; introKey: string; reduceMotion: boolean }) {
+  const theme = useTheme();
+  const dim = useSharedValue(anySelected ? 0.22 : 1);
+  const intro = useSharedValue(reduceMotion ? 1 : 0);
+  const ready = Boolean(uri);
+
+  useEffect(() => {
+    dim.set(reduceMotion ? (anySelected ? 0.22 : 1) : withTiming(anySelected ? 0.22 : 1, { duration: 300 }));
+  }, [anySelected, dim, reduceMotion]);
+
+  // Starts when the image is ready, so the intro is never missed while Skia is still drawing.
+  useEffect(() => {
+    if (reduceMotion || !ready) {
+      intro.set(reduceMotion ? 1 : 0);
+      return;
+    }
+    intro.set(0);
+    intro.set(withDelay(60, withTiming(1, { duration: 1000, easing: Easing.bezier(...theme.motion.easing.out) })));
+  }, [intro, introKey, ready, reduceMotion, theme.motion.easing.out]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: dim.value * Math.min(1, intro.value * 2),
+    transform: [{ rotate: `${(1 - intro.value) * -40}deg` }, { scale: 0.94 + 0.06 * intro.value }],
+  }));
+
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
+      {uri ? <Image source={{ uri }} fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
+    </Animated.View>
+  );
+}
+
+/** The selected arc: wider, with a soft halo and its share of the tick ring lit. It fades and springs in or out. */
+function SelectedOverlay({ uri, visible, reduceMotion, travel }: { uri: string | null; visible: boolean; reduceMotion: boolean; travel: SharedValue<number> }) {
+  const theme = useTheme();
+  const progress = useSharedValue(visible ? (reduceMotion ? 1 : 0) : 1);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.set(visible ? 1 : 0);
+      return;
+    }
+    progress.set(visible ? withSpring(1, { damping: 15, stiffness: 150, mass: 1 }) : withTiming(0, { duration: 340, easing: Easing.bezier(...theme.motion.easing.in) }));
+  }, [visible, progress, reduceMotion, theme.motion.easing.in]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: Math.min(1, progress.value * 1.4),
+    // The image is drawn centred at 12 o'clock; turning it by the shared angle puts the highlight on its split.
+    transform: [{ rotate: `${travel.value * 360}deg` }, { scale: 0.96 + 0.04 * progress.value }],
+  }));
+
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
+      {uri ? <Image source={{ uri }} fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
+    </Animated.View>
+  );
+}
+
+function MixRow({
+  arc,
+  selected,
+  anySelected,
+  introKey,
+  barShare,
+  percentLabel,
+  valueLabel,
+  accessibilityLabel,
+  reduceMotion,
+  onPress,
+}: {
+  arc: Arc;
+  selected: boolean;
+  anySelected: boolean;
+  introKey: string;
+  barShare: number;
+  percentLabel: string;
+  valueLabel: string;
+  accessibilityLabel: string;
+  reduceMotion: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const dim = useSharedValue(anySelected && !selected ? 0.45 : 1);
+  const bar = useSharedValue(reduceMotion ? 1 : 0);
+
+  useEffect(() => {
+    dim.set(reduceMotion ? (anySelected && !selected ? 0.45 : 1) : withTiming(anySelected && !selected ? 0.45 : 1, { duration: 300 }));
+  }, [anySelected, dim, reduceMotion, selected]);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      bar.set(1);
+      return;
+    }
+    bar.set(0);
+    bar.set(withDelay(arc.index * 70 + 320, withTiming(1, { duration: 900, easing: Easing.bezier(...theme.motion.easing.out) })));
+  }, [arc.index, bar, introKey, reduceMotion, theme.motion.easing.out]);
+
+  const rowStyle = useAnimatedStyle(() => ({ opacity: dim.value }));
+  const barStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: bar.value }] }));
+
+  return (
+    <GlassPressable accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={accessibilityLabel} haptic="selection" scaleTo={0.98} onPress={onPress}>
+      <Animated.View
+        style={[
+          styles.row,
+          rowStyle,
+          selected ? { backgroundColor: theme.glass.inner, borderColor: 'rgba(255,255,255,0.07)' } : { borderColor: 'transparent' },
+        ]}
+      >
+        <View style={styles.swatchWrap}>
+          <View style={[styles.swatchHalo, { backgroundColor: arc.color }]} />
+          <View style={[styles.swatch, { backgroundColor: arc.color }]} />
+        </View>
+        <View style={{ flex: 1, gap: 7, minWidth: 0 }}>
+          <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, fontSize: 13.5, lineHeight: 15 }]}>{cleanDisplayText(arc.label)}</Text>
+          <View style={[styles.barTrack, { backgroundColor: 'rgba(255,255,255,0.07)' }]}>
+            <Animated.View style={[styles.barFill, { width: `${Math.max(2, barShare * 100)}%`, backgroundColor: arc.color, transformOrigin: 'left center' }, barStyle]} />
+          </View>
+        </View>
+        <Text style={[styles.pct, { color: selected ? theme.colors.textPrimary : theme.colors.textMuted, fontFamily: theme.typography.mono.fontFamily }]}>{percentLabel}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, styles.value, { color: theme.colors.textPrimary }]}>{valueLabel}</Text>
+      </Animated.View>
+    </GlassPressable>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -219,23 +495,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  centerPlate: {
+  disc: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
+    gap: 5,
+    borderWidth: 1,
+    paddingHorizontal: 10,
   },
-  legendRow: {
-    minHeight: 44,
+  discLabel: {
+    fontSize: 9.5,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  pill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    minHeight: 20,
+    borderRadius: 99,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  row: {
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 12,
+    paddingVertical: 6,
     paddingHorizontal: 8,
-    borderRadius: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  swatchWrap: {
+    width: 6,
+    height: 26,
+    justifyContent: 'center',
+  },
+  swatch: {
+    width: 6,
+    height: 26,
+    borderRadius: 3,
+  },
+  swatchHalo: {
+    position: 'absolute',
+    left: -3,
+    width: 12,
+    height: 26,
+    borderRadius: 6,
+    opacity: 0.18,
+  },
+  barTrack: {
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 3,
+    borderRadius: 2,
+  },
+  pct: {
+    width: 40,
+    textAlign: 'right',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  value: {
+    width: 92,
+    textAlign: 'right',
+    fontSize: 13.5,
+    fontVariant: ['tabular-nums'],
+  },
+  note: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });
