@@ -17,7 +17,7 @@ import { useAsyncResource } from '@/lib/hooks';
 import { formatCategoryInsight, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
 import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
-import { useReviewQueueSize } from '@/lib/review-queue';
+import { refreshReviewQueueSize, useReviewQueueSize } from '@/lib/review-queue';
 
 const quickActions = [
   { id: 'expense', label: 'Gasto', icon: 'arrow-up-right' as const, href: { pathname: '/capture', params: { mode: 'expense' } } },
@@ -33,12 +33,11 @@ export default function HomeScreen() {
     [client, settings.financialPeriodStartDay],
   );
   const { data, loading, error, refresh } = useAsyncResource(loader, [financialDataRevision, loader]);
-  const reviewLoader = useMemo(() => () => client.listReviews('pending'), [client]);
-  const { data: pendingReviews, refresh: refreshReviews } = useAsyncResource(reviewLoader, [reviewLoader]);
   useFocusEffect(useCallback(() => {
     void refresh();
-    void refreshReviews();
-  }, [refresh, refreshReviews]));
+    // Coming back from a review session must update the shared count shown here and on the dock.
+    void refreshReviewQueueSize(client);
+  }, [client, refresh]));
 
   const transactions = data?.transactions ?? [];
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
@@ -51,7 +50,7 @@ export default function HomeScreen() {
   const primaryDigest = digests[0];
   const net = financialSummary.income - financialSummary.expenses;
   const queueSize = useReviewQueueSize();
-  const pendingCount = queueSize ?? pendingReviews?.length ?? 0;
+  const pendingCount = queueSize ?? 0;
 
   const startReview = () => {
     router.push('/review-session' as never);

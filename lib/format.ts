@@ -42,7 +42,7 @@ export function isUncategorizedLabel(value?: string | null) {
 const categoryLabels: Record<string, string> = {
   'food / delivery': 'Comida / Delivery', 'food / groceries': 'Comida / Supermercado', subscriptions: 'Suscripciones',
   'bills / utilities': 'Cuentas / Servicios', transport: 'Transporte', shopping: 'Compras', health: 'Salud', home: 'Hogar',
-  entertainment: 'Entretenimiento', 'going out': 'Salidas', income: 'Ingresos', salary: 'Sueldo', 'freelance / client': 'Freelance / Clientes',
+  entertainment: 'Entretenimiento', food: 'Comida', finances: 'Finanzas', 'going out': 'Salidas', income: 'Ingresos', salary: 'Sueldo', 'freelance / client': 'Freelance / Clientes',
   business: 'Negocio', refund: 'Reembolso', investments: 'Inversiones', interest: 'Intereses', gift: 'Regalo', 'other income': 'Otros ingresos',
 };
 

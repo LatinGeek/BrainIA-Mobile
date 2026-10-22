@@ -114,9 +114,9 @@ export default function ReviewHomeScreen() {
             </Section>
           ) : null}
 
-          <Section title="Esta semana">
+          <Section title="En total">
             <StatGrid>
-              <StatTile label="Decisiones" value={resolvedCount} icon="check" tone="positive" />
+              <StatTile label="Resueltas" value={resolvedCount} icon="check" tone="positive" />
               <StatTile label="Pendientes" value={pendingCount} icon="clock" tone="warning" />
             </StatGrid>
           </Section>

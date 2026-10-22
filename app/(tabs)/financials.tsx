@@ -222,7 +222,7 @@ export default function FinancialsScreen() {
     [settings.financialPeriodStartDay, transactionCycleOffset],
   );
   const selectedTransactionCycleLabel = financialPeriodLabel(selectedTransactionCycleRange);
-  const selectedTransactionCycleMonth = (() => { const label = new Date(selectedTransactionCycleRange.to).toLocaleDateString('es-UY', { month: 'long', year: 'numeric' }); return label.charAt(0).toUpperCase() + label.slice(1); })();
+  const selectedTransactionCycleMonth = (() => { const label = new Date(selectedTransactionCycleRange.to).toLocaleDateString('es-UY', { month: 'short', year: 'numeric' }).replace('.', ''); return label.charAt(0).toUpperCase() + label.slice(1); })();
 
   useEffect(() => {
     if (transactionCycleOffset === 0) return;
@@ -282,7 +282,8 @@ export default function FinancialsScreen() {
   // Slices under 2% fold into "Otros" so no sliver reads as a rendering glitch, and the unreviewed bucket
   // gets the warning tone instead of the brand accent.
   const mixTotal = mixGroups.reduce((sum, group) => sum + group.total, 0);
-  const mixMajor = mixGroups.filter((group) => mixTotal <= 0 || group.total / mixTotal >= 0.02);
+  const mixMinorCandidates = mixGroups.filter((group) => mixTotal > 0 && group.total / mixTotal < 0.02);
+  const mixMajor = mixMinorCandidates.length >= 2 ? mixGroups.filter((group) => !mixMinorCandidates.includes(group)) : mixGroups;
   const mixMinorTotal = mixGroups.filter((group) => !mixMajor.includes(group)).reduce((sum, group) => sum + group.total, 0);
   const mixSegments = mixGroups.length
     ? [
@@ -580,7 +581,7 @@ export default function FinancialsScreen() {
                     />
                   </View>
                 </View>
-                <Amount value={periodNet} currency={displayCurrency} tone={periodNet >= 0 ? 'positive' : 'expense'} size="hero" signed />
+                <View style={{ alignItems: 'flex-start' }}><Amount value={periodNet} currency={displayCurrency} tone={periodNet >= 0 ? 'positive' : 'expense'} size="hero" signed /></View>
                 <View style={{ flexDirection: 'row', gap: 18 }}>
                   <View style={{ gap: 2 }}>
                     <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Ingresos</Text>
@@ -700,16 +701,16 @@ export default function FinancialsScreen() {
           {view === 'activity' ? (
             <>
               <GlassSurface level="thin" padding="sm" contentStyle={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 1 }}>
                   <GlassPressable accessibilityRole="button" accessibilityLabel="Ver ciclo anterior" onPress={() => { setHistoricalTransactionsLoading(true); setTransactionCycleOffset((offset) => offset + 1); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center' }}>
                     <Feather name="chevron-left" size={18} color={theme.colors.textPrimary} />
                   </GlassPressable>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, minWidth: 40, textAlign: 'center' }]}>{selectedTransactionCycleMonth}</Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, minWidth: 40, textAlign: 'center', flexShrink: 1 }]} numberOfLines={1}>{selectedTransactionCycleMonth}</Text>
                   <GlassPressable accessibilityRole="button" accessibilityLabel="Ver próximo ciclo" disabled={transactionCycleOffset === 0} onPress={() => { setHistoricalTransactionsLoading(transactionCycleOffset > 1); setTransactionCycleOffset((offset) => Math.max(0, offset - 1)); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.35 : 1 }}>
                     <Feather name="chevron-right" size={18} color={theme.colors.textPrimary} />
                   </GlassPressable>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   <Chip label={transactionSortLabels[transactionSort]} icon="sliders" onPress={() => setTransactionFiltersOpen(true)} />
                   <Chip label={`${filteredCycleTransactions.length}`} static />
                 </View>

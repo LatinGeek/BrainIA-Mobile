@@ -217,7 +217,7 @@ export function Amount({
   const fontSize = size === 'hero' ? heroSize : size === 'tile' ? tileSize : 15;
   const lineHeight = size === 'hero' ? Math.round(heroSize * 1.17) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
   return (
-    <View style={[styles.amountRow, size === 'tile' ? { flexWrap: 'wrap' } : null]} accessibilityLabel={`${sign}${money(Math.abs(target))}${currency && !known ? ', moneda sin definir' : ''}`}>
+    <View style={[styles.amountRow, size === 'tile' ? { flexWrap: 'wrap' } : null, size === 'row' ? { flexDirection: 'column', alignItems: 'flex-end', gap: 0 } : null]} accessibilityLabel={`${sign}${money(Math.abs(target))}${currency && !known ? ', moneda sin definir' : ''}`}>
       <Text
         accessibilityLabel={`${sign}${money(Math.abs(target))}${currency && !known ? ', moneda sin definir' : ''}`}
         numberOfLines={1}
@@ -230,7 +230,9 @@ export function Amount({
       >
         {sign}{formatted}
       </Text>
-      {currency && (size !== 'hero' || !known) ? <Text style={[theme.typography.mono, { color: theme.colors.textMuted, fontSize: 10 }]}>{known ? currency.toUpperCase() : 'SIN MONEDA'}</Text> : null}
+      {currency && (size !== 'hero' || !known) ? (size === 'row'
+        ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontSize: 11, lineHeight: 14 }]}>{known ? currency.toUpperCase() : 'sin moneda'}</Text>
+        : <Text style={[theme.typography.mono, { color: theme.colors.textMuted, fontSize: 10 }]}>{known ? currency.toUpperCase() : 'SIN MONEDA'}</Text>) : null}
     </View>
   );
 }

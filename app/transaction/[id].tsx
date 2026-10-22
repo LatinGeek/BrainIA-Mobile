@@ -230,7 +230,7 @@ export default function TransactionDetailScreen() {
                 <Feather name="info" size={15} color={theme.colors.textMuted} />
               </GlassPressable>
             </View>
-            <Amount value={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} size="hero" />
+            <View style={{ alignItems: 'flex-start' }}><Amount value={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} size="hero" /></View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <Fact label="Categoría" value={transaction.excludedFromReports ? 'Ajuste de saldo' : formatCategoryLabel(transaction.category)} />
               <Fact label="Cuenta" value={maskAccount(transaction.account, settings.dataVisibility)} />

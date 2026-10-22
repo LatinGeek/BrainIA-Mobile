@@ -94,7 +94,7 @@ export function MixCard({
     return {
       ...segment,
       index,
-      length: Math.max(0, slice - gap),
+      length: slice > 0 ? Math.max(slice - gap, circumference * 0.018) : 0,
       offset: start,
       color: segment.color ?? theme.colors.chart[index % theme.colors.chart.length],
     };
