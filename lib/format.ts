@@ -48,8 +48,7 @@ const categoryLabels: Record<string, string> = {
 
 export function formatCategoryLabel(value?: string | null) {
   if (isUncategorizedLabel(value)) return 'Falta revisar la categoría';
-  const cleaned = cleanDisplayText(value ?? '');
-  return categoryLabels[cleaned.toLowerCase()] ?? cleaned;
+  return translateKnownLabel(value);
 }
 
 export function formatCategoryInsight(label: string | undefined, amount: string) {
@@ -130,4 +129,10 @@ export function formatEventKind(kind?: string | null) {
 export function accountTypeLabel(type?: string) {
   const labels: Record<string, string> = { bank: 'Banco', cash: 'Efectivo', card: 'Tarjeta', credit: 'Crédito', savings: 'Ahorro', crypto: 'Cripto', investment: 'Inversión', wallet: 'Billetera' };
   return labels[(type ?? '').toLowerCase()] ?? (type ?? '');
+}
+
+/** Lookup-only translation of well-known names (communities, categories). Unlike formatCategoryLabel it never rewrites 'other' or 'unknown'. */
+export function translateKnownLabel(value?: string | null) {
+  const cleaned = cleanDisplayText(value ?? '');
+  return categoryLabels[cleaned.toLowerCase()] ?? cleaned;
 }

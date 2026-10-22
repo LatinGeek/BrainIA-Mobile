@@ -88,13 +88,20 @@ export function MixCard({
 
   const totalProps = useAnimatedProps(() => ({ opacity: reveal.value }));
 
+  // Drawn layout only: every slice gets at least 2% of the ring (then all shares are renormalised), so a
+  // tiny category stays a visible arc with a gap on both sides. The legend and the centre keep true values.
+  const drawnShares = (() => {
+    const floored = source.map((segment) => (segment.value > 0 ? Math.max(segment.value / total, 0.02) : 0));
+    const flooredTotal = floored.reduce((sum, share) => sum + share, 0) || 1;
+    return floored.map((share) => share / flooredTotal);
+  })();
   const arcs = source.map((segment, index) => {
-    const slice = (Math.max(0, segment.value) / total) * circumference;
-    const start = source.slice(0, index).reduce((sum, previous) => sum + (Math.max(0, previous.value) / total) * circumference, 0);
+    const slice = drawnShares[index] * circumference;
+    const start = drawnShares.slice(0, index).reduce((sum, share) => sum + share * circumference, 0);
     return {
       ...segment,
       index,
-      length: slice > 0 ? Math.max(slice - gap, circumference * 0.018) : 0,
+      length: Math.max(0, slice - gap),
       offset: start,
       color: segment.color ?? theme.colors.chart[index % theme.colors.chart.length],
     };

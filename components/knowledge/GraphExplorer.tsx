@@ -5,7 +5,7 @@ import GraphForceCanvas from './GraphForceCanvas';
 import { ExploreGraph, ExploreGraphNode } from '@/lib/domain';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
-import { formatCategoryLabel } from '@/lib/format';
+import { translateKnownLabel } from '@/lib/format';
 
 export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
   graph: ExploreGraph;
@@ -112,7 +112,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
       </View>
       <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Arrastra dentro del mapa para moverlo. Desliza por los bordes para seguir bajando.</Text>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{rankedCommunities.map((community) => <Pressable key={community.id} accessibilityRole="button" onPress={() => { void focusById(community.leaderEntityId); }} style={{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 9, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider, maxWidth: '100%' }}><Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, maxWidth: 230 }]}>{formatCategoryLabel(community.label)}</Text></Pressable>)}</View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{rankedCommunities.map((community) => <Pressable key={community.id} accessibilityRole="button" onPress={() => { void focusById(community.leaderEntityId); }} style={{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 9, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider, maxWidth: '100%' }}><Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, maxWidth: 230 }]}>{translateKnownLabel(community.label)}</Text></Pressable>)}</View>
 
       {focused ? <Pressable onPress={() => onOpen(focused)} accessibilityRole="button">
         <GlassSurface level="thin" padding="sm" radius="md" contentStyle={{ gap: 3 }}>
