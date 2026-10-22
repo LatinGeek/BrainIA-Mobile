@@ -100,8 +100,8 @@ function StatusFade({ height, color, from = 'top' }: { height: number; color: st
         <Defs>
           <LinearGradient id={`status-fade-${id}`} x1="0" y1={from === 'bottom' ? 1 : 0} x2="0" y2={from === 'bottom' ? 0 : 1}>
             <Stop offset="0" stopColor={color} stopOpacity={1} />
-            <Stop offset="0.45" stopColor={color} stopOpacity={0.96} />
-            <Stop offset="0.7" stopColor={color} stopOpacity={0.6} />
+            <Stop offset="0.55" stopColor={color} stopOpacity={1} />
+            <Stop offset="0.8" stopColor={color} stopOpacity={0.5} />
             <Stop offset="1" stopColor={color} stopOpacity={0} />
           </LinearGradient>
         </Defs>
