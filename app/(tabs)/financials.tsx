@@ -6,7 +6,7 @@ import { Alert, Platform, Pressable, StyleSheet, Text, TextProps, View } from 'r
 import Animated, { Easing, FadeInDown, FadeOut, FadeOutUp } from 'react-native-reanimated';
 
 import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
-import { Amount, IconTile, Row, TransactionRow, useCountedAmount } from '@/components/data/Row';
+import { Amount, IconTile, Row, TransactionRow, transactionRoute, useCountedAmount } from '@/components/data/Row';
 import { MixCard } from '@/components/data/MixCard';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
@@ -629,7 +629,7 @@ export default function FinancialsScreen() {
               {selectedMixGroup ? (
                 <Section title={selectedMixGroup.label} subtitle={`${selectedMixGroup.count} ${selectedMixGroup.count === 1 ? 'movimiento' : 'movimientos'} en este grupo`} actionLabel="Quitar" onActionPress={() => setSelectedMixId(null)}>
                   {selectedMixGroup.items.slice(0, 3).map((transaction) => (
-                    <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                    <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(transactionRoute(transaction))} />
                   ))}
                 </Section>
               ) : null}
@@ -644,7 +644,7 @@ export default function FinancialsScreen() {
 
               <Section title="Actividad reciente" subtitle="Tus últimos movimientos, con acceso directo a su evidencia." actionLabel="Ver todo" onActionPress={() => setView('activity')}>
                 {transactions.length ? transactions.slice(0, 3).map((transaction) => (
-                  <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                  <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(transactionRoute(transaction))} />
                 )) : <StateView title="Sin actividad reciente" description="Aquí aparecerán tus notas, notificaciones, correos y movimientos." />}
               </Section>
 
@@ -735,7 +735,7 @@ export default function FinancialsScreen() {
                       selected={selectedTransactionIds.includes(transaction.id)}
                       selectionMode={transactionSelectionMode}
                       onLongPress={() => toggleTransactionSelection(transaction)}
-                      onPress={() => transactionSelectionMode ? toggleTransactionSelection(transaction) : router.push(`/transaction/${transaction.id}`)}
+                      onPress={() => transactionSelectionMode ? toggleTransactionSelection(transaction) : router.push(transactionRoute(transaction))}
                     />
                   ))}
                 </View>

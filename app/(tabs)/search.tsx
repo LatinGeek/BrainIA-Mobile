@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { Button, Chip, ChipGroup, Field, Tag } from '@/components/controls';
-import { IconTile, Row, TransactionRow } from '@/components/data/Row';
+import { IconTile, Row, TransactionRow, transactionRoute } from '@/components/data/Row';
 import { Graph } from '@/components/data/Graph';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
@@ -204,7 +204,7 @@ export default function SearchScreen() {
                   <SignalCard key={digest.id} variant="brief" origin="model" meta={digest.windowLabel} title={digest.title} summary={digest.summary} onPress={() => router.push(`/digest/${digest.id}`)} />
                 ))}
                 {recentData.transactions.slice(0, 3).map((transaction: TransactionSummary) => (
-                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(transactionRoute(transaction))} />
                 ))}
               </View>
             ) : null}

@@ -22,7 +22,7 @@ import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCate
 type EditableTransactionKind = 'expense' | 'income' | 'transfer';
 
 export default function TransactionDetailScreen() {
-  const { id, edit } = useLocalSearchParams<{ id: string; edit?: 'category' }>();
+  const { id, edit, label } = useLocalSearchParams<{ id: string; edit?: 'category'; label?: string }>();
   const client = useBrainIAClient();
   const { invalidateFinancialData, settings } = useAppState();
   const theme = useTheme();
@@ -210,7 +210,7 @@ export default function TransactionDetailScreen() {
 
   return (
     <Screen
-      title={displayMerchantLabel ?? 'Transacción'}
+      title={displayMerchantLabel ?? (label || 'Transacción')}
       overline="Movimiento"
       subtitle="Movimiento de dinero con el contexto de origen detrás del resumen."
       back

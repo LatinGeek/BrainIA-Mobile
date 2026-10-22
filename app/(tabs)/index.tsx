@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { Text, View } from 'react-native';
 
 import { Chip, Tag } from '@/components/controls';
-import { Amount, IconTile, TransactionRow } from '@/components/data/Row';
+import { Amount, IconTile, TransactionRow, transactionRoute } from '@/components/data/Row';
 import { SignalCarousel } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { StatGrid, StatTile } from '@/components/data/StatTile';
@@ -201,7 +201,7 @@ export default function HomeScreen() {
           <Section title="Actividad reciente" subtitle="Tus últimos movimientos, con acceso directo a su evidencia." actionLabel="Buscar todo" onActionPress={() => router.push('/search')}>
             {transactions.length ? (
               transactions.slice(0, 3).map((transaction) => (
-                <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(transactionRoute(transaction))} />
               ))
             ) : (
               <StateView title="Sin actividad reciente" description="Aquí aparecerán tus notas, notificaciones, correos y movimientos." />

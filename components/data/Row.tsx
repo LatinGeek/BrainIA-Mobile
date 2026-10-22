@@ -241,6 +241,11 @@ function hasKnownCurrency(code: string | null | undefined) {
   return /^[A-Za-z]{3}$/.test(code?.trim() ?? '') && code?.trim().toUpperCase() !== 'UNKNOWN';
 }
 
+/** The detail route of a transaction. The row's label travels with it, so the detail's title is right from the first frame. */
+export function transactionRoute(transaction: { id: string; displayMerchantLabel?: string | null; merchantLabel?: string | null }) {
+  return { pathname: '/transaction/[id]' as const, params: { id: transaction.id, label: transaction.displayMerchantLabel ?? transaction.merchantLabel ?? '' } };
+}
+
 export function TransactionRow({
   transaction,
   currency,

@@ -48,7 +48,10 @@ export function useScreenEntering() {
 function flattenChildren(children: ReactNode) {
   return Children.toArray(children).flatMap((child) =>
     isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment
-      ? Children.toArray(child.props.children)
+      // A fragment's children are keyed from zero again; prefix the fragment's key so they cannot collide with
+      // its siblings' (a collision reuses a finished entrance on the wrong item, or remounts one).
+      ? Children.toArray(child.props.children).map((inner) =>
+          isValidElement(inner) ? cloneElement(inner, { key: `${child.key}/${inner.key}` }) : inner)
       : [child]);
 }
 
