@@ -5,7 +5,7 @@ import { StyleSheet, Switch, Text, View, ViewStyle, useWindowDimensions } from '
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { useTheme } from '@/lib/app-state';
-import { cleanDisplayText, formatCurrency, parseCurrency } from '@/lib/format';
+import { cleanDisplayText, formatCategoryLabel, formatCurrency, parseCurrency } from '@/lib/format';
 import { useReduceMotion } from '@/lib/hooks';
 import { useScreenEntering } from '@/components/layout/Screen';
 
@@ -259,10 +259,10 @@ export function TransactionRow({
   const theme = useTheme();
   const merchant = transaction.displayMerchantLabel ?? transaction.merchantLabel;
   const subtitle = transaction.kind === 'transfer'
-    ? 'Transfer'
+    ? 'Transferencia'
     : transaction.kind === 'income'
-      ? 'Income'
-      : cleanDisplayText(transaction.category || 'Falta revisar la categoría');
+      ? 'Ingreso'
+      : formatCategoryLabel(transaction.category);
   return (
     <Row
       title={merchant}

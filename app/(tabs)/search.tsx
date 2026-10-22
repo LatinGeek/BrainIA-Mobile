@@ -256,10 +256,10 @@ export default function SearchScreen() {
 
 function resultTypeLabel(type: string) {
   switch (type) {
-    case 'entity': return 'Item';
-    case 'insight': return 'Insight';
-    case 'transaction': return 'Transaction';
-    case 'event': return 'Activity';
-    default: return 'Connection';
+    case 'entity': return 'Elemento';
+    case 'insight': return 'Hallazgo';
+    case 'transaction': return 'Movimiento';
+    case 'event': return 'Actividad';
+    default: return 'Conexión';
   }
 }

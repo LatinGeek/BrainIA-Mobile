@@ -164,12 +164,12 @@ export function DecisionCard({
 }
 
 function kindLabel(kind: ReviewDecision['kind']) {
-  if (kind === 'name') return 'Name';
-  if (kind === 'batch') return 'Batch';
-  if (kind === 'category') return 'Category';
-  if (kind === 'same') return 'Same company';
-  if (kind === 'relation') return 'Connection';
-  return 'Label';
+  if (kind === 'name') return 'Nombre';
+  if (kind === 'batch') return 'Lote';
+  if (kind === 'category') return 'Categoría';
+  if (kind === 'same') return 'Misma empresa';
+  if (kind === 'relation') return 'Conexión';
+  return 'Etiqueta';
 }
 
 const styles = StyleSheet.create({

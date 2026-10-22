@@ -174,7 +174,7 @@ function makeAliasDecision(kind: DecisionKind, item: ReviewItem, items: ReviewIt
     alternatives: [...alternativeSet].slice(0, 6),
     categoryPath: item.categoryPath,
     confidence: 0.5,
-    rationale: item.reason || 'Detectado en la actividad reciente.',
+    rationale: reviewReasonLabel(item.reason),
     impact: { transactions: matched, amount, currency: 'UYU' },
     topic: item.categoryPath[0] ?? (/(merge|same|duplicate)/i.test(item.reason) ? 'Identidades' : 'Nombres'),
     targetEntityId: kind === 'same' ? item.entityId : undefined,
@@ -229,4 +229,12 @@ export function describeDecision(decision: ReviewDecision) {
 export function decisionEffort(count: number) {
   const seconds = Math.max(20, Math.round(count * 8));
   return `${count} ${count === 1 ? 'decisión rápida' : 'decisiones rápidas'} · unos ${seconds} segundos`;
+}
+
+function reviewReasonLabel(reason?: string) {
+  const text = (reason ?? '').trim();
+  if (!text) return 'Detectado en la actividad reciente.';
+  if (/\s/.test(text)) return text;
+  const labels: Record<string, string> = { merchantidentitycandidate: 'Posible comercio repetido', categorycandidate: 'Categoría sugerida', relationcandidate: 'Posible conexión', namecandidate: 'Nombre sugerido' };
+  return labels[text.toLowerCase().replace(/[\s_-]+/g, '')] ?? 'Sugerido a partir de actividad relacionada.';
 }

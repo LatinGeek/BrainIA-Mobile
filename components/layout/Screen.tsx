@@ -92,13 +92,13 @@ export function StaggerGroup({ children, gap = 22, enterKey = 0, startIndex = 0 
 StaggerGroup.screenStaggerGroup = true;
 
 /** Soft fade under the status bar, so scrolled content dissolves instead of being cut off. */
-function StatusFade({ height, color }: { height: number; color: string }) {
+function StatusFade({ height, color, from = 'top' }: { height: number; color: string; from?: 'top' | 'bottom' }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height }}>
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, height, ...(from === 'top' ? { top: 0 } : { bottom: 0 }) }}>
       <Svg width="100%" height="100%">
         <Defs>
-          <LinearGradient id={`status-fade-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={`status-fade-${id}`} x1="0" y1={from === 'bottom' ? 1 : 0} x2="0" y2={from === 'bottom' ? 0 : 1}>
             <Stop offset="0" stopColor={color} stopOpacity={0.94} />
             <Stop offset="0.6" stopColor={color} stopOpacity={0.7} />
             <Stop offset="1" stopColor={color} stopOpacity={0} />
@@ -279,6 +279,7 @@ export function Screen({
             )}
 
             <StatusFade height={insets.top + 30} color={theme.ambient.base} />
+            <StatusFade from="bottom" height={theme.layout.dockHeight + insets.bottom + 24} color={theme.ambient.base} />
             <Animated.View pointerEvents="box-none" style={[styles.compactBarWrap, { paddingTop: insets.top + 6 }, compactStyle]}>
               {compactVisible ? (
                 <GlassSurface chrome level="regular" padding="none" radius="md" contentStyle={styles.compactBar}>

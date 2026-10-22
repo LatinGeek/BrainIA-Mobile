@@ -14,7 +14,7 @@ import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatCategoryInsight, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
+import { formatCategoryInsight, formatCategoryLabel, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
 import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
 
@@ -143,7 +143,7 @@ export default function HomeScreen() {
               </View>
               <Tag label={net >= 0 ? 'Positivo' : 'Gasto excedido'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
             </View>
-            <Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed />
+            <View style={{ alignItems: 'flex-start' }}><Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed /></View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.income }} />
@@ -210,7 +210,7 @@ export default function HomeScreen() {
               <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <IconTile icon="pie-chart" color={theme.colors.model} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{topCategory.label}</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{formatCategoryLabel(topCategory.label)}</Text>
                   <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, 'UYU'))}</Text>
                 </View>
                 <Chip label={`${topCategory.count}`} static />

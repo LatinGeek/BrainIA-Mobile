@@ -1660,7 +1660,7 @@ export async function loadSearchBundle(client: BrainIAClient, query: string) {
         {
           id: 'rel_spotify_subscriptions',
           title: 'Spotify belongs to Subscriptions',
-          subtitle: 'Connection',
+          subtitle: 'Conexión',
           description: 'Spotify is connected to recurring subscription spending.',
           type: 'relation',
           route: '/entity/entity_spotify',

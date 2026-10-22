@@ -40,7 +40,7 @@ export function MixCard({
   selectedId,
   onSelect,
   emptyLabel = 'No spend',
-  percentageNoun = 'spend',
+  percentageNoun = 'del gasto',
 }: {
   overline?: string;
   title: string;
@@ -157,7 +157,7 @@ export function MixCard({
                 {amountText}
               </Text>
               {active ? (
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} of {percentageNoun}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} {percentageNoun}</Text>
               ) : delta ? (
                 <Text style={[theme.typography.caption, { color: delta.tone === 'bad' ? theme.status.expense : delta.tone === 'good' ? theme.status.income : theme.colors.textMuted, textAlign: 'center', fontSize: 10 }]}>{cleanDisplayText(delta.text)}</Text>
               ) : null}
@@ -174,7 +174,7 @@ export function MixCard({
               key={arc.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} of ${percentageNoun}`}
+              accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} ${percentageNoun}`}
               onPress={() => select(selected ? null : arc)}
               style={[styles.legendRow, { backgroundColor: selected ? theme.glass.inner : 'transparent' }]}
             >

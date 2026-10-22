@@ -124,8 +124,8 @@ export default function ReviewHomeScreen() {
                 <Animated.View key={decision.id} layout={reduceMotion ? undefined : listLayout} exiting={reduceMotion ? undefined : FadeOut.duration(theme.motion.duration.quick).easing(Easing.bezier(...theme.motion.easing.in))}>
                 <Row
                   title={decision.title}
-                  subtitle={decision.kind === 'relation' ? 'Connection' : decision.kind === 'batch' ? `${decision.reviewIds.length} variants` : decision.kind === 'category' ? 'Category' : 'Name'}
-                  description={decision.impact.transactions ? `${decision.impact.transactions} transactions · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
+                  subtitle={decision.kind === 'relation' ? 'Conexión' : decision.kind === 'batch' ? `${decision.reviewIds.length} variantes` : decision.kind === 'category' ? 'Categoría' : 'Nombre'}
+                  description={decision.impact.transactions ? `${decision.impact.transactions} ${decision.impact.transactions === 1 ? 'movimiento' : 'movimientos'} · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
                   leading={<IconTile icon={decision.kind === 'relation' ? 'link-2' : decision.kind === 'same' ? 'users' : 'tag'} color={theme.status.review} />}
                   accessory="none"
                 />

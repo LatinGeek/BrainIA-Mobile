@@ -553,7 +553,7 @@ export default function FinancialsScreen() {
                 onSelect={(segment) => setSelectedMixId(segment?.id ?? null)}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 delta={{ text: period === 'year' ? 'Proyectado desde este ciclo' : 'Ciclo actual', tone: 'neutral' }}
-                percentageNoun="spend"
+                percentageNoun="del gasto"
               />
 
               <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 12 }}>
@@ -667,7 +667,7 @@ export default function FinancialsScreen() {
                 currency={displayCurrency}
                 centerLabel="Cartera neta"
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                percentageNoun="portfolio"
+                percentageNoun="de la cartera"
                 delta={{ text: 'Los saldos incluyen transferencias', tone: 'neutral' }}
               />
               <Button label="Crear cuenta" icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} onPress={openCreateAccount} full />
