@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Platform, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated';
@@ -17,6 +17,7 @@ import { AppSettings } from '@/lib/domain';
 import { UYU_PER_USD } from '@/lib/format';
 import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
 import { listLayout } from '@/lib/motion';
+import { useRules } from '@/lib/rules';
 import { allowCredentialRecovery, enrollV2AccessToken, logoutV2Session, readV2Credential, revokeV2AccessToken, rotateV2AccessToken, type V2CredentialSnapshot } from '@/lib/storage';
 import { flushNotificationBridgeDiagnostics, getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, reconcileActiveNotifications, setCaptureAppPackages } from '@/lib/notification-bridge';
 
@@ -36,6 +37,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const toast = useToast();
   const reduceMotion = useReduceMotion();
+  const { rules } = useRules();
   const [maintenance, setMaintenance] = useState<string | null>(null);
   const client = useBrainIAClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -307,6 +309,7 @@ export default function SettingsScreen() {
         <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.sm }}>
         <Row style={{ borderRadius: 0 }} title={`1 USD = ${UYU_PER_USD} UYU`} descriptionLines={4} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
         <Row style={{ borderRadius: 0 }} title={`Día ${settings.financialPeriodStartDay} de cada mes`} descriptionLines={4} subtitle="Inicio del ciclo financiero" description="Los informes mensuales van desde este día hasta el día anterior al próximo ciclo." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambiar</Text>} accessory="none" onPress={openFinancialPeriod} />
+        <Row style={{ borderRadius: 0 }} title="Reglas" descriptionLines={4} subtitle={rules.length ? `${rules.filter((rule) => rule.enabled).length} de ${rules.length} activas` : 'Qué asumir cuando falta un dato'} description="Por ejemplo: si viene de PedidosYa y la moneda es incierta, asumir UYU." leading={<IconTile icon="sliders" color={theme.colors.model} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Abrir</Text>} accessory="none" onPress={() => router.push('/rules' as Href)} />
         <View style={{ paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm }}>
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prioridad en Hoy</Text>
         <SegmentedControl role="radio" accessibilityLabel="Prioridad en Hoy" items={dashboardModes as unknown as typeof dashboardModes} value={settings.dashboardMode} onChange={(value) => setDashboardMode(value as AppSettings['dashboardMode'])} />

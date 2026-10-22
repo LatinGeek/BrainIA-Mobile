@@ -132,6 +132,7 @@ function RootNavigator() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="rules" />
         <Stack.Screen name="learning" />
         <Stack.Screen name="modal" />
         <Stack.Screen name="entity/[id]" />

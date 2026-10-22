@@ -121,6 +121,8 @@ export type TransactionSummary = {
   evidenceCount?: number;
   excludedFromReports?: boolean;
   adjustmentTargetBalance?: string;
+  /** Values filled in by one of the user's rules because the backend had none. */
+  assumed?: { field: 'currency' | 'category' | 'account'; ruleId: string }[];
 };
 
 export type PendingTransaction = {

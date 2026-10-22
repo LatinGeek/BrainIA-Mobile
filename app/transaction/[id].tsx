@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
 import { Amount, IconTile, Row } from '@/components/data/Row';
@@ -17,7 +17,7 @@ import { loadTransactionBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
 import { accountTypeLabel, formatCategoryLabel, formatCurrency, formatDate, formatEventKind, parseCurrency } from '@/lib/format';
 import { maskAccount, shouldShowEvidenceDetail } from '@/lib/presentation';
-import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCategories } from '@/lib/domain';
+import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCategories, type TransactionSummary } from '@/lib/domain';
 
 type EditableTransactionKind = 'expense' | 'income' | 'transfer';
 
@@ -50,6 +50,7 @@ export default function TransactionDetailScreen() {
   const { data, loading, error, refresh, reload } = useAsyncResource(loader, [loader]);
 
   const transaction = data?.transaction;
+  const assumed = (transaction as TransactionSummary | undefined)?.assumed;
   const evidenceItems = transaction?.evidence.length
     ? transaction.evidence
     : transaction?.primarySource
@@ -239,6 +240,14 @@ export default function TransactionDetailScreen() {
               <Fact label="Fecha" value={transaction.observedAt ? formatDate(transaction.observedAt) : 'Desconocida'} />
               <Fact label="Fuentes" value={`${evidenceCount} ${evidenceCount === 1 ? 'fuente' : 'fuentes'}`} />
             </View>
+            {assumed?.length ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver tus reglas" onPress={() => router.push('/rules' as Href)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="sliders" size={13} color={theme.colors.model} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>
+                  {`Asumido por tus reglas: ${assumed.map((item) => (item.field === 'currency' ? 'moneda' : item.field === 'category' ? 'categoría' : 'cuenta')).join(', ')}.`}
+                </Text>
+              </Pressable>
+            ) : null}
           </GlassSurface>
 
           <Section title="Origen" subtitle={transaction.excludedFromReports ? 'Creado manualmente para conciliar el saldo de una cuenta.' : 'El registro capturado que creó este movimiento.'}>

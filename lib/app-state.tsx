@@ -6,6 +6,7 @@ import { AppSettings } from './domain';
 import { createBrainIAClient, BrainIAClient } from './api';
 import { themeRegistry, ThemeTokens } from './themes';
 import { syncNotificationBridgeConfig } from './notification-bridge';
+import { applyRules, ensureRulesLoaded, getRules } from './rules';
 
 const STORAGE_PREFIX = 'brainia_mobile';
 const KEY_BASE_URL = `${STORAGE_PREFIX}.baseUrl`;
@@ -142,15 +143,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }, [hydrated, settings.apiKey, settings.baseUrl, settings.clientId]);
 
-  const client = useMemo(
-    () =>
-      createBrainIAClient({
-        baseUrl: settings.baseUrl,
-        apiKey: settings.apiKey,
-        clientId: settings.clientId,
-      }),
-    [settings.apiKey, settings.baseUrl, settings.clientId]
-  );
+  const client = useMemo<BrainIAClient>(() => {
+    const base = createBrainIAClient({
+      baseUrl: settings.baseUrl,
+      apiKey: settings.apiKey,
+      clientId: settings.clientId,
+    });
+    // The user's rules fill in what the backend could not tell (currency, category, account) wherever movements are read.
+    return {
+      ...base,
+      async listTransactions(...args: Parameters<typeof base.listTransactions>) {
+        const [items] = await Promise.all([base.listTransactions(...args), ensureRulesLoaded()]);
+        return items.map((item) => applyRules(item, getRules()));
+      },
+      async getTransaction(...args: Parameters<typeof base.getTransaction>) {
+        const [item] = await Promise.all([base.getTransaction(...args), ensureRulesLoaded()]);
+        return applyRules(item, getRules());
+      },
+    };
+  }, [settings.apiKey, settings.baseUrl, settings.clientId]);
 
   const value: AppStateValue = useMemo(
     () => ({
