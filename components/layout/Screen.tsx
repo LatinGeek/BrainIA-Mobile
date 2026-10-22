@@ -229,10 +229,11 @@ export function Screen({
           <Text accessibilityRole="header" style={[theme.typography.display, { color: theme.colors.textPrimary, fontSize: fontScale >= 1.3 ? 24 : 28, lineHeight: fontScale >= 1.3 ? 30 : 34 }]}>
             {cleanDisplayText(title)}
           </Text>
-          {subtitle ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(subtitle)}</Text> : null}
         </View>
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </View>
+      {/* Below the row, at full width: a status pill that changes label ("Actual" / "Actualizando") must not re-wrap it. */}
+      {subtitle ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginLeft: back ? theme.layout.minTarget + 12 : 0 }]}>{cleanDisplayText(subtitle)}</Text> : null}
     </Animated.View>
   );
 
