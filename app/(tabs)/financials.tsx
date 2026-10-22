@@ -14,6 +14,7 @@ import { TrendChart } from '@/components/data/TrendChart';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { KeepAliveViews } from '@/components/layout/KeepAliveViews';
+import { withoutAssumptions } from '@/lib/rules';
 import { Screen, Section } from '@/components/layout/Screen';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useAppState, useTheme } from '@/lib/app-state';
@@ -256,6 +257,8 @@ export default function FinancialsScreen() {
     () => selectedTransactionIds.map((id) => selectedCycleTransactions.find((transaction) => transaction.id === id)).filter((transaction): transaction is TransactionSummary => Boolean(transaction)),
     [selectedCycleTransactions, selectedTransactionIds],
   );
+  // Consolidation writes category and account, so it only offers what the backend knew, never what a rule assumed.
+  const confirmedSelected = useMemo(() => selectedTransactions.map(withoutAssumptions), [selectedTransactions]);
   const transactionSelectionMode = selectedTransactionIds.length > 0;
   const insights = data?.insights ?? [];
   const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => ['spending_variation', 'recurrence_subscription'].includes(detector)));
@@ -421,7 +424,7 @@ export default function FinancialsScreen() {
 
   function openConsolidation() {
     if (selectedTransactions.length !== 2) return;
-    const [first, second] = selectedTransactions;
+    const [first, second] = confirmedSelected;
     setCanonicalTransactionId(first.id);
     setConsolidationCategory([first, second].map((transaction) => transaction.category).find((category): category is string => Boolean(category && !isUncategorizedLabel(category))) ?? first.category ?? second.category ?? null);
     setConsolidationAccountId([first, second].map((transaction) => transaction.accountId).find((accountId): accountId is string => Boolean(accountId)) ?? null);
@@ -762,16 +765,17 @@ export default function FinancialsScreen() {
           <Row key={transaction.id} title={`${transaction.displayMerchantLabel ?? transaction.merchantLabel} · ${formatCurrency(parseCurrency(transaction.amount), transaction.currency)}`} subtitle={transaction.observedAt} trailing={<Text style={{ color: canonicalTransactionId === transaction.id ? theme.colors.success : theme.colors.textMuted }}>{canonicalTransactionId === transaction.id ? 'Conservar' : 'Usar'}</Text>} onPress={() => setCanonicalTransactionId(transaction.id)} />
         ))}
         <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
-        {Array.from(new Set(selectedTransactions.map((transaction) => transaction.category).filter((category): category is string => Boolean(category)))).map((category) => (
+        {Array.from(new Set(confirmedSelected.map((transaction) => transaction.category).filter((category): category is string => Boolean(category)))).map((category) => (
           <Chip key={category} label={formatCategoryLabel(category)} selected={consolidationCategory === category} onPress={() => setConsolidationCategory(category)} />
         ))}
         {!consolidationCategory ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene categoría: el movimiento quedará sin categorizar.</Text> : null}
         <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Cuenta o método de pago</Text>
-        {Array.from(new Set(selectedTransactions.map((transaction) => transaction.accountId).filter((accountId): accountId is string => Boolean(accountId)))).map((accountId) => {
+        {Array.from(new Set(confirmedSelected.map((transaction) => transaction.accountId).filter((accountId): accountId is string => Boolean(accountId)))).map((accountId) => {
           const account = accounts.find((candidate) => candidate.id === accountId);
           return <Row key={accountId} title={account?.name ?? 'Cuenta vinculada'} subtitle={account?.currency ?? ''} trailing={<Text style={{ color: consolidationAccountId === accountId ? theme.colors.success : theme.colors.textMuted }}>{consolidationAccountId === accountId ? 'Conservar' : 'Usar'}</Text>} onPress={() => setConsolidationAccountId(accountId)} />;
         })}
         {!consolidationAccountId ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene una cuenta asociada.</Text> : null}
+        {selectedTransactions.some((transaction) => transaction.assumed?.length) ? <Text style={[theme.typography.caption, { color: theme.colors.model }]}>Lo que pusieron tus reglas no se guarda al consolidar: solo cuenta lo que Brain IA ya conocía.</Text> : null}
         {consolidationError ? <Text style={{ color: theme.colors.danger }}>{consolidationError}</Text> : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button label="Consolidar" loading={consolidating} disabled={!canonicalTransactionId || selectedTransactions.length !== 2} onPress={consolidateSelectedTransactions} />

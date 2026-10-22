@@ -15,6 +15,7 @@ import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadTransactionBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
+import { describeAssumed } from '@/lib/rules';
 import { accountTypeLabel, formatCategoryLabel, formatCurrency, formatDate, formatEventKind, parseCurrency } from '@/lib/format';
 import { maskAccount, shouldShowEvidenceDetail } from '@/lib/presentation';
 import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCategories, type TransactionSummary } from '@/lib/domain';
@@ -244,7 +245,7 @@ export default function TransactionDetailScreen() {
               <Pressable accessibilityRole="button" accessibilityLabel="Ver tus reglas" onPress={() => router.push('/rules' as Href)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Feather name="sliders" size={13} color={theme.colors.model} />
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>
-                  {`Asumido por tus reglas: ${assumed.map((item) => (item.field === 'currency' ? 'moneda' : item.field === 'category' ? 'categoría' : 'cuenta')).join(', ')}.`}
+                  {`Asumido por tus reglas: ${describeAssumed(assumed)}.`}
                 </Text>
               </Pressable>
             ) : null}
@@ -327,7 +328,7 @@ export default function TransactionDetailScreen() {
       >
         {assumed?.length ? (
           <Text style={[theme.typography.caption, { color: theme.colors.model }]}>
-            {`Tus reglas pusieron ${assumed.map((item) => (item.field === 'currency' ? 'la moneda' : item.field === 'category' ? 'la categoría' : 'la cuenta')).join(', ')}. Al guardar, esos valores quedan confirmados.`}
+            {`Tus reglas pusieron ${describeAssumed(assumed, true)}. Al guardar, esos valores quedan confirmados.`}
           </Text>
         ) : null}
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo de movimiento</Text>

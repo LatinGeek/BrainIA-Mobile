@@ -32,7 +32,7 @@ export type Rule = {
 
 export type RuleDraft = Omit<Rule, 'id' | 'createdAt' | 'enabled'> & { enabled?: boolean };
 
-export type Assumption = { field: RuleAction['field']; ruleId: string };
+export type Assumption = { field: RuleAction['field']; ruleId: string; previous?: { value?: string; accountId?: string } };
 
 type RuleSubject = TransactionSummary & { evidence?: { source?: string; merchantLabel?: string }[] };
 
@@ -99,24 +99,51 @@ export function applyRules<T extends RuleSubject>(subject: T, rules: Rule[]): T 
     const rule = best(rules, 'currency', subject, hay, subject.currency);
     if (rule && rule.action.field === 'currency') {
       next = { ...next, currency: rule.action.value };
-      assumed.push({ field: 'currency', ruleId: rule.id });
+      assumed.push({ field: 'currency', ruleId: rule.id, previous: { value: subject.currency } });
     }
   }
   if (!subject.category) {
     const rule = best(rules, 'category', subject, hay, next.currency);
     if (rule && rule.action.field === 'category') {
       next = { ...next, category: rule.action.value };
-      assumed.push({ field: 'category', ruleId: rule.id });
+      assumed.push({ field: 'category', ruleId: rule.id, previous: {} });
     }
   }
   if (!subject.accountId) {
     const rule = best(rules, 'account', subject, hay, next.currency);
     if (rule && rule.action.field === 'account') {
       next = { ...next, account: rule.action.accountName, accountId: rule.action.accountId };
-      assumed.push({ field: 'account', ruleId: rule.id });
+      assumed.push({ field: 'account', ruleId: rule.id, previous: { value: subject.account, accountId: subject.accountId } });
     }
   }
   return assumed.length ? { ...next, assumed: [...(subject.assumed ?? []), ...assumed] } : subject;
+}
+
+/** What the backend actually knows: every value a rule filled in goes back to what it was. */
+export function withoutAssumptions<T extends TransactionSummary>(subject: T): T {
+  if (!subject.assumed?.length) return subject;
+  const restored: T = { ...subject, assumed: undefined };
+  for (const item of subject.assumed) {
+    if (item.field === 'currency') restored.currency = item.previous?.value ?? restored.currency;
+    if (item.field === 'category') restored.category = item.previous?.value;
+    if (item.field === 'account') { restored.account = item.previous?.value; restored.accountId = item.previous?.accountId; }
+  }
+  return restored;
+}
+
+/** "a", "a y b", "a, b y c" */
+export function joinSpanish(items: string[]) {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
+}
+
+const ASSUMED_BARE = { currency: 'moneda', category: 'categoría', account: 'cuenta' } as const;
+const ASSUMED_ARTICLE = { currency: 'la moneda', category: 'la categoría', account: 'la cuenta' } as const;
+
+/** "moneda, categoría y cuenta" (or with articles: "la moneda, la categoría y la cuenta") */
+export function describeAssumed(assumed: { field: 'currency' | 'category' | 'account' }[], articles = false) {
+  const names = articles ? ASSUMED_ARTICLE : ASSUMED_BARE;
+  return joinSpanish(Array.from(new Set(assumed.map((item) => item.field))).map((field) => names[field]));
 }
 
 const CURRENCY_LABEL: Record<RuleCurrencyMatch, string> = { any: '', unknown: 'la moneda es incierta', UYU: 'está en UYU', USD: 'está en USD' };
@@ -130,7 +157,7 @@ export function describeConditions(rule: Pick<Rule, 'source' | 'text' | 'currenc
     CURRENCY_LABEL[rule.currency],
   ].filter(Boolean);
   if (!parts.length) return 'Sin condiciones';
-  return `Si ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts[0]}`;
+  return `Si ${joinSpanish(parts)}`;
 }
 
 /** "Asumir categoría Delivery" */
