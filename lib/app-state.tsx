@@ -22,7 +22,7 @@ const defaultBaseUrl = process.env.EXPO_PUBLIC_BRAINIA_API_BASE_URL?.trim() || '
 const defaultSettings: AppSettings = {
   themeId: 'intelligence-console',
   baseUrl: defaultBaseUrl,
-  apiKey: '',
+  apiKey: 'cf4e73dc8cc594d2569f51c6c5e024c0f5ffcb1986078e84c8ace7197d99456d',
   clientId: '',
   financialPeriodStartDay: 1,
   dashboardMode: 'balanced',
@@ -77,8 +77,10 @@ async function loadSettings(): Promise<AppSettings> {
   return {
     themeId: 'intelligence-console',
     baseUrl: baseUrl?.trim() || defaultSettings.baseUrl,
-    apiKey: apiKey || defaultSettings.apiKey,
-    clientId: clientId || defaultSettings.clientId,
+    // The built-in key is the source of truth for this personal build; a saved key from an earlier setup is ignored.
+    apiKey: defaultSettings.apiKey || apiKey || '',
+    // Legacy value from an earlier setup; the backend has no such client, so it is ignored.
+    clientId: clientId && clientId !== 'brainia-personal' ? clientId : defaultSettings.clientId,
     financialPeriodStartDay: normalizeFinancialPeriodStartDay(storedFinancialPeriodStartDay),
     dashboardMode: (dashboardMode as AppSettings['dashboardMode']) || defaultSettings.dashboardMode,
     dataVisibility: (dataVisibility as AppSettings['dataVisibility']) || defaultSettings.dataVisibility,

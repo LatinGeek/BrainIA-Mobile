@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ReactNode, useContext, useMemo } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { Extrapolation, SharedValue, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
+import { GlassScrollContext } from '@/components/glass/GlassScroll';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { ConfidenceMeter, Tag } from '@/components/controls';
 import { useTheme } from '@/lib/app-state';
@@ -11,9 +13,9 @@ import { cleanDisplayText } from '@/lib/format';
 
 const originCopy: Record<ProvenanceOrigin, { label: string; tone: 'info' | 'neutral' | 'positive' | 'warning' }> = {
   model: { label: 'BrainIA', tone: 'info' },
-  captured: { label: 'Captured', tone: 'neutral' },
+  captured: { label: 'Capturado', tone: 'neutral' },
   user: { label: 'You', tone: 'positive' },
-  pending: { label: 'Pending', tone: 'warning' },
+  pending: { label: 'Pendiente', tone: 'warning' },
 };
 
 export function SignalCard({
@@ -105,6 +107,18 @@ export function SignalCard({
   );
 }
 
+/** A rail slot: the card that is not in focus recedes, so the peeking edge reads as intended. */
+function CarouselSlot({ index, step, width, scrollX, children }: { index: number; step: number; width: number; scrollX: SharedValue<number>; children: ReactNode }) {
+  const style = useAnimatedStyle(() => {
+    const away = Math.abs(scrollX.value - index * step) / step;
+    return {
+      opacity: interpolate(away, [0, 1], [1, 0.42], Extrapolation.CLAMP),
+      transform: [{ scale: interpolate(away, [0, 1], [1, 0.97], Extrapolation.CLAMP) }],
+    };
+  });
+  return <Animated.View style={[{ width }, style]}>{children}</Animated.View>;
+}
+
 /** Horizontal highlight rail. The first card can start the review session. */
 export function SignalCarousel({
   items,
@@ -124,10 +138,20 @@ export function SignalCarousel({
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const cardWidth = Math.min(352, Math.max(264, width - 64));
+  // The rail's horizontal offset moves each card's glass backdrop with the card.
+  const parentScroll = useContext(GlassScrollContext);
+  const scrollX = useSharedValue(0);
+  const glassScroll = useMemo(() => ({ y: parentScroll?.y ?? null, x: scrollX }), [parentScroll, scrollX]);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollX.set(event.contentOffset.x);
+  });
 
   return (
-    <ScrollView
+    <GlassScrollContext.Provider value={glassScroll}>
+    <Animated.ScrollView
       horizontal
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       directionalLockEnabled
       decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
@@ -136,8 +160,8 @@ export function SignalCarousel({
       accessibilityLabel={accessibilityLabel}
       contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
     >
-      {items.slice(0, 8).map((item) => (
-        <View key={item.id} style={{ width: cardWidth }}>
+      {items.slice(0, 8).map((item, index) => (
+        <CarouselSlot key={item.id} index={index} step={cardWidth + theme.spacing.sm} width={cardWidth} scrollX={scrollX}>
           <SignalCard
             variant="brief"
             origin={item.origin}
@@ -147,9 +171,10 @@ export function SignalCarousel({
             meta={item.meta}
             onPress={item.onPress}
           />
-        </View>
+        </CarouselSlot>
       ))}
-    </ScrollView>
+    </Animated.ScrollView>
+    </GlassScrollContext.Provider>
   );
 }
 

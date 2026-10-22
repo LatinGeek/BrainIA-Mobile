@@ -61,7 +61,7 @@ export default function HomeScreen() {
       title: `${pendingCount} ${pendingCount === 1 ? 'decisión te espera' : 'decisiones te esperan'}`,
       summary: 'Una respuesta por tarjeta. Menos de un minuto para dejar tus datos en orden.',
       origin: 'pending' as const,
-      meta: 'Review',
+      meta: 'Revisión',
       onActionPress: startReview,
     } : undefined,
     ...(primaryInsight?.cards?.length ? primaryInsight.cards.map((card, index) => ({
@@ -131,27 +131,27 @@ export default function HomeScreen() {
         <StateView kind="error" title="Datos en vivo no disponibles" description={error} actionLabel="Reintentar" onAction={refresh} secondaryActionLabel="Ajustes" onSecondaryAction={() => router.push('/settings')} />
       ) : null}
 
-      {loading && !data ? <StateView kind="loading" title="Loading" skeleton="detail" skeletonCount={3} /> : null}
+      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={3} /> : null}
 
       {data ? (
         <>
           <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <View style={{ gap: 2 }}>
-                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>This cycle</Text>
-                <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>Net movement</Text>
+                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Este ciclo</Text>
+                <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>Movimiento neto</Text>
               </View>
-              <Tag label={net >= 0 ? 'Positive' : 'Overspent'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
+              <Tag label={net >= 0 ? 'Positivo' : 'Gasto excedido'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
             </View>
             <Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.income }} />
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Income {formatCurrency(financialSummary.income, 'UYU')}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Ingresos {formatCurrency(financialSummary.income, 'UYU')}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.expense }} />
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Spent {formatCurrency(financialSummary.expenses, 'UYU')}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Gastado {formatCurrency(financialSummary.expenses, 'UYU')}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -163,10 +163,12 @@ export default function HomeScreen() {
                   haptic="selection"
                   scaleTo={0.94}
                   onPress={() => router.push(action.href as never)}
-                  style={{ flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider }}
+                  style={{ flex: 1 }}
                 >
-                  <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 10 }]}>{action.label}</Text>
+                  <GlassSurface level="thin" padding="none" radius="md" contentStyle={{ minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 10 }]}>{action.label}</Text>
+                  </GlassSurface>
                 </GlassPressable>
               ))}
             </View>

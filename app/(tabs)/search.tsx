@@ -70,9 +70,9 @@ export default function SearchScreen() {
   const recentPrompts = useMemo(() => {
     const values = [
       'Spotify',
-      'groceries',
-      'last week',
-      'receipts',
+      'compras',
+      'la semana pasada',
+      'recibos',
       ...(recentData?.insights.map((item) => item.title) ?? []),
       ...(recentData?.transactions.map((item) => item.displayMerchantLabel ?? item.merchantLabel) ?? []),
       ...(recentData?.digests.map((item) => item.title) ?? []),
@@ -92,7 +92,7 @@ export default function SearchScreen() {
       const relations = neighborhood.relations
         .filter((relation) => relation.sourceEntityId && relation.targetEntityId)
         .map((relation) => ({ id: relation.id, sourceEntityId: relation.sourceEntityId!, targetEntityId: relation.targetEntityId!, relationType: relation.relationType ?? 'related_to', label: relation.label, description: relation.description, confidence: 1, importanceScore: relation.importanceScore ?? 1 }));
-      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `${nodes[0]?.name ?? 'Selected'} network`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
+      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `Red de ${nodes[0]?.name ?? 'la selección'}`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
     }).catch(() => setExpandedGraph(undefined));
     return () => { cancelled = true; };
   }, [client, focusedEntityId, graph?.nodes]);
@@ -113,11 +113,11 @@ export default function SearchScreen() {
   return (
     <Screen
       title="Descubrir"
-      overline={`${entities?.length ?? 0} nodes`}
+      overline={`${entities?.length ?? 0} nodos`}
       subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
       refreshing={activeRefreshing}
       onRefresh={activeRefresh}
-      actions={<Tag label={loading ? 'Buscando' : hasQuery ? `${results.length} results` : 'Live map'} tone={loading ? 'warning' : 'neutral'} live={!loading} />}
+      actions={<Tag label={loading ? 'Buscando' : hasQuery ? `${results.length} resultados` : 'Mapa en vivo'} tone={loading ? 'warning' : 'neutral'} live={!loading} />}
     >
       <View style={{ gap: 10 }}>
         <Field
@@ -148,25 +148,28 @@ export default function SearchScreen() {
 
       {!hasQuery ? (
         <>
+          <GlassSurface level="thin" padding="none">
+            <Row title="Conocimiento" subtitle="Pregunta, descubre y conserva lo que importa" leading={<IconTile icon="zap" />} onPress={() => router.push('/intelligence')} />
+          </GlassSurface>
           <Section title="Mapa de conocimiento" subtitle="Explora las conexiones entre tus actividades.">
             {entitiesError || graphError ? <StateView kind="error" title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} actionLabel="Reintentar" onAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
-            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <StateView kind="loading" title="Loading" skeleton="chart" skeletonCount={2} /> : null}
+            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
             {displayGraph?.nodes.length ? (
               <GlassSurface level="regular" tone="accent" padding="md" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Interactive knowledge map</Text>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Tap a node to focus it; open the item to see everything BrainIA knows.</Text>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa de conocimiento interactivo</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca un nodo para enfocarlo; abre el elemento para ver todo lo que BrainIA sabe de él.</Text>
                   </View>
-                  <Tag label={`${displayGraph.stats.nodesCount} nodes`} tone="info" />
+                  <Tag label={`${displayGraph.stats.nodesCount} nodos`} tone="info" />
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <Chip label="People & services" selected={showIdentityNodes} onPress={() => { setShowIdentityNodes((value) => !value); if (!showIdentityNodes) setShowEvidenceNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
-                  <Chip label="Evidence" selected={showEvidenceNodes} onPress={() => { setShowEvidenceNodes((value) => !value); if (!showEvidenceNodes) setShowIdentityNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
+                  <Chip label="Personas y servicios" selected={showIdentityNodes} onPress={() => { setShowIdentityNodes((value) => !value); if (!showIdentityNodes) setShowEvidenceNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
+                  <Chip label="Evidencia" selected={showEvidenceNodes} onPress={() => { setShowEvidenceNodes((value) => !value); if (!showEvidenceNodes) setShowIdentityNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
                 </View>
                 {!showEvidenceNodes && !showIdentityNodes && taxonomyStack.length ? (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    <Chip label="All domains" onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
+                    <Chip label="Todas las áreas" onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
                     {taxonomyStack.map((item, index) => <Chip key={item.key} label={item.label} selected={index === taxonomyStack.length - 1} onPress={() => { setTaxonomyStack((current) => current.slice(0, index + 1)); setFocusedEntityId(undefined); }} />)}
                   </View>
                 ) : null}
@@ -182,16 +185,16 @@ export default function SearchScreen() {
                   }}
                   onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)}
                 />
-                <Button label="Refresh map" variant="secondary" size="sm" onPress={() => { void refreshEntities(); void refreshGraph(); }} />
+                <Button label="Actualizar mapa" variant="secondary" size="sm" onPress={() => { void refreshEntities(); void refreshGraph(); }} />
               </GlassSurface>
             ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? (
-              <StateView title="Tu conocimiento está creciendo" description="Captura notas, correos o notificaciones para crear personas, comercios, temas y conexiones." actionLabel="Capture" onAction={() => router.push('/capture')} />
+              <StateView title="Tu conocimiento está creciendo" description="Captura notas, correos o notificaciones para crear personas, comercios, temas y conexiones." actionLabel="Capturar" onAction={() => router.push('/capture')} />
             ) : null}
           </Section>
 
-          <Section title="Recent activity" subtitle="Pick up where you left off.">
+          <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
             {recentError ? <StateView kind="error" title="Actividad reciente no disponible" description={recentError} actionLabel="Reintentar" onAction={refreshRecent} /> : null}
-            {recentLoading && !recentData ? <StateView kind="loading" title="Loading" skeleton="card" skeletonCount={3} /> : null}
+            {recentLoading && !recentData ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={3} /> : null}
             {!recentLoading && recentData ? (
               <View style={{ gap: 10 }}>
                 {recentData.insights.slice(0, 2).map((insight: InsightSummary) => (
@@ -211,8 +214,8 @@ export default function SearchScreen() {
 
       {hasQuery ? (
         <>
-          <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Best result for this query.'}>
-            {loading ? <StateView kind="loading" title="Loading" skeleton="card" skeletonCount={1} /> : null}
+          <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado para esta búsqueda.'}>
+            {loading ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={1} /> : null}
             {!loading && topMatch ? (
               <GlassSurface level="regular" tone="accent" padding="lg" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -222,8 +225,8 @@ export default function SearchScreen() {
                   </View>
                   <Tag label={resultTypeLabel(topMatch.type)} tone="info" />
                 </View>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{topMatch.hint ?? `Matched ${topMatch.subtitle ?? topMatch.type} content.`}</Text>
-                <Button label="Open result" variant="secondary" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{topMatch.hint ?? `Coincide con contenido de tipo ${topMatch.subtitle ?? topMatch.type}.`}</Text>
+                <Button label="Abrir resultado" variant="secondary" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} />
               </GlassSurface>
             ) : null}
             {!loading && !error && !topMatch ? <StateView title="Sin coincidencias" description="Prueba otra frase o quita el filtro." /> : null}

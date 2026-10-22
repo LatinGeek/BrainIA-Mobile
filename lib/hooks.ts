@@ -1,5 +1,6 @@
 import { DependencyList, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 export function useDebouncedValue<T>(value: T, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -26,7 +27,7 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
       setData(result);
       return result;
     } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : 'Unable to load data';
+      const message = loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos';
       setError(message);
       throw loadError;
     } finally {
@@ -48,7 +49,7 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
       })
       .catch((loadError) => {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : 'Unable to load data');
+          setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos');
         }
       })
       .finally(() => {
@@ -65,8 +66,8 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: DependencyLi
   return { data, loading, error, refresh, reload };
 }
 
-function useAccessibilityFlag(check: (() => Promise<boolean>) | undefined, event: 'reduceMotionChanged' | 'reduceTransparencyChanged') {
-  const [enabled, setEnabled] = useState(false);
+function useAccessibilityFlag(check: (() => Promise<boolean>) | undefined, event: 'reduceMotionChanged' | 'reduceTransparencyChanged', initial = false) {
+  const [enabled, setEnabled] = useState(initial);
 
   useEffect(() => {
     let active = true;
@@ -99,5 +100,6 @@ export function useReduceTransparency() {
 
 /** True when the OS asks apps to reduce non-essential motion. */
 export function useReduceMotion() {
-  return useAccessibilityFlag(AccessibilityInfo.isReduceMotionEnabled, 'reduceMotionChanged');
+  const initial = useReducedMotion();
+  return useAccessibilityFlag(AccessibilityInfo.isReduceMotionEnabled, 'reduceMotionChanged', initial);
 }

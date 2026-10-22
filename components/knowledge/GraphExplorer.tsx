@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 
 import GraphForceCanvas from './GraphForceCanvas';
 import { ExploreGraph, ExploreGraphNode } from '@/lib/domain';
+import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 
 export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
@@ -90,11 +91,12 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
     <View style={{ gap: theme.spacing.sm }}>
       <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
         {visualGraph.nodes.every((node) => node.nodeKind === 'category')
-          ? 'Start with a life area, then tap a category to reveal the next level. Counts include all activity below each branch.'
+          ? 'Empieza por un área de tu vida y toca una categoría para ver el siguiente nivel. Los totales incluyen toda la actividad de cada rama.'
           : 'Zoom out to see the full map. Repeated events are grouped beneath one meaning; open a concept to inspect its individual evidence.'}
       </Text>
 
-      <View style={{ height: 332, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+      {/* The map handles its own drag gestures, so two transparent strips over its edges hand a swipe to the page. */}
+      <View style={{ height: 332, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.glass.divider, backgroundColor: theme.ambient.base }}>
         <GraphForceCanvas
           nodes={visualGraph.nodes}
           relations={visualGraph.relations}
@@ -104,16 +106,21 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
           dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: theme.ambient.base } }}
           background={theme.ambient.base}
         />
+        <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 22 }} />
+        <View pointerEvents="auto" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 22 }} />
       </View>
+      <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Arrastra dentro del mapa para moverlo. Desliza por los bordes para seguir bajando.</Text>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{rankedCommunities.map((community) => <Pressable key={community.id} accessibilityRole="button" onPress={() => { void focusById(community.leaderEntityId); }} style={{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 9, backgroundColor: theme.colors.surfaceSubtle, maxWidth: '100%' }}><Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, maxWidth: 230 }]}>{community.label}</Text></Pressable>)}</View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>{rankedCommunities.map((community) => <Pressable key={community.id} accessibilityRole="button" onPress={() => { void focusById(community.leaderEntityId); }} style={{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 9, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider, maxWidth: '100%' }}><Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, maxWidth: 230 }]}>{community.label}</Text></Pressable>)}</View>
 
-      {focused ? <Pressable onPress={() => onOpen(focused)} accessibilityRole="button" style={{ padding: theme.spacing.sm, borderRadius: 14, backgroundColor: theme.colors.surfaceSubtle, gap: 3 }}>
+      {focused ? <Pressable onPress={() => onOpen(focused)} accessibilityRole="button">
+        <GlassSurface level="thin" padding="sm" radius="md" contentStyle={{ gap: 3 }}>
         <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{focused.name}</Text>
         <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{summary}</Text>
         {focused.description ? <Text numberOfLines={3} style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{focused.description}</Text> : null}
-        <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, marginTop: 4 }]}>{focused.nodeKind === 'category' && focused.hasMore ? 'Tap the node to explore this category' : 'Open entity details'}</Text>
-      </Pressable> : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Each colored island is a named community. Its center is the most connected entity in that cluster.</Text>}
+        <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, marginTop: 4 }]}>{focused.nodeKind === 'category' && focused.hasMore ? 'Toca el nodo para explorar esta categoría' : 'Abrir detalles de la entidad'}</Text>
+        </GlassSurface>
+      </Pressable> : <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cada isla de color es una comunidad con nombre. Su centro es la entidad más conectada de ese grupo.</Text>}
     </View>
   );
 }

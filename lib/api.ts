@@ -411,7 +411,7 @@ function demoTransactionDetail(id: string): TransactionDetail {
         currency: transaction.currency,
         merchantLabel: transaction.merchantLabel,
         observedAt: transaction.observedAt,
-        matchReason: 'Matched merchant name and amount.',
+        matchReason: 'Coincide el comercio y el monto.',
       },
       {
         id: `${transaction.id}_evidence_2`,
@@ -419,7 +419,7 @@ function demoTransactionDetail(id: string): TransactionDetail {
         kind: 'confirmation',
         merchantLabel: transaction.merchantLabel,
         observedAt: transaction.observedAt,
-        matchReason: 'Confirmed by related notification.',
+        matchReason: 'Confirmado por una notificación relacionada.',
       },
     ],
   };
@@ -664,12 +664,12 @@ function normalizeSearchResults(input: unknown): SearchResultItem[] {
     return {
       id: asString(entity.id, `entity_${index + 1}`),
       title: asString(entity.value ?? entity.label, `Entity ${index + 1}`),
-      subtitle: asString(entity.type, 'Entity'),
-      description: asString(entity.description, 'Canonical entity result'),
+      subtitle: asString(entity.type, 'Elemento'),
+      description: asString(entity.description, 'Resultado de entidad canónica'),
       type: 'entity' as const,
       route: `/entity/${asString(entity.id, `entity_${index + 1}`)}`,
       relevance: asNumber((entity.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
-      hint: asString((entity.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+      hint: localizeMatchHint(asString((entity.matchHint as Record<string, unknown> | undefined)?.explanation)),
     };
   });
 
@@ -678,12 +678,12 @@ function normalizeSearchResults(input: unknown): SearchResultItem[] {
     return {
       id: asString(event.id, `event_${index + 1}`),
       title: asString(event.title, `Event ${index + 1}`),
-      subtitle: asString(event.kind, 'Event'),
-      description: asString(event.body, 'Stored event'),
+      subtitle: asString(event.kind, 'Evento'),
+      description: asString(event.body, 'Evento guardado'),
       type: 'event' as const,
-      route: `/digest/digest_week`,
+      route: `/event/${encodeURIComponent(asString(event.id, `event_${index + 1}`))}`,
       relevance: asNumber((event.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
-      hint: asString((event.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+      hint: localizeMatchHint(asString((event.matchHint as Record<string, unknown> | undefined)?.explanation)),
     };
   });
 
@@ -692,12 +692,12 @@ function normalizeSearchResults(input: unknown): SearchResultItem[] {
     return {
       id: asString(relation.id, `relation_${index + 1}`),
       title: asString(relation.label, `Relation ${index + 1}`),
-      subtitle: asString(relation.relationType, 'Relation'),
-      description: asString(relation.description, 'Knowledge graph relation'),
+      subtitle: asString(relation.relationType, 'Relación'),
+      description: asString(relation.description, 'Relación del mapa de conocimiento'),
       type: 'relation' as const,
       route: `/entity/${asString(relation.sourceEntityId ?? relation.targetEntityId, 'entity_spotify')}`,
       relevance: asNumber((relation.matchHint as Record<string, unknown> | undefined)?.relevanceScore, 0) || undefined,
-      hint: asString((relation.matchHint as Record<string, unknown> | undefined)?.explanation) || undefined,
+      hint: localizeMatchHint(asString((relation.matchHint as Record<string, unknown> | undefined)?.explanation)),
     };
   });
 
@@ -717,7 +717,7 @@ function normalizeReviews(input: unknown): ReviewItem[] {
       entityType: asString(review.entityType ?? review.entity_type) || undefined,
       alias: asString(review.alias ?? review.suggestedAlias ?? review.suggested_alias ?? originalValue ?? normalizedValue, `Alias ${index + 1}`),
       categoryPath: asArray<string>(review.categoryPath ?? review.suggestedCategoryPath ?? review.suggested_category_path),
-      reason: asString(review.reason, 'Needs review'),
+      reason: asString(review.reason, 'Requiere revisión'),
       source: asString(review.source) || undefined,
       eventId: asString(review.eventId ?? review.event_id) || undefined,
       financialKind: (asString(review.financialKind ?? review.financial_kind) as ReviewItem['financialKind']) || undefined,
@@ -756,7 +756,7 @@ function normalizeEntity(input: unknown): EntityDetail {
     title: normalizeNarrativeText(record.value ?? record.label ?? record.title, 'Unknown entity'),
     type: asString(record.type, 'entity'),
     canonical: record.canonical === true || record.isCanonical === true,
-    summary: normalizeNarrativeText(record.description ?? record.summary, 'Description unavailable'),
+    summary: normalizeNarrativeText(record.description ?? record.summary, 'Sin descripción disponible'),
     aliases: asArray<string>(record.aliases),
     relatedEvents: asArray<string>(record.relatedEvents),
     relatedEntities: asArray<unknown>(record.relatedEntities).length > 0
@@ -778,7 +778,7 @@ function normalizeEntity(input: unknown): EntityDetail {
             id: asString(relation.id, `relation_${index + 1}`),
             relationType: asString(relation.relationType) || undefined,
             label: asString(relation.label, `Relation ${index + 1}`),
-            description: asString(relation.description, 'Graph relation'),
+            description: asString(relation.description, 'Relación del mapa'),
             direction: (asString(relation.direction, 'incoming') as GraphRelation['direction']) || 'incoming',
             depth: asNumber(relation.depth, 1) || undefined,
             importanceScore: asNumber(relation.importanceScore, 0) || undefined,
@@ -844,7 +844,7 @@ function normalizeEntityLinks(input: unknown): EntityLink[] {
 
 function normalizeEvent(input: unknown, index: number): EventSummary {
   const event = (isRecord(input) ? input : {}) as Record<string, any>;
-  const rawTitle = asString(event.title, 'Untitled event');
+  const rawTitle = asString(event.title, 'Evento sin título');
   return {
     id: asString(event.id, `event_${index + 1}`),
     source: asString(event.source, 'unknown'),
@@ -968,8 +968,33 @@ function createV2TransportWithOfflineClassification(
   };
 }
 
+const relationLabels: Record<string, string> = {
+  part_of: 'Parte de', produced_by_app: 'Generado por la app', spent_at: 'Gastado en', paid_for: 'Pagado por',
+  belongs_to_domain: 'Pertenece a', received_via: 'Recibido por', sent_by: 'Enviado por', uses_service: 'Usa el servicio',
+};
+
+/** Relation types come from the backend as identifiers and English labels; show them in Spanish. */
+function relationLabel(type: string | undefined, label: string) {
+  return (type && relationLabels[type]) || label;
+}
+
+const matchFieldLabels: Record<string, string> = {
+  title: 'título', body: 'contenido', value: 'valor', normalizedValue: 'valor normalizado', name: 'nombre', alias: 'alias',
+  merchant: 'comercio', category: 'categoría', description: 'descripción', subject: 'asunto', sender: 'remitente',
+};
+
+/** The backend explains a match with internal field names; show them in plain Spanish. */
+function localizeMatchHint(hint: string): string | undefined {
+  if (!hint) return undefined;
+  const match = hint.match(/^Matched fields?:\s*(.+)$/i);
+  if (!match) return hint;
+  const fields = match[1].split(',').map((field) => field.trim()).filter(Boolean).map((field) => matchFieldLabels[field] ?? field);
+  return fields.length ? `Coincide en: ${[...new Set(fields)].join(', ')}` : undefined;
+}
+
 export function createBrainIAClient(config: ClientConfig): BrainIAClient {
   const baseUrl = config.baseUrl || '';
+  let metricsForbidden = false;
   const headers = {
     ...(config.apiKey ? { 'x-brainia-api-key': config.apiKey } : {}),
     ...(config.clientId ? { 'x-brainia-client-id': config.clientId } : {}),
@@ -982,8 +1007,16 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       return requestWithFallback(baseUrl, '/health', { ok: false }, { headers });
     },
     async metrics() {
-      const json = await requestWithFallback(baseUrl, '/api/v1/metrics', [], { headers });
-      return normalizeMetrics(json);
+      // Metrics are admin-only: an owner key gets 403 every time. Remember it for this client
+      // instead of repeating a request that cannot succeed on every Today load.
+      if (metricsForbidden) return [];
+      try {
+        const json = await requestWithFallback(baseUrl, '/api/v1/metrics', [], { headers });
+        return normalizeMetrics(json);
+      } catch (error) {
+        if (error instanceof Error && /403|forbidden|insufficient/i.test(error.message)) metricsForbidden = true;
+        throw error;
+      }
     },
     async listEvents(limit = 50) {
       const json = await requestWithFallback(baseUrl, '/api/v1/events', [], { headers });
@@ -1005,7 +1038,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
           const entity = (isRecord(item) ? item : {}) as Record<string, any>;
           return {
             id: asString(entity.canonicalEntityId, asString(entity.id)),
-            name: asString(entity.value, asString(entity.normalizedValue, 'Untitled entity')),
+            name: asString(entity.value, asString(entity.normalizedValue, 'Elemento sin nombre')),
             type: asString(entity.type, 'entity'),
             aliasCount: asNumber(entity.aliasCount, 0) || undefined,
             canonical: entity.isCanonical !== false,
@@ -1031,7 +1064,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
         const node = (isRecord(item) ? item : {}) as Record<string, any>;
         return {
           id: asString(node.id),
-          name: asString(node.value, 'Untitled entity'),
+          name: asString(node.value, 'Elemento sin nombre'),
           type: asString(node.type, 'entity'),
           description: asString(node.description),
           importanceScore: asNumber(node.importanceScore, 0),
@@ -1055,14 +1088,14 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
           targetEntityId: asString(relation.targetEntityId),
           relationType: asString(relation.relationType, 'related_to'),
           label: asString(relation.label, 'related to'),
-          description: asString(relation.description, 'Knowledge graph relation'),
+          description: asString(relation.description, 'Relación del mapa de conocimiento'),
           confidence: asNumber(relation.confidence, 0),
           importanceScore: asNumber(relation.importanceScore, 0),
         };
       }).filter((relation) => relation.sourceEntityId && relation.targetEntityId);
       const serverCommunities = asArray<unknown>(record.communities).map((item) => {
         const community = (isRecord(item) ? item : {}) as Record<string, any>;
-        return { id: asString(community.id), label: asString(community.label, 'Connected group'), nodeCount: asNumber(community.nodeCount, 0), leaderEntityId: asString(community.leaderEntityId) };
+        return { id: asString(community.id), label: asString(community.label, 'Grupo conectado'), nodeCount: asNumber(community.nodeCount, 0), leaderEntityId: asString(community.leaderEntityId) };
       }).filter((community) => community.id);
       const nodeById = new Map(nodes.map((node) => [node.id, node]));
       const hierarchyParents = new Map<string, string[]>();
@@ -1363,7 +1396,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
         const record = (isRecord(match) ? match : {}) as Record<string, any>;
         return {
           id: asString(record.id),
-          name: asString(record.value, asString(record.normalizedValue, 'Existing entity')),
+          name: asString(record.value, asString(record.normalizedValue, 'Entidad existente')),
           type: asString(record.type, 'entity'),
           aliasCount: asNumber(record.aliasCount, 0) || undefined,
           canonical: record.isCanonical === true,
@@ -1382,28 +1415,38 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       return graph.rootEntity;
     },
     async getEntityGraph(id: string, depth = 2) {
-      const json = await requestWithFallback(baseUrl, `/api/v1/entities/${encodeURIComponent(id)}/graph?depth=${depth}&maxNodes=50&maxRelations=50`, { headers });
+      const json = await requestWithFallback(baseUrl, `/api/v1/entities/${encodeURIComponent(id)}/graph?depth=${depth}&maxNodes=50&maxRelations=50`, {}, { headers });
 
       const graphRecord = isRecord(json) ? (json as Record<string, any>) : {};
-      const rootEntity = normalizeEntity(graphRecord.rootEntity ?? graphRecord.entity ?? graphRecord);
-      return {
-        rootEntity,
-        nodes: normalizeEntityLinks(graphRecord.nodes),
-        relations: asArray<unknown>(graphRecord.relations).map((item, index) => {
-          const relation = (isRecord(item) ? item : {}) as Record<string, any>;
-          return {
-            id: asString(relation.id, `graph_relation_${index + 1}`),
-            sourceEntityId: asString(relation.sourceEntityId) || undefined,
-            targetEntityId: asString(relation.targetEntityId) || undefined,
-            relationType: asString(relation.relationType) || undefined,
-            label: asString(relation.label, `Relation ${index + 1}`),
-            description: asString(relation.description, 'Graph relation'),
-            direction: (asString(relation.direction, 'incoming') as GraphRelation['direction']) || 'incoming',
-            depth: asNumber(relation.depth, 1) || undefined,
-            importanceScore: asNumber(relation.importanceScore, 0) || undefined,
-          };
-        }),
+      const baseEntity = normalizeEntity(graphRecord.rootEntity ?? graphRecord.entity ?? graphRecord);
+      const nodes = normalizeEntityLinks(graphRecord.nodes);
+      const relations: GraphRelation[] = asArray<unknown>(graphRecord.relations).map((item, index) => {
+        const relation = (isRecord(item) ? item : {}) as Record<string, any>;
+        const sourceEntityId = asString(relation.sourceEntityId) || undefined;
+        const targetEntityId = asString(relation.targetEntityId) || undefined;
+        // The backend does not say which way a relation points; derive it from the root entity.
+        // Relations that do not touch the root (deeper in the graph) have no single direction.
+        const direction: GraphRelation['direction'] = sourceEntityId === baseEntity.id ? 'outgoing' : targetEntityId === baseEntity.id ? 'incoming' : 'bidirectional';
+        return {
+          id: asString(relation.id, `graph_relation_${index + 1}`),
+          sourceEntityId,
+          targetEntityId,
+          relationType: asString(relation.relationType) || undefined,
+          label: relationLabel(asString(relation.relationType) || undefined, asString(relation.label, `Relación ${index + 1}`)),
+          description: asString(relation.description, 'Relación del mapa'),
+          direction,
+          depth: asNumber(relation.depth, 1) || undefined,
+          importanceScore: asNumber(relation.importanceScore, 0) || undefined,
+        };
+      });
+      // The root entity record carries no relations or related entities of its own; they live
+      // in the graph, so copy them over or the detail screen counts zero connections.
+      const rootEntity: EntityDetail = {
+        ...baseEntity,
+        relations: baseEntity.relations.length ? baseEntity.relations : relations,
+        relatedEntities: baseEntity.relatedEntities.length ? baseEntity.relatedEntities : nodes,
       };
+      return { rootEntity, nodes, relations };
     },
     async inspectInsight(idOrQuery: { id?: string; q?: string }) {
       const params = new URLSearchParams();
@@ -1527,7 +1570,8 @@ export async function loadDashboardBundle(client: BrainIAClient, financialPeriod
     cacheKey,
     async () => {
       const [metrics, insights, digests, transactions] = await Promise.all([
-        client.metrics(),
+        // Metrics are admin-only on the backend; the owner key gets 403. Keep the rest of Today live.
+        client.metrics().catch(() => []),
         client.listInsights(3),
         client.listDigests(2),
         loadMonthlyFinancialSummaryTransactions(client, financialPeriodStartDay),

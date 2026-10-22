@@ -5,7 +5,9 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
-import { cleanDisplayText } from '@/lib/format';
+import { cleanDisplayText, formatCurrency } from '@/lib/format';
+import { useCountedAmount } from '@/components/data/Row';
+import { useReduceMotion } from '@/lib/hooks';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -20,7 +22,7 @@ export type MixSegment = {
 function percent(value: number, total: number) {
   if (total <= 0) return '0%';
   const share = (value / total) * 100;
-  return `${share >= 10 ? share.toFixed(0) : share.toFixed(1)}%`;
+  return `${share >= 10 ? share.toFixed(0) : share.toFixed(1).replace('.', ',')}%`;
 }
 
 export function MixCard({
@@ -30,6 +32,8 @@ export function MixCard({
   note,
   segments,
   centerValue,
+  centerAmount,
+  currency,
   centerLabel,
   delta,
   formatValue = (value) => String(Math.round(value)),
@@ -44,6 +48,8 @@ export function MixCard({
   note?: string;
   segments: MixSegment[];
   centerValue: string;
+  centerAmount?: number;
+  currency?: string;
   centerLabel?: string;
   delta?: { text: string; tone?: 'good' | 'bad' | 'neutral' };
   formatValue?: (value: number) => string;
@@ -53,6 +59,7 @@ export function MixCard({
   percentageNoun?: string;
 }) {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   const { width, fontScale } = useWindowDimensions();
   const [internalSelected, setInternalSelected] = useState<string | null>(null);
   const activeId = selectedId === undefined ? internalSelected : selectedId;
@@ -62,6 +69,10 @@ export function MixCard({
   );
   const total = source.reduce((sum, segment) => sum + Math.max(0, segment.value), 0) || 1;
   const active = source.find((segment) => segment.id === activeId);
+  const amountTarget = active ? active.displayValue ?? active.value : centerAmount ?? 0;
+  const countedAmount = useCountedAmount(amountTarget, centerAmount !== undefined);
+  const amountLabel = active ? formatValue(amountTarget) : cleanDisplayText(centerValue);
+  const amountText = centerAmount === undefined ? amountLabel : active ? formatValue(countedAmount) : `${centerValue.startsWith('≈ ') ? '≈ ' : ''}${currency ? formatCurrency(countedAmount, currency) : formatValue(countedAmount)}`;
   const size = Math.round(Math.min(268, Math.max(204, width - (fontScale >= 1.3 ? 76 : 92))));
   const strokeWidth = 22;
   const radius = size / 2 - strokeWidth / 2 - 4;
@@ -69,11 +80,11 @@ export function MixCard({
   const centerDiameter = radius * 2 - strokeWidth - 6;
   const gap = circumference * 0.012;
 
-  const reveal = useSharedValue(0);
+  const reveal = useSharedValue(reduceMotion ? 1 : 0);
   useEffect(() => {
-    reveal.value = 0;
-    reveal.value = withTiming(1, { duration: theme.motion.duration.count, easing: Easing.out(Easing.cubic) });
-  }, [reveal, source.length, theme.motion.duration.count]);
+    reveal.value = reduceMotion ? 1 : 0;
+    if (!reduceMotion) reveal.value = withTiming(1, { duration: theme.motion.duration.count, easing: Easing.bezier(...theme.motion.easing.out) });
+  }, [reduceMotion, theme.motion.easing.out, reveal, source.length, theme.motion.duration.count]);
 
   const totalProps = useAnimatedProps(() => ({ opacity: reveal.value }));
 
@@ -103,7 +114,7 @@ export function MixCard({
         </View>
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
           {action}
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${source.length} ${source.length === 1 ? 'group' : 'groups'}`}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${source.length} ${source.length === 1 ? 'grupo' : 'grupos'}`}</Text>
         </View>
       </View>
 
@@ -142,8 +153,8 @@ export function MixCard({
               <Text numberOfLines={1} style={[theme.typography.caption, { color: active ? arcColor(active, theme.colors.accent) : theme.colors.textMuted, textAlign: 'center' }]}>
                 {active ? cleanDisplayText(active.label) : cleanDisplayText(centerLabel ?? 'Total')}
               </Text>
-              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: width < 360 ? 20 : 26, lineHeight: width < 360 ? 25 : 32, textAlign: 'center' }]}>
-                {active ? formatValue(active.displayValue ?? active.value) : cleanDisplayText(centerValue)}
+              <Text accessibilityLabel={amountLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: width < 360 ? 20 : 26, lineHeight: width < 360 ? 25 : 32, textAlign: 'center' }]}>
+                {amountText}
               </Text>
               {active ? (
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} of {percentageNoun}</Text>

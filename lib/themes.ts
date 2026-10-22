@@ -78,6 +78,8 @@ export type ThemeTokens = {
     chrome: string;
     /** Denser chrome for the pinned action bar so fields never show through. */
     chromeStrong: string;
+    /** Near-opaque chrome for floating plates when no native blur hides what scrolls beneath. */
+    chromeOpaque: string;
     selected: string;
     onSelected: string;
     solid: Record<GlassLevel, string>;
@@ -95,8 +97,10 @@ export type ThemeTokens = {
       thumb: { damping: number; stiffness: number; mass: number };
       press: { damping: number; stiffness: number; mass: number };
     };
-    duration: { press: number; quick: number; enter: number; count: number };
+    duration: { press: number; quick: number; enter: number; count: number; reduced: number };
     stagger: number;
+    staggerMax: number;
+    distance: { rise: number; push: number; headerCollapse: number };
     easing: { out: MotionEasing; in: MotionEasing; soft: MotionEasing };
   };
   ambient: { base: string; base2: string; orbs: readonly [string, string, string]; ring: string };
@@ -174,6 +178,7 @@ export const brainiaTheme: ThemeTokens = {
     chromeBase: 0.74,
     chrome: hexToRgba('#091315', 0.74),
     chromeStrong: hexToRgba('#091315', 0.86),
+    chromeOpaque: hexToRgba('#091315', 1),
     selected: 'rgba(246,249,248,0.95)',
     onSelected: '#0B1113',
     solid: { thin: '#142124', regular: '#1A2B2F', strong: '#22363B' },
@@ -188,8 +193,10 @@ export const brainiaTheme: ThemeTokens = {
       thumb: { damping: 16, stiffness: 220, mass: 0.9 },
       press: springPress,
     },
-    duration: { press: 140, quick: 240, enter: 420, count: 800 },
+    duration: { press: 140, quick: 240, enter: 420, count: 800, reduced: 120 },
     stagger: 45,
+    staggerMax: 9,
+    distance: { rise: 14, push: 34, headerCollapse: 64 },
     easing: { out: [0.2, 0.8, 0.2, 1], in: [0.4, 0, 1, 1], soft: [0.25, 1.1, 0.4, 1] },
   },
   ambient: {
@@ -208,7 +215,7 @@ export const brainiaTheme: ThemeTokens = {
     numeral: { fontFamily: 'Inter_700Bold', fontSize: 34, lineHeight: 40, letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
     overline: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
   },
-  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86, reviewCardMax: 540 },
+  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86, reviewCardMax: 470 },
   spacing,
   radius,
   shadow: {

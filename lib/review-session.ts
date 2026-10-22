@@ -127,15 +127,15 @@ export function buildReviewQueue({
       kind: 'relation',
       reviewIds: [],
       candidateId: candidate.id,
-      title: candidate.rationale ?? `${candidate.subjectValue ?? 'This item'} → ${candidate.targetValue}`,
+      title: candidate.rationale ?? `${candidate.subjectValue ?? 'Este elemento'} → ${candidate.targetValue}`,
       raw: candidate.subjectValue ?? candidate.targetValue,
       suggestion: candidate.targetValue,
       alternatives: candidate.alternatives.slice(0, 3).map((alternative) => alternative.value),
       categoryPath: candidate.proposedPath,
       confidence: candidate.confidence,
-      rationale: candidate.rationale ?? 'Suggested from related activity.',
+      rationale: candidate.rationale ?? 'Sugerido a partir de actividad relacionada.',
       impact: { transactions, amount: 0, currency: 'UYU' },
-      topic: 'Connections',
+      topic: 'Conexiones',
     });
   });
 
@@ -168,15 +168,15 @@ function makeAliasDecision(kind: DecisionKind, item: ReviewItem, items: ReviewIt
     id: `review:${items.map((entry) => entry.id).join('+')}`,
     kind,
     reviewIds: items.map((entry) => entry.id),
-    title: kind === 'batch' ? `${items.length} variants of ${suggestion}` : suggestion || item.alias,
+    title: kind === 'batch' ? `${items.length} variantes de ${suggestion}` : suggestion || item.alias,
     raw: item.alias,
     suggestion,
     alternatives: [...alternativeSet].slice(0, 6),
     categoryPath: item.categoryPath,
     confidence: 0.5,
-    rationale: item.reason || 'Detected in recent activity.',
+    rationale: item.reason || 'Detectado en la actividad reciente.',
     impact: { transactions: matched, amount, currency: 'UYU' },
-    topic: item.categoryPath[0] ?? (/(merge|same|duplicate)/i.test(item.reason) ? 'Identities' : 'Names'),
+    topic: item.categoryPath[0] ?? (/(merge|same|duplicate)/i.test(item.reason) ? 'Identidades' : 'Nombres'),
     targetEntityId: kind === 'same' ? item.entityId : undefined,
     variants: kind === 'batch' ? aliases : undefined,
   };
@@ -218,15 +218,15 @@ export async function commitDecision(client: BrainIAClient, descriptor: PendingC
 }
 
 export function describeDecision(decision: ReviewDecision) {
-  if (decision.kind === 'relation') return `Connect ${decision.raw} to ${decision.suggestion}?`;
-  if (decision.kind === 'batch') return `Unify ${decision.variants?.length ?? decision.reviewIds.length} variants of “${decision.suggestion}”?`;
-  if (decision.kind === 'category') return `Which category fits “${decision.raw}”?`;
-  if (decision.kind === 'same') return `Are these the same company?`;
-  if (decision.kind === 'label') return `Choose a label for “${decision.raw}”.`;
-  return `Is “${decision.raw}” ${decision.suggestion}?`;
+  if (decision.kind === 'relation') return `¿Conectar ${decision.raw} con ${decision.suggestion}?`;
+  if (decision.kind === 'batch') return `¿Unificar ${decision.variants?.length ?? decision.reviewIds.length} variantes de “${decision.suggestion}”?`;
+  if (decision.kind === 'category') return `¿Qué categoría corresponde a “${decision.raw}”?`;
+  if (decision.kind === 'same') return `¿Son la misma empresa?`;
+  if (decision.kind === 'label') return `Elige una etiqueta para “${decision.raw}”.`;
+  return `¿“${decision.raw}” es ${decision.suggestion}?`;
 }
 
 export function decisionEffort(count: number) {
   const seconds = Math.max(20, Math.round(count * 8));
-  return `${count} quick decision${count === 1 ? '' : 's'} · about ${seconds} seconds`;
+  return `${count} ${count === 1 ? 'decisión rápida' : 'decisiones rápidas'} · unos ${seconds} segundos`;
 }

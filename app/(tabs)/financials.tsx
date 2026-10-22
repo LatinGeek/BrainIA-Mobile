@@ -2,24 +2,25 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
+import { Alert, Platform, Pressable, StyleSheet, Text, TextProps, View } from 'react-native';
+import Animated, { Easing, FadeInDown, FadeOut, FadeOutUp } from 'react-native-reanimated';
 
 import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
-import { Amount, IconTile, Row, TransactionRow } from '@/components/data/Row';
+import { Amount, IconTile, Row, TransactionRow, useCountedAmount } from '@/components/data/Row';
 import { MixCard } from '@/components/data/MixCard';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { TrendChart } from '@/components/data/TrendChart';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { Screen, Section } from '@/components/layout/Screen';
+import { Screen, Section, StaggerGroup } from '@/components/layout/Screen';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
 import { hasFinancialCurrencyConversion, summarizeFinancialTransactions } from '@/lib/financial-summary';
-import { useAsyncResource } from '@/lib/hooks';
-import { convertCurrency, formatCategoryLabel, formatCurrency, isUncategorizedLabel, parseCurrency, FIXED_FX_LABEL, type SupportedCurrency } from '@/lib/format';
+import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
+import { listLayout } from '@/lib/motion';
+import { accountTypeLabel, convertCurrency, formatCategoryLabel, formatCurrency, isUncategorizedLabel, parseCurrency, FIXED_FX_LABEL, type SupportedCurrency } from '@/lib/format';
 import type { FinancialAccount, PendingTransaction, TransactionSummary } from '@/lib/domain';
 import { DEFAULT_FINANCIAL_ACCOUNT_COLOR, FINANCIAL_ACCOUNT_COLORS } from '@/lib/financial-accounts';
 
@@ -394,7 +395,7 @@ export default function FinancialsScreen() {
       if (globalThis.confirm(`Cancelar pendiente?\n\n${message}`)) void cancelPending(pending);
       return;
     }
-    Alert.alert('Cancelar pendiente?', message, [
+    Alert.alert('¿Cancelar el pendiente?', message, [
       { text: 'Volver', style: 'cancel' },
       { text: 'Cancelar pendiente', style: 'destructive', onPress: () => void cancelPending(pending) },
     ]);
@@ -455,7 +456,7 @@ export default function FinancialsScreen() {
       setAccountEditorOpen(false);
       await refresh();
     } catch (saveError) {
-      Alert.alert('Unable to save account', saveError instanceof Error ? saveError.message : 'Try again.');
+      Alert.alert('No se pudo guardar la cuenta', saveError instanceof Error ? saveError.message : 'Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -471,7 +472,7 @@ export default function FinancialsScreen() {
         Alert.alert('Cuenta eliminada', `${result.detachedTransactions} ${result.detachedTransactions === 1 ? 'transacción permanece' : 'transacciones permanecen'} en tu historial sin una cuenta asignada.`);
       }
     } catch (deleteError) {
-      Alert.alert('Unable to delete account', deleteError instanceof Error ? deleteError.message : 'Try again.');
+      Alert.alert('No se pudo eliminar la cuenta', deleteError instanceof Error ? deleteError.message : 'Inténtalo de nuevo.');
     } finally {
       setDeletingAccountId(null);
     }
@@ -483,9 +484,9 @@ export default function FinancialsScreen() {
       if (globalThis.confirm(`Delete account?\n\n${message}`)) void deleteAccount(account);
       return;
     }
-    Alert.alert('Delete account?', message, [
+    Alert.alert('¿Eliminar la cuenta?', message, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void deleteAccount(account) },
+      { text: 'Eliminar', style: 'destructive', onPress: () => void deleteAccount(account) },
     ]);
   }
 
@@ -499,7 +500,7 @@ export default function FinancialsScreen() {
     if (!adjustingAccount) return;
     const parsedTarget = Number(targetBalance.replace(',', '.'));
     if (!Number.isFinite(parsedTarget)) {
-      Alert.alert('Invalid balance', 'Enter the current account balance as a number.');
+      Alert.alert('Saldo inválido', 'Ingresa el saldo actual de la cuenta como número.');
       return;
     }
     setSaving(true);
@@ -508,7 +509,7 @@ export default function FinancialsScreen() {
       setAdjustingAccount(null);
       await refresh();
     } catch (saveError) {
-      Alert.alert('Unable to adjust balance', saveError instanceof Error ? saveError.message : 'Try again.');
+      Alert.alert('No se pudo ajustar el saldo', saveError instanceof Error ? saveError.message : 'Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -521,10 +522,10 @@ export default function FinancialsScreen() {
       subtitle="Dónde se movió tu dinero y qué cambió."
       refreshing={loading}
       onRefresh={refresh}
-      actions={<Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Current'} tone={error ? 'warning' : 'positive'} />}
+      actions={<Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Actual'} tone={error ? 'warning' : 'positive'} />}
     >
       {error ? <StateView kind="error" title="No se pudo cargar Dinero" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !data ? <StateView kind="loading" title="Loading" skeleton="chart" skeletonCount={2} /> : null}
+      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
 
       {data ? (
         <>
@@ -536,26 +537,29 @@ export default function FinancialsScreen() {
             </View>
           </View>
 
+          <StaggerGroup key={view}>
           {view === 'overview' ? (
             <>
               <MixCard
-                overline={`Spending · ${period === 'year' ? 'projected year' : cycleLabel}`}
-                title="Expense mix"
+                overline={`Gastos · ${period === 'year' ? 'año proyectado' : cycleLabel}`}
+                title="Distribución de gastos"
                 action={<SegmentedControl items={mixModes as unknown as typeof mixModes} value={mixMode} onChange={setMixMode} size="mini" />}
                 segments={mixSegments}
                 centerValue={displayTotal(periodSpend)}
-                centerLabel="Total spent"
+                centerAmount={periodSpend}
+                currency={displayCurrency}
+                centerLabel="Gasto total"
                 selectedId={selectedMixId}
                 onSelect={(segment) => setSelectedMixId(segment?.id ?? null)}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                delta={{ text: period === 'year' ? 'Projected from this cycle' : 'Current cycle', tone: 'neutral' }}
+                delta={{ text: period === 'year' ? 'Proyectado desde este ciclo' : 'Ciclo actual', tone: 'neutral' }}
                 percentageNoun="spend"
               />
 
               <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Net movement</Text>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Movimiento neto</Text>
                     <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>{period === 'year' ? 'Proyección anual basada en los datos del ciclo actual.' : cycleLabel}</Text>
                   </View>
                   <View style={{ flexShrink: 0 }}>
@@ -571,24 +575,24 @@ export default function FinancialsScreen() {
                 <Amount value={periodNet} currency={displayCurrency} tone={periodNet >= 0 ? 'positive' : 'expense'} size="hero" signed />
                 <View style={{ flexDirection: 'row', gap: 18 }}>
                   <View style={{ gap: 2 }}>
-                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Income</Text>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]}>{displayTotal(periodIncome)}</Text>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Ingresos</Text>
+                    <FinancialTotal value={periodIncome} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]} />
                   </View>
                   <View style={{ gap: 2 }}>
-                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Expenses</Text>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]}>{displayTotal(periodSpend)}</Text>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Gastos</Text>
+                    <FinancialTotal value={periodSpend} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]} />
                   </View>
                 </View>
               </GlassSurface>
 
-              <Section title="Accounts" subtitle="Balances include transfers and adjustments." actionLabel="Manage" onActionPress={() => setView('accounts')} count={accounts.length}>
+              <Section title="Cuentas" subtitle="Los saldos incluyen transferencias y ajustes." actionLabel="Gestionar" onActionPress={() => setView('accounts')} count={accounts.length}>
                 <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <IconTile icon="credit-card" color={theme.colors.accent} />
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Total available</Text>
-                    <Text style={[theme.typography.headline, { color: totalAccountBalance >= 0 ? theme.colors.textPrimary : theme.status.expense }]}>{displayTotal(totalAccountBalance)}</Text>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Total disponible</Text>
+                    <FinancialTotal value={totalAccountBalance} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.headline, { color: totalAccountBalance >= 0 ? theme.colors.textPrimary : theme.status.expense }]} />
                   </View>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{accounts.length} accounts</Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{accounts.length} {accounts.length === 1 ? 'cuenta' : 'cuentas'}</Text>
                 </GlassSurface>
                 {accounts.slice(0, 2).map((account) => (
                   <AccountRow
@@ -605,18 +609,18 @@ export default function FinancialsScreen() {
                 ))}
               </Section>
 
-              <Section title="Cash flow" subtitle="Income and spending across the last six cycles.">
+              <Section title="Flujo de caja" subtitle="Ingresos y gastos de los últimos seis ciclos.">
                 <TrendChart
                   mode={trendMode}
-                  title={trendMode === 'line' ? 'Income and expenses' : 'Monthly movement'}
+                  title={trendMode === 'line' ? 'Ingresos y gastos' : 'Movimiento mensual'}
                   subtitle={cycleLabel}
                   labels={monthlyCashFlow.map((point) => point.label)}
                   series={[
-                    { label: 'Income', color: theme.status.income, data: monthlyCashFlow.map((point) => point.income) },
-                    { label: 'Spending', color: theme.status.expense, data: monthlyCashFlow.map((point) => point.spending) },
+                    { label: 'Ingresos', color: theme.status.income, data: monthlyCashFlow.map((point) => point.income) },
+                    { label: 'Gastos', color: theme.status.expense, data: monthlyCashFlow.map((point) => point.spending) },
                   ]}
                   formatValue={(value) => formatCurrency(value, displayCurrency)}
-                  action={<SegmentedControl items={[{ value: 'line', label: 'Line' }, { value: 'bars', label: 'Bars' }] as const} value={trendMode} onChange={(value) => setTrendMode(value as TrendMode)} size="mini" />}
+                  action={<SegmentedControl items={[{ value: 'line', label: 'Línea' }, { value: 'bars', label: 'Barras' }] as const} value={trendMode} onChange={(value) => setTrendMode(value as TrendMode)} size="mini" />}
                 />
               </Section>
 
@@ -629,7 +633,7 @@ export default function FinancialsScreen() {
               ) : null}
 
               {financeInsights.length ? (
-                <Section title="Signals" subtitle="Patterns worth noticing this cycle.">
+                <Section title="Señales" subtitle="Patrones que vale la pena notar este ciclo.">
                   {financeInsights.slice(0, 2).map((insight) => (
                     <SignalCard key={insight.id} variant="card" origin="model" title={insight.title} summary={insight.summary} confidence={insight.confidence} onPress={() => router.push(`/insight/${insight.id}`)} />
                   ))}
@@ -643,7 +647,7 @@ export default function FinancialsScreen() {
               </Section>
 
               {pendingTransactions.length ? (
-                <Section title="Pending" subtitle="Expected income and debts. They do not affect balances until executed." count={pendingTransactions.length} actionLabel="Open" onActionPress={() => setView('activity')}>
+                <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length} actionLabel="Open" onActionPress={() => setView('activity')}>
                   {pendingTransactions.slice(0, 2).map((pending) => (
                     <PendingTransactionRow key={pending.id} pending={pending} onExecute={() => { setExecutionDate(localDateInputValue()); setExecutingPending(pending); }} onEdit={() => openPendingEditor(pending)} onCancel={() => confirmCancelPending(pending)} />
                   ))}
@@ -655,16 +659,19 @@ export default function FinancialsScreen() {
           {view === 'accounts' ? (
             <>
               <MixCard
-                overline="Portfolio · today"
-                title="Portfolio mix"
+                overline="Cartera · hoy"
+                title="Distribución de la cartera"
                 segments={portfolioSegments}
                 centerValue={displayTotal(totalAccountBalance)}
-                centerLabel="Net portfolio"
+                centerAmount={totalAccountBalance}
+                currency={displayCurrency}
+                centerLabel="Cartera neta"
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
                 percentageNoun="portfolio"
-                delta={{ text: 'Balances include transfers', tone: 'neutral' }}
+                delta={{ text: 'Los saldos incluyen transferencias', tone: 'neutral' }}
               />
-              <Button label="Create account" icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} onPress={openCreateAccount} full />
+              <Button label="Crear cuenta" icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} onPress={openCreateAccount} full />
+              <View style={{ gap: 22 }}>
               {accounts.length ? accounts.map((account) => (
                 <AccountRow
                   key={account.id}
@@ -678,6 +685,7 @@ export default function FinancialsScreen() {
                   deleting={deletingAccountId === account.id}
                 />
               )) : <StateView title="Todavía no hay cuentas" description="Crea una cuenta y luego establece su saldo actual con un ajuste." actionLabel="Crear cuenta" onAction={openCreateAccount} />}
+              </View>
             </>
           ) : null}
 
@@ -700,7 +708,7 @@ export default function FinancialsScreen() {
               </GlassSurface>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>{transactionSelectionMode ? 'Tocá los registros que querés comparar.' : selectedTransactionCycleLabel}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>{transactionSelectionMode ? 'Toca los registros que quieres comparar.' : selectedTransactionCycleLabel}</Text>
                 {!transactionSelectionMode ? <Button label="Nuevo" size="sm" icon={<Feather name="plus" size={14} color={theme.colors.onAccent} />} onPress={() => openEntryEditor(false)} /> : null}
               </View>
 
@@ -710,11 +718,11 @@ export default function FinancialsScreen() {
                     <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{`${selectedTransactionIds.length} de 2 seleccionados`}</Text>
                     <Chip label="Cancelar" onPress={() => setSelectedTransactionIds([])} />
                   </View>
-                  {selectedTransactionIds.length === 2 ? <Button label="Revisar y consolidar" size="sm" onPress={openConsolidation} /> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Tocá otro movimiento para compararlo.</Text>}
+                  {selectedTransactionIds.length === 2 ? <Button label="Revisar y consolidar" size="sm" onPress={openConsolidation} /> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca otro movimiento para compararlo.</Text>}
                 </GlassSurface>
               ) : null}
 
-              {selectedCycleTransactionsLoading ? <StateView kind="loading" title="Loading" skeleton="list" skeletonCount={3} /> : null}
+              {selectedCycleTransactionsLoading ? <StateView kind="loading" title="Cargando" skeleton="list" skeletonCount={3} /> : null}
               {!selectedCycleTransactionsLoading && filteredCycleTransactions.length ? (
                 <View>
                   {filteredCycleTransactions.map((transaction) => (
@@ -732,7 +740,7 @@ export default function FinancialsScreen() {
               ) : null}
               {!selectedCycleTransactionsLoading && !filteredCycleTransactions.length ? <StateView title="Sin movimientos coincidentes" description="Prueba otro período o cambia el filtro." /> : null}
 
-              <Section title="Pending" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length}>
+              <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length}>
                 <Button label="Nuevo pendiente" size="sm" variant="secondary" onPress={() => openEntryEditor(true)} />
                 {pendingTransactions.length ? pendingTransactions.map((pending) => (
                   <PendingTransactionRow key={pending.id} pending={pending} onExecute={() => { setExecutionDate(localDateInputValue()); setExecutingPending(pending); }} onEdit={() => openPendingEditor(pending)} onCancel={() => confirmCancelPending(pending)} />
@@ -740,11 +748,12 @@ export default function FinancialsScreen() {
               </Section>
             </>
           ) : null}
+          </StaggerGroup>
         </>
       ) : null}
 
       <BottomSheet visible={consolidationOpen} title="Consolidar movimientos" onClose={() => !consolidating && setConsolidationOpen(false)}>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Se conservará un único movimiento y las fuentes del otro quedarán adjuntas como evidencia. Elegí qué información representa el pago real.</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Se conservará un único movimiento y las fuentes del otro quedarán adjuntas como evidencia. Elige qué información representa el pago real.</Text>
         <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Monto y movimiento principal</Text>
         {selectedTransactions.map((transaction) => (
           <Row key={transaction.id} title={`${transaction.displayMerchantLabel ?? transaction.merchantLabel} · ${formatCurrency(parseCurrency(transaction.amount), transaction.currency)}`} subtitle={transaction.observedAt} trailing={<Text style={{ color: canonicalTransactionId === transaction.id ? theme.colors.success : theme.colors.textMuted }}>{canonicalTransactionId === transaction.id ? 'Conservar' : 'Usar'}</Text>} onPress={() => setCanonicalTransactionId(transaction.id)} />
@@ -767,7 +776,7 @@ export default function FinancialsScreen() {
         </View>
       </BottomSheet>
 
-      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Editar cuenta' : 'Crear cuenta'} onClose={() => setAccountEditorOpen(false)}>
+      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Editar cuenta' : 'Crear cuenta'} onClose={() => setAccountEditorOpen(false)} footer={<Button label={editingAccount ? 'Guardar cambios' : 'Crear cuenta'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} full />}>
         <Field label="Nombre de la cuenta" value={accountName} onChangeText={setAccountName} placeholder="Cuenta bancaria principal" autoCapitalize="words" />
         <Field label="Últimos dígitos (opcional)" value={accountMask} onChangeText={setAccountMask} placeholder="•••• 5343" />
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
@@ -780,7 +789,6 @@ export default function FinancialsScreen() {
             </Pressable>
           ))}
         </View>
-        <Button label={editingAccount ? 'Guardar cambios' : 'Crear cuenta'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} />
       </BottomSheet>
 
       <BottomSheet visible={Boolean(adjustingAccount)} title="Ajustar saldo de la cuenta" onClose={() => setAdjustingAccount(null)}>
@@ -794,7 +802,7 @@ export default function FinancialsScreen() {
         ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={entryEditorOpen} title={editingPending ? 'Editar pendiente' : entryIsPending ? 'Nuevo pendiente' : 'Nuevo movimiento'} onClose={() => !entrySaving && setEntryEditorOpen(false)}>
+      <BottomSheet visible={entryEditorOpen} title={editingPending ? 'Editar pendiente' : entryIsPending ? 'Nuevo pendiente' : 'Nuevo movimiento'} onClose={() => !entrySaving && setEntryEditorOpen(false)} footer={<Button label={editingPending ? 'Guardar cambios' : entryIsPending ? 'Guardar pendiente' : 'Guardar movimiento'} onPress={saveEntry} loading={entrySaving} disabled={!entryTitle.trim() || !entryAmount.trim()} full />}>
         {!editingPending ? (
           <>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Registro</Text>
@@ -817,7 +825,6 @@ export default function FinancialsScreen() {
           ))}
         </View>
         <Field label={entryIsPending ? 'Fecha estimada de ejecución' : 'Fecha del movimiento'} value={entryDate} onChangeText={setEntryDate} placeholder="AAAA-MM-DD" autoCapitalize="none" />
-        <Button label={editingPending ? 'Guardar cambios' : entryIsPending ? 'Guardar pendiente' : 'Guardar movimiento'} onPress={saveEntry} loading={entrySaving} disabled={!entryTitle.trim() || !entryAmount.trim()} />
       </BottomSheet>
 
       <BottomSheet visible={Boolean(executingPending)} title="Marcar como ejecutado" onClose={() => !entrySaving && setExecutingPending(null)}>
@@ -841,6 +848,12 @@ export default function FinancialsScreen() {
   );
 }
 
+function FinancialTotal({ value, currency, approximate, style }: { value: number; currency: SupportedCurrency; approximate: boolean; style: TextProps['style'] }) {
+  const display = useCountedAmount(value);
+  const format = (amount: number) => `${approximate ? '≈ ' : ''}${formatCurrency(amount, currency)}`;
+  return <Text accessibilityLabel={format(value)} style={style}>{format(display)}</Text>;
+}
+
 function AccountRow({
   account,
   displayCurrency,
@@ -861,19 +874,20 @@ function AccountRow({
   deleting: boolean;
 }) {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   const nativeCurrency = account.currency ?? 'UYU';
   const nativeBalance = parseCurrency(account.balance);
   const convertedBalance = convertCurrency(nativeBalance, nativeCurrency, displayCurrency);
   const accountColor = account.color ?? DEFAULT_FINANCIAL_ACCOUNT_COLOR;
 
   return (
-    <Animated.View layout={LinearTransition.springify().damping(18).stiffness(180)}>
+    <Animated.View layout={reduceMotion ? undefined : listLayout} exiting={reduceMotion ? undefined : FadeOut.duration(theme.motion.duration.quick).easing(Easing.bezier(...theme.motion.easing.in))}>
       <GlassSurface level={expanded ? 'regular' : 'thin'} padding="none" style={{ borderColor: expanded ? `${accountColor}55` : theme.glass.divider }}>
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: accountColor, zIndex: 2 }} />
         <GlassPressable
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          accessibilityLabel={`${account.name}, ${nativeCurrency !== displayCurrency ? 'approximately ' : ''}${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
+          accessibilityLabel={`${account.name}, ${nativeCurrency !== displayCurrency ? 'aproximadamente ' : ''}${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
           onPress={onToggle}
           scaleTo={0.99}
           style={{ minHeight: 68, flexDirection: 'row', alignItems: 'center', paddingLeft: 15, paddingRight: 10, paddingVertical: 8, gap: 10 }}
@@ -881,7 +895,7 @@ function AccountRow({
           <IconTile icon="credit-card" size="lg" color={accountColor} tint={`${accountColor}22`} />
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{account.name}</Text>
-            <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, textTransform: 'capitalize' }]}>{account.type} · {nativeCurrency}{account.mask ? ` · ${account.mask}` : ''}</Text>
+            <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, textTransform: 'capitalize' }]}>{accountTypeLabel(account.type)} · {nativeCurrency}{account.mask ? ` · ${account.mask}` : ''}</Text>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 2 }}>
             <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: convertedBalance >= 0 ? theme.colors.textPrimary : theme.status.expense, fontVariant: ['tabular-nums'], maxWidth: 130 }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
@@ -890,17 +904,18 @@ function AccountRow({
           <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textMuted} />
         </GlassPressable>
         {expanded ? (
-          <Animated.View entering={FadeInDown.duration(theme.motion.duration.quick)} exiting={FadeOutUp.duration(theme.motion.duration.press)} style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
+          <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(theme.motion.duration.quick)} exiting={reduceMotion ? undefined : FadeOutUp.duration(theme.motion.duration.press)} style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.glass.divider }} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, padding: 10, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, gap: 2 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Original balance</Text>
+              <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={{ gap: 2 }}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo original</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
-              </View>
-              <View style={{ flex: 1, padding: 10, borderRadius: theme.radius.md, backgroundColor: `${accountColor}14`, gap: 2 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Portfolio value</Text>
+              </GlassSurface>
+              <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={{ gap: 2 }}>
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `${accountColor}14` }]} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Valor en cartera</Text>
                 <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
-              </View>
+              </GlassSurface>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}><Button label="Editar" variant="secondary" size="sm" onPress={onEdit} icon={<Feather name="edit-2" size={13} color={theme.colors.textPrimary} />} /></View>

@@ -7,38 +7,38 @@ export type BundleSource = 'live' | 'cache' | 'empty';
 export function getVisibilityCopy(visibility: DataVisibility) {
   if (visibility === 'essential') {
     return {
-      label: 'Essential',
-      description: 'Shows summaries and decisions. Hides raw identifiers, technical reasons and account details.',
+      label: 'Esencial',
+      description: 'Muestra resúmenes y decisiones. Oculta identificadores, motivos técnicos y datos de cuentas.',
     };
   }
 
   if (visibility === 'detailed') {
     return {
-      label: 'Detailed',
-      description: 'Shows evidence, diagnostics and operational context for audit work.',
+      label: 'Detallado',
+      description: 'Muestra evidencias, diagnósticos y contexto operativo para auditar.',
     };
   }
 
   return {
-    label: 'Balanced',
-    description: 'Shows useful context while masking low-value identifiers and technical details.',
+    label: 'Equilibrado',
+    description: 'Muestra contexto útil y oculta identificadores y detalles técnicos de poco valor.',
   };
 }
 
 export function getSourcePresentation(source?: BundleSource | string) {
   if (source === 'live') {
-    return { label: 'Live data', tone: 'positive' as const };
+    return { label: 'Datos en vivo', tone: 'positive' as const };
   }
 
   if (source === 'cache') {
-    return { label: 'Cached data', tone: 'warning' as const };
+    return { label: 'Datos en caché', tone: 'warning' as const };
   }
 
   if (source === 'empty') {
-    return { label: 'No results', tone: 'neutral' as const };
+    return { label: 'Sin resultados', tone: 'neutral' as const };
   }
 
-  return { label: 'Unavailable', tone: 'neutral' as const };
+  return { label: 'No disponible', tone: 'neutral' as const };
 }
 
 export function shouldShowOperationalDetail(visibility: DataVisibility) {
@@ -52,7 +52,7 @@ export function shouldShowEvidenceDetail(visibility: DataVisibility) {
 export function maskIdentifier(value?: string, visibility: DataVisibility = 'balanced') {
   const cleaned = cleanDisplayText(value);
   if (!cleaned) {
-    return 'Not available';
+    return 'No disponible';
   }
 
   if (visibility === 'detailed') {
@@ -60,7 +60,7 @@ export function maskIdentifier(value?: string, visibility: DataVisibility = 'bal
   }
 
   if (cleaned.length <= 6) {
-    return 'Hidden';
+    return 'Oculto';
   }
 
   return `${cleaned.slice(0, 3)}...${cleaned.slice(-3)}`;
@@ -69,26 +69,26 @@ export function maskIdentifier(value?: string, visibility: DataVisibility = 'bal
 export function maskAccount(value?: string, visibility: DataVisibility = 'balanced') {
   const cleaned = cleanDisplayText(value);
   if (!cleaned) {
-    return visibility === 'essential' ? 'Account hidden' : 'Unknown account';
+    return visibility === 'essential' ? 'Cuenta oculta' : 'Cuenta desconocida';
   }
 
   if (visibility !== 'essential') {
     return cleaned;
   }
-  return 'Account hidden';
+  return 'Cuenta oculta';
 }
 
 export function presentTransactionSubtitle(transaction: TransactionSummary, visibility: DataVisibility) {
   if (transaction.excludedFromReports) {
     const account = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.account, visibility) : undefined;
-    return joinDisplayParts(['Balance adjustment', 'Excluded from reports', account]);
+    return joinDisplayParts(['Ajuste de saldo', 'Excluido de los informes', account]);
   }
   if (transaction.kind === 'transfer') {
     const destination = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.destinationAccount, visibility) : undefined;
-    return joinDisplayParts(['Transfer', transaction.account ? `From ${maskAccount(transaction.account, visibility)}` : undefined, destination ? `To ${destination}` : undefined]);
+    return joinDisplayParts(['Transferencia', transaction.account ? `Desde ${maskAccount(transaction.account, visibility)}` : undefined, destination ? `Hacia ${destination}` : undefined]);
   }
   const account = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.account, visibility) : undefined;
-  const category = transaction.kind === 'income' ? 'Income' : formatCategoryLabel(transaction.category);
+  const category = transaction.kind === 'income' ? 'Ingreso' : formatCategoryLabel(transaction.category);
   return joinDisplayParts([category, account]);
 }
 

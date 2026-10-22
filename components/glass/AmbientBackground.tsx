@@ -49,6 +49,14 @@ export function AmbientBackground({ animated = false }: { animated?: boolean }) 
             <Stop offset="0" stopColor={theme.ambient.orbs[2]} stopOpacity="0.24" />
             <Stop offset="1" stopColor={theme.ambient.orbs[2]} stopOpacity="0" />
           </RadialGradient>
+          <RadialGradient id="ambient-orb-4" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor={theme.ambient.orbs[2]} stopOpacity="0.14" />
+            <Stop offset="1" stopColor={theme.ambient.orbs[2]} stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="ambient-orb-5" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor={theme.ambient.orbs[0]} stopOpacity="0.3" />
+            <Stop offset="1" stopColor={theme.ambient.orbs[0]} stopOpacity="0" />
+          </RadialGradient>
           <Mask id="ambient-ring-mask">
             <Rect width="100%" height="100%" fill="black" />
             <Rect x="0" y="0" width="100%" height="62%" fill="white" />
@@ -58,6 +66,8 @@ export function AmbientBackground({ animated = false }: { animated?: boolean }) 
         <Circle cx="12%" cy="4%" r="240" fill="url(#ambient-orb-1)" />
         <Circle cx="92%" cy="32%" r="210" fill="url(#ambient-orb-2)" />
         <Circle cx="46%" cy="96%" r="200" fill="url(#ambient-orb-3)" />
+        <Circle cx="90%" cy="62%" r="170" fill="url(#ambient-orb-4)" />
+        <Circle cx="4%" cy="46%" r="170" fill="url(#ambient-orb-5)" />
         <Circle cx="106%" cy="-8%" r="190" stroke={theme.ambient.ring} strokeOpacity="0.18" strokeWidth="18" fill="none" mask="url(#ambient-ring-mask)" />
         <Circle cx="-14%" cy="74%" r="150" stroke={theme.ambient.ring} strokeOpacity="0.1" strokeWidth="14" fill="none" />
       </Svg>

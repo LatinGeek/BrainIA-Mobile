@@ -51,45 +51,45 @@ export function DecisionCard({
       {decision.kind === 'batch' ? (
         <View style={{ gap: 6 }}>
           {(decision.variants ?? []).slice(0, 8).map((variantLabel) => (
-            <View key={variantLabel} style={[styles.evidenceRow, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+            <GlassSurface key={variantLabel} level="thin" padding="none" radius="sm" contentStyle={styles.evidenceRow}>
               <IconTile icon="check" size="sm" color={theme.colors.accent} />
               <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textPrimary, flex: 1 }]}>{cleanDisplayText(variantLabel)}</Text>
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>→ {cleanDisplayText(decision.suggestion)}</Text>
-            </View>
+            </GlassSurface>
           ))}
         </View>
       ) : null}
 
       {decision.kind === 'name' || decision.kind === 'label' ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={[styles.compare, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
-            <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Raw</Text>
+          <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={styles.compare}>
+            <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Original</Text>
             <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.raw)}</Text>
-          </View>
+          </GlassSurface>
           <Feather name="arrow-right" size={15} color={theme.colors.textMuted} />
-          <View style={[styles.compare, { backgroundColor: `${theme.colors.accent}1A`, borderColor: `${theme.colors.accent}47` }]}>
-            <Text style={[theme.typography.overline, { color: theme.colors.accent }]}>Becomes</Text>
+          <GlassSurface level="thin" tone="accent" padding="sm" radius="md" style={{ flex: 1, borderColor: `${theme.colors.accent}47` }} contentStyle={styles.compare}>
+            <Text style={[theme.typography.overline, { color: theme.colors.accent }]}>Pasa a ser</Text>
             <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.suggestion)}</Text>
-          </View>
+          </GlassSurface>
         </View>
       ) : null}
 
       {decision.kind === 'same' ? (
         <View style={{ gap: 8 }}>
           <View style={styles.duo}>
-            <View style={[styles.person, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+            <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={styles.person}>
               <IconTile icon="user" size="sm" />
               <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.raw)}</Text>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>From this review</Text>
-            </View>
-            <View style={[styles.person, { backgroundColor: theme.glass.inner, borderColor: theme.glass.divider }]}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>De esta revisión</Text>
+            </GlassSurface>
+            <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={styles.person}>
               <IconTile icon="check-circle" size="sm" color={theme.colors.accent} />
               <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cleanDisplayText(decision.suggestion)}</Text>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Existing entity</Text>
-            </View>
+              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Entidad existente</Text>
+            </GlassSurface>
           </View>
           {onWhy ? (
-            <Button label={whyOpen ? 'Hide why' : 'Why these match?'} variant="ghost" size="sm" onPress={onWhy} icon={<Feather name="help-circle" size={14} color={theme.colors.textMuted} />} />
+            <Button label={whyOpen ? 'Ocultar motivo' : '¿Por qué coinciden?'} variant="ghost" size="sm" onPress={onWhy} icon={<Feather name="help-circle" size={14} color={theme.colors.textMuted} />} />
           ) : null}
           {whyOpen ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.rationale)}</Text> : null}
         </View>
@@ -120,11 +120,11 @@ export function DecisionCard({
           </View>
           {showCustom ? (
             <View style={{ gap: 8 }}>
-              <Field label="Something else" value={customValue} onChangeText={setCustomValue} placeholder="Type a category or label" autoFocus />
-              <Button label="Use this" size="sm" disabled={!customValue.trim()} onPress={() => onAnswer?.('accept', customValue.trim())} />
+              <Field label="Otra opción" value={customValue} onChangeText={setCustomValue} placeholder="Escribe una categoría o etiqueta" autoFocus />
+              <Button label="Usar esta" size="sm" disabled={!customValue.trim()} onPress={() => onAnswer?.('accept', customValue.trim())} />
             </View>
           ) : (
-            <Button label="Something else…" variant="ghost" size="sm" onPress={() => setShowCustom(true)} />
+            <Button label="Otra opción…" variant="ghost" size="sm" onPress={() => setShowCustom(true)} />
           )}
         </View>
       ) : null}
@@ -133,7 +133,7 @@ export function DecisionCard({
         <View style={{ gap: 8 }}>
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cleanDisplayText(decision.rationale)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 6 }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>Apply this automatically next time</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>Aplicar esto automáticamente la próxima vez</Text>
             <Chip label={createRule ? 'Rule on' : 'Once'} selected={createRule} onPress={() => setCreateRule((value) => !value)} icon={createRule ? 'repeat' : 'check'} />
           </View>
         </View>
@@ -148,8 +148,8 @@ export function DecisionCard({
             </View>
           ) : decision.kind === 'category' || decision.kind === 'label' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}><Button label="Not this" variant="secondary" size="lg" onPress={() => onAnswer?.('different')} /></View>
-              <View style={{ flex: 1 }}><Button label="Use suggestion" size="lg" onPress={() => onAnswer?.('accept', decision.suggestion)} /></View>
+              <View style={{ flex: 1 }}><Button label="No es esta" variant="secondary" size="lg" onPress={() => onAnswer?.('different')} /></View>
+              <View style={{ flex: 1 }}><Button label="Usar sugerencia" size="lg" onPress={() => onAnswer?.('accept', decision.suggestion)} /></View>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -186,8 +186,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 10, // theme.radius.sm
-    borderWidth: StyleSheet.hairlineWidth,
   },
   answerTile: {
     flexDirection: 'row',
@@ -198,11 +196,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   compare: {
-    flex: 1,
     gap: 3,
-    padding: 10,
-    borderRadius: 14, // theme.radius.md
-    borderWidth: StyleSheet.hairlineWidth,
     minHeight: 62,
   },
   duo: {
@@ -210,10 +204,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   person: {
-    flex: 1,
     gap: 6,
-    padding: 10,
-    borderRadius: 14, // theme.radius.md
-    borderWidth: StyleSheet.hairlineWidth,
   },
 });

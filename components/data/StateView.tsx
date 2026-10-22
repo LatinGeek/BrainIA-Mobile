@@ -40,7 +40,7 @@ export function StateView({
 
   if (kind === 'loading') {
     const height = skeleton === 'chart' ? 160 : skeleton === 'hero' ? 120 : skeleton === 'detail' ? 88 : 60;    return (
-      <View accessibilityRole="progressbar" accessibilityLabel={`${skeleton} loading state`} style={{ gap: theme.spacing.sm }}>
+      <View accessibilityRole="progressbar" accessibilityLabel={'Cargando contenido'} style={{ gap: theme.spacing.sm }}>
         {Array.from({ length: skeletonCount }).map((_, index) => (
           <GlassSurface key={index} level="thin" padding="none" style={{ height }} contentStyle={{ height }}>
             <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.glass.inner }]} />
