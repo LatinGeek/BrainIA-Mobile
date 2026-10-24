@@ -35,8 +35,8 @@ export function MixCard({
   formatValue = (value) => String(Math.round(value)),
   selectedId,
   onSelect,
-  emptyLabel = 'No spend',
-  percentageNoun = 'spend',
+  emptyLabel = 'Sin gasto',
+  percentageNoun = 'gasto',
 }: {
   overline?: string;
   title: string;
@@ -63,6 +63,9 @@ export function MixCard({
   const total = source.reduce((sum, segment) => sum + Math.max(0, segment.value), 0) || 1;
   const active = source.find((segment) => segment.id === activeId);
   const size = Math.round(Math.min(268, Math.max(204, width - (fontScale >= 1.3 ? 76 : 92))));
+  const centerNumeral = active ? formatValue(active.displayValue ?? active.value) : cleanDisplayText(centerValue);
+  // Shrink the centre figure by length so long currency strings do not clip (web has no adjustsFontSizeToFit).
+  const centerNumeralSize = centerNumeral.length > 14 ? (width < 360 ? 14 : 16) : centerNumeral.length > 10 ? (width < 360 ? 17 : 20) : (width < 360 ? 20 : 26);
   const strokeWidth = 22;
   const radius = size / 2 - strokeWidth / 2 - 4;
   const circumference = 2 * Math.PI * radius;
@@ -103,14 +106,14 @@ export function MixCard({
         </View>
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
           {action}
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${source.length} ${source.length === 1 ? 'group' : 'groups'}`}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${source.length} ${source.length === 1 ? 'grupo' : 'grupos'}`}</Text>
         </View>
       </View>
 
       <View style={{ alignItems: 'center' }}>
         <Pressable
           accessibilityRole={active ? 'button' : undefined}
-          accessibilityLabel={active ? `Clear ${active.label} selection` : `${title} radial chart`}
+          accessibilityLabel={active ? `Quitar selección de ${active.label}` : `Gráfico circular de ${title}`}
           disabled={!active}
           onPress={() => select(null)}
           style={{ width: size, height: size }}
@@ -142,11 +145,11 @@ export function MixCard({
               <Text numberOfLines={1} style={[theme.typography.caption, { color: active ? arcColor(active, theme.colors.accent) : theme.colors.textMuted, textAlign: 'center' }]}>
                 {active ? cleanDisplayText(active.label) : cleanDisplayText(centerLabel ?? 'Total')}
               </Text>
-              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: width < 360 ? 20 : 26, lineHeight: width < 360 ? 25 : 32, textAlign: 'center' }]}>
-                {active ? formatValue(active.displayValue ?? active.value) : cleanDisplayText(centerValue)}
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} style={[theme.typography.numeral, { color: theme.colors.textPrimary, fontSize: centerNumeralSize, lineHeight: Math.round(centerNumeralSize * 1.23), textAlign: 'center' }]}>
+                {centerNumeral}
               </Text>
               {active ? (
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} of {percentageNoun}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center', fontSize: 10 }]}>{percent(active.value, total)} del {percentageNoun}</Text>
               ) : delta ? (
                 <Text style={[theme.typography.caption, { color: delta.tone === 'bad' ? theme.status.expense : delta.tone === 'good' ? theme.status.income : theme.colors.textMuted, textAlign: 'center', fontSize: 10 }]}>{cleanDisplayText(delta.text)}</Text>
               ) : null}
@@ -163,13 +166,13 @@ export function MixCard({
               key={arc.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} of ${percentageNoun}`}
+              accessibilityLabel={`${arc.label}, ${formatValue(arc.displayValue ?? arc.value)}, ${percent(arc.value, total)} del ${percentageNoun}`}
               onPress={() => select(selected ? null : arc)}
               style={[styles.legendRow, { backgroundColor: selected ? theme.glass.inner : 'transparent' }]}
             >
               <View style={[styles.legendDot, { backgroundColor: arc.color }]} />
-              <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1, fontSize: 13 }]}>{cleanDisplayText(arc.label)}</Text>
-              <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.caption, { color: theme.colors.textPrimary, width: 84, textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{formatValue(arc.displayValue ?? arc.value)}</Text>
+              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, flex: 1, minWidth: 0, fontSize: 13, lineHeight: 17 }]}>{cleanDisplayText(arc.label)}</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[theme.typography.caption, { color: theme.colors.textPrimary, width: 84, textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{formatValue(arc.displayValue ?? arc.value)}</Text>
               <Text style={[theme.typography.caption, { color: theme.colors.textMuted, width: 42, textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{percent(arc.value, total)}</Text>
             </Pressable>
           );

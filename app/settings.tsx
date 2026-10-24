@@ -18,15 +18,15 @@ import { allowCredentialRecovery, enrollV2AccessToken, logoutV2Session, readV2Cr
 import { flushNotificationBridgeDiagnostics, getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, reconcileActiveNotifications, setCaptureAppPackages } from '@/lib/notification-bridge';
 
 const dashboardModes = [
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'knowledge', label: 'Knowledge' },
-  { value: 'finance', label: 'Money' },
+  { value: 'balanced', label: 'Equilibrado' },
+  { value: 'knowledge', label: 'Conocimiento' },
+  { value: 'finance', label: 'Dinero' },
 ] as const;
 
 const visibilityModes = [
-  { value: 'essential', label: 'Essential' },
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'detailed', label: 'Detailed' },
+  { value: 'essential', label: 'Esencial' },
+  { value: 'balanced', label: 'Equilibrado' },
+  { value: 'detailed', label: 'Detallado' },
 ] as const;
 
 function ordinalDay(day: number) {
@@ -75,7 +75,7 @@ export default function SettingsScreen() {
   const saveFinancialPeriod = () => {
     const day = Number(financialPeriodDraft);
     if (!Number.isInteger(day) || day < 1 || day > 28) {
-      Alert.alert('Invalid start day', 'Choose a day from 1 through 28 so every month has a valid cycle boundary.');
+      Alert.alert('Día de inicio inválido', 'Elige un día del 1 al 28 para que cada mes tenga un límite de ciclo válido.');
       return;
     }
     setFinancialPeriodStartDay(day);
@@ -245,22 +245,22 @@ export default function SettingsScreen() {
       title="Ajustes"
       overline="Preferences"
       subtitle="Personaliza tu experiencia y administra tus fuentes."
-      actions={<Tag label={data?.ok ? 'Connected' : loading ? 'Checking' : 'Saved'} tone={data?.ok ? 'positive' : 'neutral'} />}
+      actions={<Tag label={data?.ok ? 'Conectado' : loading ? 'Verificando' : 'Guardado'} tone={data?.ok ? 'positive' : 'neutral'} />}
     >
       <Section title="General" subtitle="La interfaz está en español. La evidencia conserva su idioma original.">
         <Row title="Idioma de la aplicación" subtitle="Español" description="Brain IA comprende información en español e inglés." leading={<IconTile icon="globe" />} accessory="none" />
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Source detail</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Detalle de fuentes</Text>
         <SegmentedControl items={visibilityModes as unknown as typeof visibilityModes} value={settings.dataVisibility} onChange={(value) => setDataVisibility(value as AppSettings['dataVisibility'])} />
       </Section>
 
-      <Section title="Money" subtitle="Configura tu ciclo mensual y la presencia de Dinero en la vista de Hoy.">
+      <Section title="Dinero" subtitle="Configura tu ciclo mensual y la presencia de Dinero en la vista de Hoy.">
         <Row title={`${UYU_PER_USD.toFixed(4)} UYU/USD`} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
-        <Row title={`${ordinalDay(settings.financialPeriodStartDay)} of each month`} subtitle="Inicio del ciclo financiero" description="Monthly reports run from this day through the day before the next cycle." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambio</Text>} accessory="none" onPress={openFinancialPeriod} />
+        <Row title={`${ordinalDay(settings.financialPeriodStartDay)} de cada mes`} subtitle="Inicio del ciclo financiero" description="Los informes mensuales van desde este día hasta el día anterior al siguiente ciclo." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambio</Text>} accessory="none" onPress={openFinancialPeriod} />
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prioridad en Hoy</Text>
         <SegmentedControl items={dashboardModes as unknown as typeof dashboardModes} value={settings.dashboardMode} onChange={(value) => setDashboardMode(value as AppSettings['dashboardMode'])} />
       </Section>
 
-      <Section title="Notifications" subtitle="Recibe recordatorios para lecturas y decisiones útiles.">
+      <Section title="Notificaciones" subtitle="Recibe recordatorios para lecturas y decisiones útiles.">
         <Row title="Recordatorios de resúmenes" subtitle="Un aviso periódico cuando haya un nuevo resumen útil." leading={<IconTile icon="book-open" />} accessory="switch" switchValue={settings.digestNotifications} onSwitchChange={setDigestNotifications} />
         <Row title="Recordatorios de revisión" subtitle="Un recordatorio cuando un nombre o una categoría necesiten una decisión." leading={<IconTile icon="shield" color={theme.status.review} />} accessory="switch" switchValue={settings.reviewNotifications} onSwitchChange={setReviewNotifications} />
       </Section>
@@ -273,30 +273,30 @@ export default function SettingsScreen() {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Acceso a notificaciones</Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                  {notificationBridgeInitialLoading ? 'Checking notification access...' : listenerConnected ? (lastForwardedAt ? `Listener connected. Last forwarded ${new Date(lastForwardedAt).toLocaleString()}.` : 'Listener connected and ready.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Access enabled; the listener is reconnecting.' : 'Access enabled. Connecting the listener service.') : 'Notification access is disabled.'}
+                  {notificationBridgeInitialLoading ? 'Verificando el acceso a notificaciones…' : listenerConnected ? (lastForwardedAt ? `Escucha conectada. Último reenvío: ${new Date(lastForwardedAt).toLocaleString()}.` : 'Escucha conectada y lista.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Acceso activado; la escucha se está reconectando.' : 'Acceso activado. Conectando el servicio de escucha.') : 'El acceso a notificaciones está desactivado.'}
                 </Text>
               </View>
-              <Tag label={notificationBridgeInitialLoading ? 'Checking' : listenerConnected ? 'Running' : listenerNeedsAttention ? 'Needs attention' : notificationBridgeStatus?.accessEnabled ? 'Reconnecting' : 'Disabled'} tone={listenerConnected ? 'positive' : 'warning'} />
+              <Tag label={notificationBridgeInitialLoading ? 'Verificando' : listenerConnected ? 'Activa' : listenerNeedsAttention ? 'Requiere atención' : notificationBridgeStatus?.accessEnabled ? 'Reconectando' : 'Desactivada'} tone={listenerConnected ? 'positive' : 'warning'} />
             </View>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{notificationBridgeStatus?.captureConsent === 'unconfigured' ? 'Elige qué aplicaciones pueden compartir notificaciones.' : notificationBridgeStatus?.captureConsent === 'empty' ? 'Captura pausada: no seleccionaste ninguna aplicación.' : 'Solo se capturan notificaciones de las aplicaciones que seleccionaste.'}</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{lastReceivedAt ? `Last notification read: ${new Date(lastReceivedAt).toLocaleString()}.` : 'No supported notification has been read yet.'}</Text>
-            {lastReconciledAt ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Active notifications last checked: {new Date(lastReconciledAt).toLocaleString()}.</Text> : null}
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{lastReceivedAt ? `Última notificación leída: ${new Date(lastReceivedAt).toLocaleString()}.` : 'Todavía no se leyó ninguna notificación compatible.'}</Text>
+            {lastReconciledAt ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Notificaciones activas revisadas por última vez: {new Date(lastReconciledAt).toLocaleString()}.</Text> : null}
             {notificationBridgeStatus?.lastError ? <Text style={[theme.typography.caption, { color: theme.status.warning }]}>{notificationBridgeStatus.lastError}</Text> : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <Button label="Elegir aplicaciones" variant="secondary" size="sm" onPress={openAppSelection} />
               <Button label="Abrir acceso" size="sm" onPress={() => { void openNotificationBridgeSettings(); }} />
-              <Button label={checkingActiveNotifications ? 'Checking...' : 'Check active'} variant="secondary" size="sm" onPress={() => { void refreshNotificationBridgeStatus(); }} disabled={checkingActiveNotifications} />
-              <Button label={sendingListenerDiagnostics ? 'Sending...' : 'Send diagnostics'} variant="ghost" size="sm" onPress={() => { void sendListenerDiagnostics(); }} disabled={sendingListenerDiagnostics} />
+              <Button label={checkingActiveNotifications ? 'Revisando…' : 'Revisar activas'} variant="secondary" size="sm" onPress={() => { void refreshNotificationBridgeStatus(); }} disabled={checkingActiveNotifications} />
+              <Button label={sendingListenerDiagnostics ? 'Enviando…' : 'Enviar diagnóstico'} variant="ghost" size="sm" onPress={() => { void sendListenerDiagnostics(); }} disabled={sendingListenerDiagnostics} />
             </View>
           </GlassSurface>
         </Section>
       ) : null}
 
-      <Section title="Advanced" subtitle="Connection, credentials and maintenance.">
-        <Row title="Advanced tools" subtitle={advancedOpen ? 'Hide connection and diagnostics.' : 'Show connection and diagnostics.'} leading={<IconTile icon="tool" />} accessory="expand" expanded={advancedOpen} onPress={() => setAdvancedOpen((value) => !value)} />
+      <Section title="Avanzado" subtitle="Conexión, credenciales y mantenimiento.">
+        <Row title="Herramientas avanzadas" subtitle={advancedOpen ? 'Ocultar conexión y diagnósticos.' : 'Mostrar conexión y diagnósticos.'} leading={<IconTile icon="tool" />} accessory="expand" expanded={advancedOpen} onPress={() => setAdvancedOpen((value) => !value)} />
         {advancedOpen ? (
           <GlassSurface level="thin" padding="md" contentStyle={{ gap: 12 }}>
-            <Field label="Base URL" value={settings.baseUrl} onChangeText={setBaseUrl} autoCapitalize="none" autoCorrect={false} />
+            <Field label="URL base" value={settings.baseUrl} onChangeText={setBaseUrl} autoCapitalize="none" autoCorrect={false} />
             <Field label="Client ID" value={settings.clientId} onChangeText={(value) => { allowCredentialRecovery('clientId'); setClientId(value); }} autoCapitalize="none" autoCorrect={false} placeholder="opcional" />
             <Field label="API key" value={settings.apiKey} onChangeText={(value) => { allowCredentialRecovery('apiKey'); setApiKey(value); }} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="opcional" />
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Sesión de datos v2</Text>
@@ -307,9 +307,9 @@ export default function SettingsScreen() {
               {credentialStatus !== 'unconfigured' ? <Button label="Cerrar sesión" variant="ghost" size="sm" onPress={confirmLogout} disabled={credentialBusy} /> : null}
             </View>
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Conexión</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{loading ? 'Checking connection...' : error ? error : data?.ok ? 'Service reachable.' : 'Service is not responding right now.'}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{loading ? 'Verificando conexión…' : error ? error : data?.ok ? 'Servicio disponible.' : 'El servicio no responde en este momento.'}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Button label={loading ? 'Checking...' : 'Check service'} variant="secondary" size="sm" onPress={refresh} />
+              <Button label={loading ? 'Verificando…' : 'Verificar servicio'} variant="secondary" size="sm" onPress={refresh} />
               <Button label="Recuperar valores" variant="ghost" size="sm" onPress={refreshSettings} />
             </View>
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Diagnóstico</Text>
@@ -324,7 +324,7 @@ export default function SettingsScreen() {
       </Section>
 
       <BottomSheet visible={financialPeriodOpen} title="Ciclo financiero" onClose={() => setFinancialPeriodOpen(false)}>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Choose when a new monthly money cycle begins. Day 28, for example, creates cycles from the 28th through the 27th.</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Elige cuándo empieza cada ciclo mensual. El día 28, por ejemplo, crea ciclos desde el 28 through the 27th.</Text>
         <Field label="Día de inicio (1–28)" value={financialPeriodDraft} onChangeText={setFinancialPeriodDraft} keyboardType="number-pad" placeholder="1" error={!Number.isInteger(Number(financialPeriodDraft)) || Number(financialPeriodDraft) < 1 || Number(financialPeriodDraft) > 28 ? 'Choose a day from 1 through 28.' : undefined} />
         <Button label="Guardar ciclo financiero" onPress={saveFinancialPeriod} />
       </BottomSheet>

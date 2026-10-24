@@ -63,14 +63,14 @@ export default function ReviewHomeScreen() {
   return (
     <Screen
       title="Revisar"
-      overline="Review"
+      overline="Revisión"
       subtitle="Una decisión por tarjeta. Menos de un minuto para dejar tus datos en orden."
       refreshing={loading}
       onRefresh={refresh}
-      actions={<Tag label={pendingCount ? `${pendingCount} pending` : 'All clear'} tone={pendingCount ? 'warning' : 'positive'} />}
+      actions={<Tag label={pendingCount ? `${pendingCount} pendientes` : 'Todo al día'} tone={pendingCount ? 'warning' : 'positive'} />}
     >
       {error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !data ? <StateView kind="loading" title="Loading" skeleton="card" skeletonCount={2} /> : null}
+      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={2} /> : null}
 
       {data ? (
         <>
@@ -78,28 +78,28 @@ export default function ReviewHomeScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <ProgressRing value={progress} size={92} label={`${Math.round(progress * 100)}%`} />
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Review progress</Text>
+                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Progreso de revisión</Text>
                 <Text style={[theme.typography.headline, { color: theme.colors.textPrimary, fontSize: 22, lineHeight: 27 }]}>
-                  {pendingCount ? decisionEffort(queue.length) : 'All clear'}
+                  {pendingCount ? decisionEffort(queue.length) : 'Todo al día'}
                 </Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
                   {pendingCount
                     ? tidyCount
-                      ? `About ${tidyCount} transactions and ${formatCurrency(tidyAmount, 'UYU')} become easier to recognise.`
-                      : 'Each answer improves names, categories and connections.'
-                    : 'New decisions appear as activity arrives, usually after payday.'}
+                      ? `Unos ${tidyCount} movimientos y ${formatCurrency(tidyAmount, 'UYU')} serán más fáciles de reconocer.`
+                      : 'Cada respuesta mejora nombres, categorías y conexiones.'
+                    : 'Aparecen decisiones nuevas a medida que llega actividad, normalmente después del cobro.'}
                 </Text>
               </View>
             </View>
             {pendingCount ? (
-              <Button label={starting ? 'Starting…' : `Continue · ${queue.length} left`} onPress={() => start()} loading={starting} full icon={<Feather name="play" size={15} color={theme.colors.onAccent} />} />
+              <Button label={starting ? 'Iniciando…' : `Continuar · ${queue.length} restantes`} onPress={() => start()} loading={starting} full icon={<Feather name="play" size={15} color={theme.colors.onAccent} />} />
             ) : (
-              <Button label="Refresh" variant="secondary" onPress={refresh} full icon={<Feather name="refresh-cw" size={15} color={theme.colors.textPrimary} />} />
+              <Button label="Actualizar" variant="secondary" onPress={refresh} full icon={<Feather name="refresh-cw" size={15} color={theme.colors.textPrimary} />} />
             )}
           </GlassSurface>
 
           {topics.length > 1 ? (
-            <Section title="Or pick a topic" subtitle="Start with the kind of decision you feel like making.">
+            <Section title="O elige un tema" subtitle="Empieza por el tipo de decisión que quieras tomar.">
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {topics.slice(0, 6).map(([topic, count]) => (
                   <GlassPressableTopic key={topic} topic={topic} count={count} onPress={() => start(topic)} />
@@ -108,21 +108,21 @@ export default function ReviewHomeScreen() {
             </Section>
           ) : null}
 
-          <Section title="This week">
+          <Section title="Esta semana">
             <StatGrid>
-              <StatTile label="Decisions" value={resolvedCount} icon="check" tone="positive" />
-              <StatTile label="Pending" value={pendingCount} icon="clock" tone="warning" />
+              <StatTile label="Decisiones" value={resolvedCount} icon="check" tone="positive" />
+              <StatTile label="Pendientes" value={pendingCount} icon="clock" tone="warning" />
             </StatGrid>
           </Section>
 
           {queue.length ? (
-            <Section title="What you will review" subtitle="The highest-impact decisions come first." count={queue.length}>
+            <Section title="Lo que vas a revisar" subtitle="Las decisiones de mayor impacto van primero." count={queue.length}>
               {queue.slice(0, 4).map((decision) => (
                 <Row
                   key={decision.id}
                   title={decision.title}
-                  subtitle={decision.kind === 'relation' ? 'Connection' : decision.kind === 'batch' ? `${decision.reviewIds.length} variants` : decision.kind === 'category' ? 'Category' : 'Name'}
-                  description={decision.impact.transactions ? `${decision.impact.transactions} transactions · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
+                  subtitle={decision.kind === 'relation' ? 'Conexión' : decision.kind === 'batch' ? `${decision.reviewIds.length} variantes` : decision.kind === 'category' ? 'Categoría' : 'Nombre'}
+                  description={decision.impact.transactions ? `${decision.impact.transactions} movimientos · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
                   leading={<IconTile icon={decision.kind === 'relation' ? 'link-2' : decision.kind === 'same' ? 'users' : 'tag'} color={theme.status.review} />}
                   accessory="none"
                 />
@@ -156,12 +156,12 @@ function GlassPressableTopic({ topic, count, onPress }: { topic: string; count: 
   const theme = useTheme();
   return (
     <GlassSurface level="thin" padding="sm" style={{ minWidth: 110 }} contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <GlassPressable onPress={onPress}>
+      <GlassPressable accessibilityRole="button" accessibilityLabel={`${topic}, ${count} por responder`} onPress={onPress}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <IconTile icon="tag" size="sm" color={theme.status.review} />
           <View style={{ gap: 1 }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{topic}</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>{count} to answer</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>{count} por responder</Text>
           </View>
         </View>
       </GlassPressable>

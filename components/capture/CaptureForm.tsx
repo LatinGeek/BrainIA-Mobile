@@ -226,10 +226,10 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       : voiceState === 'recording'
         ? 'Listening… release to transcribe'
         : voiceState === 'transcribing'
-          ? 'Transcribing your voice note…'
+          ? 'Transcribiendo tu nota de voz…'
           : voiceState === 'error'
-            ? 'Hold to try again'
-            : 'Hold to record a voice note';
+            ? 'Mantén para intentar de nuevo'
+            : 'Mantén para grabar una nota de voz';
 
   function changeCaptureKind(nextKind: CaptureKind) {
     if (nextKind !== 'note') {
@@ -277,7 +277,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
     } catch (error) {
       voiceSessionActiveRef.current = false;
       setVoiceState('error');
-      setVoiceError(error instanceof Error ? error.message : 'Unable to start voice recognition.');
+      setVoiceError(error instanceof Error ? error.message : 'No se pudo iniciar el reconocimiento de voz.');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   }
@@ -290,7 +290,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
     void voiceModule?.stop().catch((error) => {
       voiceSessionActiveRef.current = false;
       setVoiceState('error');
-      setVoiceError(error instanceof Error ? error.message : 'Unable to finish the recording.');
+      setVoiceError(error instanceof Error ? error.message : 'No se pudo terminar la grabación.');
     });
   }
 
@@ -393,7 +393,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
         items={[{ value: 'note', label: 'Nota', icon: 'edit-3' }, { value: 'wallet', label: 'Dinero', icon: 'dollar-sign' }]}
         value={kind}
         onChange={changeCaptureKind}
-        accessibilityLabel="Capture type"
+        accessibilityLabel="Tipo de captura"
       />
 
       {kind === 'wallet' ? (
@@ -474,7 +474,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
               ) : null}
             </>
           ) : (
-            <Section title="Add context" subtitle="Category, merchant and notes are optional." collapsible defaultOpen={false}>
+            <Section title="Agregar contexto" subtitle="Categoría, comercio y notas son opcionales." collapsible defaultOpen={false}>
               <Row
                 title={category || `Elegir categoría de ${transactionType === 'income' ? 'ingreso' : 'gasto'}`}
                 subtitle="Categoría"
@@ -519,7 +519,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
 
       {result?.ok ? <StateView kind="success" title="Guardado en BrainIA" description={result.message} actionLabel="Capturar otra" onAction={() => setResult(null)} /> : result ? <StateView kind="error" title="No se pudo capturar" description={result.message} actionLabel="Reintentar" onAction={() => setResult(null)} /> : null}
 
-      <BottomSheet visible={accountSelectorTarget !== null} title={accountSelectorTarget === 'destination' ? 'Select destination account' : transactionType === 'income' ? 'Select to account' : 'Select from account'} onClose={() => setAccountSelectorTarget(null)}>
+      <BottomSheet visible={accountSelectorTarget !== null} title={accountSelectorTarget === 'destination' ? 'Elegir cuenta de destino' : transactionType === 'income' ? 'Elegir cuenta de destino' : 'Elegir cuenta de origen'} onClose={() => setAccountSelectorTarget(null)}>
         <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{transactionType === 'transfer' ? 'Elige cualquier cuenta en UYU o USD. Las monedas de origen y destino pueden ser distintas.' : `Solo se muestran cuentas en ${currency}.`}</Text>
         {selectableAccounts.length ? selectableAccounts.map((account) => {
           const selectedId = accountSelectorTarget === 'destination' ? destinationAccountId : accountId;

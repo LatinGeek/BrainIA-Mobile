@@ -40,12 +40,12 @@ export function isUncategorizedLabel(value?: string | null) {
 }
 
 export function formatCategoryLabel(value?: string | null) {
-  return isUncategorizedLabel(value) ? 'Needs category review' : cleanDisplayText(value ?? '');
+  return isUncategorizedLabel(value) ? 'Sin categoría' : cleanDisplayText(value ?? '');
 }
 
 export function formatCategoryInsight(label: string | undefined, amount: string) {
   if (isUncategorizedLabel(label)) {
-    return `A spending area needs category review and currently totals ${amount}.`;
+    return `Un área de gasto necesita revisión de categoría y suma ${amount}.`;
   }
 
   return `${formatCategoryLabel(label)} es el área de mayor gasto con ${amount}.`;
@@ -53,7 +53,7 @@ export function formatCategoryInsight(label: string | undefined, amount: string)
 
 export function formatMonthLabel(value?: string) {
   if (!value) {
-    return 'Recent activity';
+    return 'Actividad reciente';
   }
 
   const date = new Date(value);
@@ -73,9 +73,12 @@ export function formatCurrency(value: number, currency = 'USD') {
   const normalized = /^[A-Za-z]{3}$/.test((currency ?? '').trim())
     ? currency.trim().toUpperCase()
     : 'UYU';
+  // One format app-wide: ISO code, Spanish separators, up to two decimals.
   return new Intl.NumberFormat('es-UY', {
     style: 'currency',
     currency: normalized,
+    currencyDisplay: 'code',
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
 }
@@ -88,11 +91,7 @@ export type SupportedCurrency = 'UYU' | 'USD';
  */
 export const UYU_PER_USD = 40;
 
-export const FIXED_FX_LABEL = `${UYU_PER_USD.toFixed(4)} UYU/USD · fixed app reference`;
-
-export function formatConvertedCurrency(value: number, currency: SupportedCurrency) {
-  return `≈ ${formatCurrency(value, currency)} converted at ${UYU_PER_USD.toFixed(4)} UYU/USD`;
-}
+export const FIXED_FX_LABEL = `${UYU_PER_USD.toFixed(4)} UYU/USD · referencia fija de la app`;
 
 export function convertCurrency(value: number, fromCurrency: string, toCurrency: SupportedCurrency) {
   const source = fromCurrency.trim().toUpperCase();

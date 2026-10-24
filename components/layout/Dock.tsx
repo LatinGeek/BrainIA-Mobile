@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { useBrainIAClient, useTheme } from '@/lib/app-state';
+import { useAppState, useTheme } from '@/lib/app-state';
+import { loadReviewBundle } from '@/lib/api';
 import { dockScroll } from '@/lib/dock-scroll';
 
 type DockTab = {
@@ -37,9 +38,10 @@ export function Dock({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const client = useBrainIAClient();
+  const { client, reviewRevision } = useAppState();
   const { width } = useWindowDimensions();
-  const [reviewCount, setReviewCount] = useState(0);
+  // null = unknown (first load or failed load): the badge stays hidden rather than showing a false 0.
+  const [reviewCount, setReviewCount] = useState<number | null>(null);
   const [barWidth, setBarWidth] = useState(0);
   const pillX = useSharedValue(0);
   const activeRoute = state.routes[state.index]?.name ?? 'index';
@@ -47,13 +49,15 @@ export function Dock({
   const activeVisibleIndex = Math.max(0, visibleTabs.findIndex((tab) => tab.key === activeRoute));
   const compactDock = width >= 1024;
 
+  // Same source as the Revisar screen (loadReviewBundle). Reloads on mount and when
+  // reviewRevision bumps after a review session, not on every route change.
   useEffect(() => {
     let active = true;
-    void client.listReviews('pending')
-      .then((items) => { if (active) setReviewCount(items.length); })
-      .catch(() => undefined);
+    void loadReviewBundle(client)
+      .then((bundle) => { if (active) setReviewCount(bundle.reviews.length); })
+      .catch(() => { if (active) setReviewCount(null); });
     return () => { active = false; };
-  }, [client]);
+  }, [client, reviewRevision]);
 
   useEffect(() => {
     if (!barWidth || !visibleTabs.length) return;
@@ -95,7 +99,7 @@ export function Dock({
                   key={tab.key}
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}
-                  accessibilityLabel={isCapture ? 'Capture' : tab.label}
+                  accessibilityLabel={tab.key === 'review' && reviewCount ? `${tab.label}, ${reviewCount} ${reviewCount === 1 ? 'pendiente' : 'pendientes'}` : tab.label}
                   haptic="selection"
                   scaleTo={0.9}
                   onPress={() => {

@@ -17,7 +17,7 @@ export type TimelineItem = {
   onPress?: () => void;
 };
 
-export function Timeline({ items, emptyLabel = 'No supporting evidence is available.' }: { items: TimelineItem[]; emptyLabel?: string }) {
+export function Timeline({ items, emptyLabel = 'No hay evidencia de respaldo disponible.' }: { items: TimelineItem[]; emptyLabel?: string }) {
   const theme = useTheme();
   if (!items.length) {
     return <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{emptyLabel}</Text>;

@@ -4,10 +4,8 @@ import { useRef, useState } from 'react';
 import { CaptureForm, type CaptureFormHandle, type CaptureFormStatus } from '@/components/capture/CaptureForm';
 import { Button, Tag } from '@/components/controls';
 import { Screen } from '@/components/layout/Screen';
-import { useTheme } from '@/lib/app-state';
 
 export default function CaptureScreen() {
-  const theme = useTheme();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const form = useRef<CaptureFormHandle>(null);
   const [status, setStatus] = useState<CaptureFormStatus>({ busy: false, label: 'Capturar' });
@@ -16,7 +14,7 @@ export default function CaptureScreen() {
   return (
     <Screen
       title="Capturar"
-      overline="Quick capture"
+      overline="Nueva entrada"
       subtitle="Convertí una idea o movimiento en información útil."
       actions={<Tag label={status.busy ? 'Guardando' : 'Listo'} tone={status.busy ? 'warning' : 'positive'} />}
       bar={<Button label={status.label} onPress={() => form.current?.submit()} loading={status.busy} size="md" full />}
@@ -26,7 +24,7 @@ export default function CaptureScreen() {
         initialMode={initialMode}
         onStatusChange={setStatus}
       />
-      <Tag label={`Fast capture · ${theme.name}`} tone="neutral" kind="stamp" icon="zap" />
+      <Tag label="Captura rápida" tone="neutral" kind="stamp" icon="zap" />
     </Screen>
   );
 }

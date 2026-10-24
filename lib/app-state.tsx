@@ -6,6 +6,7 @@ import { AppSettings } from './domain';
 import { createBrainIAClient, BrainIAClient } from './api';
 import { themeRegistry, ThemeTokens } from './themes';
 import { syncNotificationBridgeConfig } from './notification-bridge';
+import { seedTestCredential } from './test-credential-seed';
 
 const STORAGE_PREFIX = 'brainia_mobile';
 const KEY_BASE_URL = `${STORAGE_PREFIX}.baseUrl`;
@@ -39,6 +40,9 @@ type AppStateValue = {
   /** Bumps after a financial mutation so every mounted money view reloads. */
   financialDataRevision: number;
   invalidateFinancialData: () => void;
+  /** Bumps after review decisions are committed so the dock badge and Today reload pending reviews. */
+  reviewRevision: number;
+  invalidateReviews: () => void;
   setBaseUrl: (baseUrl: string) => void;
   setApiKey: (apiKey: string) => void;
   setClientId: (clientId: string) => void;
@@ -91,11 +95,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [hydrated, setHydrated] = useState(false);
   const [financialDataRevision, setFinancialDataRevision] = useState(0);
+  const [reviewRevision, setReviewRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
 
-    loadSettings()
+    seedTestCredential()
+      .catch(() => undefined)
+      .then(loadSettings)
       .then((nextSettings) => {
         if (!active) {
           return;
@@ -158,6 +165,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       client,
       financialDataRevision,
       invalidateFinancialData: () => setFinancialDataRevision((revision) => revision + 1),
+      reviewRevision,
+      invalidateReviews: () => setReviewRevision((revision) => revision + 1),
       setBaseUrl: (baseUrl) => setSettings((current) => ({ ...current, baseUrl })),
       setApiKey: (apiKey) => setSettings((current) => ({ ...current, apiKey })),
       setClientId: (clientId) => setSettings((current) => ({ ...current, clientId })),
@@ -188,7 +197,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setSettings(next);
       },
     }),
-    [client, financialDataRevision, hydrated, settings]
+    [client, financialDataRevision, hydrated, reviewRevision, settings]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

@@ -25,7 +25,7 @@ import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { DecisionCard } from '@/components/review/DecisionCard';
 import { useToast } from '@/components/layout/Toast';
-import { useBrainIAClient, useTheme } from '@/lib/app-state';
+import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { buildReviewQueue, commitDecision, PendingCommitDescriptor, persistReviewSessionState, readReviewSessionState, ReviewAnswer, ReviewDecision } from '@/lib/review-session';
 import { formatCurrency } from '@/lib/format';
 import { loadReviewBundle } from '@/lib/api';
@@ -42,6 +42,7 @@ export default function ReviewSessionScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const client = useBrainIAClient();
+  const { invalidateReviews } = useAppState();
   const toast = useToast();
   const { topic } = useLocalSearchParams<{ topic?: string }>();
   const [index, setIndex] = useState(0);
@@ -157,16 +158,16 @@ export default function ReviewSessionScreen() {
             if (existing?.timer) clearTimeout(existing.timer);
             pending.current.delete(id);
           }).catch(() => {
-            toast.show('Could not save that answer. It will retry when you leave review.', { tone: 'danger' });
+            toast.show('No se pudo guardar esa respuesta. Se reintentará al salir de la revisión.', { tone: 'danger' });
           });
         }, 5_000),
       };
       pending.current.set(id, entry);
 
-      toast.show(choice === 'accept' ? 'Saved · Undo for 5 seconds' : 'Saved · Undo for 5 seconds', {
+      toast.show('Guardado · Deshacer durante 5 segundos', {
         tone: 'positive',
         action: {
-          label: 'Undo',
+          label: 'Deshacer',
           onPress: () => {
             const pendingEntry = pending.current.get(id);
             if (pendingEntry?.timer) clearTimeout(pendingEntry.timer);
@@ -178,7 +179,7 @@ export default function ReviewSessionScreen() {
         },
       });
     } else {
-      toast.show('Skipped · kept for later', { tone: 'neutral' });
+      toast.show('Omitida · guardada para después', { tone: 'neutral' });
     }
 
     setAnswers(nextAnswers);
@@ -209,14 +210,15 @@ export default function ReviewSessionScreen() {
     setAnswers(nextAnswers);
     setSkipped((current) => current.filter((id) => id !== last.id));
     setIndex((current) => Math.max(0, current - 1));
-    toast.show('Undone', { tone: 'neutral' });
+    toast.show('Deshecho', { tone: 'neutral' });
   }, [answers, toast]);
 
   const close = useCallback(async () => {
     await flush();
+    invalidateReviews();
     if (router.canGoBack()) router.back();
     else router.replace('/review');
-  }, [flush]);
+  }, [flush, invalidateReviews]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -293,10 +295,10 @@ export default function ReviewSessionScreen() {
           <StateView
             kind="success"
             title={skipped.length ? 'Nice work' : 'All clear'}
-            description={`${answers.filter((entry) => entry.choice === 'accept').length} answered · ${skipped.length} kept for later${tidyCount ? ` · ${tidyCount} transactions tidied` : ''}${rules ? ` · ${rules} rule${rules === 1 ? '' : 's'} created` : ''}.`}
-            actionLabel="Done"
+            description={`${answers.filter((entry) => entry.choice === 'accept').length} respondidas · ${skipped.length} guardadas para después${tidyCount ? ` · ${tidyCount} movimientos ordenados` : ''}${rules ? ` · ${rules} ${rules === 1 ? 'regla creada' : 'reglas creadas'}` : ''}.`}
+            actionLabel="Listo"
             onAction={() => void close()}
-            secondaryActionLabel={skipped.length ? 'Review skipped' : undefined}
+            secondaryActionLabel={skipped.length ? 'Revisar omitidas' : undefined}
             onSecondaryAction={skipped.length ? () => {
               const firstSkipped = decisions.findIndex((decision) => skipped.includes(decision.id));
               setFinished(false);
@@ -305,7 +307,7 @@ export default function ReviewSessionScreen() {
           />
           <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{`${skipped.length} skipped · progress saved`}</Text>
-            <Tag label="No confirm dialogs" tone="positive" icon="check" />
+            <Tag label="Sin diálogos de confirmación" tone="positive" icon="check" />
           </GlassSurface>
         </View>
       </SafeAreaView>
@@ -319,24 +321,24 @@ export default function ReviewSessionScreen() {
       </BlurTargetView>
       <View style={{ flex: 1, paddingTop: insets.top ? 6 : 0 }}>
         <View style={styles.header}>
-          <GlassPressable accessibilityRole="button" accessibilityLabel={`Close review, ${Math.max(0, decisions.length - index)} left`} onPress={() => { void close(); }} hitSlop={10} scaleTo={0.9} style={styles.iconButton}>
+          <GlassPressable accessibilityRole="button" accessibilityLabel={`Cerrar revisión, quedan ${Math.max(0, decisions.length - index)}`} onPress={() => { void close(); }} hitSlop={10} scaleTo={0.9} style={styles.iconButton}>
             <Feather name="x" size={19} color={theme.colors.textPrimary} />
           </GlassPressable>
           <View style={{ flex: 1, gap: 6 }}>
-            <View style={styles.progressRow} accessibilityLabel={`Review progress, ${answers.length} of ${decisions.length}`}>
+            <View style={styles.progressRow} accessibilityLabel={`Progreso de revisión, ${answers.length} de ${decisions.length}`}>
               {decisions.map((decision, position) => (
                 <View key={decision.id} style={[styles.progressSegment, { backgroundColor: position < index ? theme.colors.accent : theme.glass.divider }]} />
               ))}
             </View>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${Math.max(0, decisions.length - index)} left · ${Math.round(progress * 100)}%`}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{`${Math.max(0, decisions.length - index)} restantes · ${Math.round(progress * 100)}%`}</Text>
           </View>
-          <GlassPressable accessibilityRole="button" accessibilityLabel="Undo last answer" onPress={undoLast} hitSlop={10} scaleTo={0.9} style={styles.iconButton} disabled={!answers.length}>
+          <GlassPressable accessibilityRole="button" accessibilityLabel="Deshacer la última respuesta" onPress={undoLast} hitSlop={10} scaleTo={0.9} style={styles.iconButton} disabled={!answers.length}>
             <Feather name="rotate-ccw" size={17} color={answers.length ? theme.colors.textPrimary : theme.colors.textMuted} />
           </GlassPressable>
         </View>
 
         {loading || !current ? (
-          error ? <StateView kind="error" title="Review could not load" description={error} actionLabel="Retry" onAction={refresh} /> : <StateView kind="loading" title="Loading" skeleton="hero" skeletonCount={1} />
+          error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <StateView kind="loading" title="Cargando" skeleton="hero" skeletonCount={1} />
         ) : (
           <View style={styles.cardStage}>
           <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax }]}>
@@ -369,8 +371,8 @@ export default function ReviewSessionScreen() {
         )}
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Swipe right to accept · left to skip · every gesture has a button</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>{`About ${formatCurrency(decisions.slice(index).reduce((sum, decision) => sum + decision.impact.amount, 0), 'UYU')} in movement to tidy`}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Desliza a la derecha para aceptar · a la izquierda para omitir · cada gesto tiene botón</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>{`Unos ${formatCurrency(decisions.slice(index).reduce((sum, decision) => sum + decision.impact.amount, 0), 'UYU')} en movimientos por ordenar`}</Text>
         </View>
       </View>
     </SafeAreaView>

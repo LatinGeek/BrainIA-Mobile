@@ -11,9 +11,9 @@ import { cleanDisplayText } from '@/lib/format';
 
 const originCopy: Record<ProvenanceOrigin, { label: string; tone: 'info' | 'neutral' | 'positive' | 'warning' }> = {
   model: { label: 'BrainIA', tone: 'info' },
-  captured: { label: 'Captured', tone: 'neutral' },
-  user: { label: 'You', tone: 'positive' },
-  pending: { label: 'Pending', tone: 'warning' },
+  captured: { label: 'Capturado', tone: 'neutral' },
+  user: { label: 'Tú', tone: 'positive' },
+  pending: { label: 'Pendiente', tone: 'warning' },
 };
 
 export function SignalCard({
@@ -108,7 +108,7 @@ export function SignalCard({
 /** Horizontal highlight rail. The first card can start the review session. */
 export function SignalCarousel({
   items,
-  accessibilityLabel = 'Highlights',
+  accessibilityLabel = 'Destacados',
 }: {
   items: {
     id: string;

@@ -8,7 +8,7 @@ export default function NotFoundScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Not found' }} />
+      <Stack.Screen options={{ title: 'No encontrado' }} />
       <View
         style={{
           flex: 1,

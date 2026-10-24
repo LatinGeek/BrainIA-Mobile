@@ -58,10 +58,10 @@ export function NavigationRail() {
         })}
       </View>
       <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: theme.glass.divider, paddingTop: 20 }}>
-        <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Your space</Text>
-        <Button label="Knowledge" variant="ghost" onPress={() => router.push('/intelligence')} full />
-        <Button label="Learning" variant="ghost" onPress={() => router.push('/learning')} full />
-        <Button label="Settings" variant="ghost" onPress={() => router.push('/settings')} full />
+        <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Tu espacio</Text>
+        <Button label="Conocimiento" variant="ghost" onPress={() => router.push('/intelligence')} full />
+        <Button label="Aprendizaje" variant="ghost" onPress={() => router.push('/learning')} full />
+        <Button label="Ajustes" variant="ghost" onPress={() => router.push('/settings')} full />
       </View>
       <View style={{ flex: 1 }} />
       <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Search  Ctrl / ⌘ K</Text>

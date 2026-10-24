@@ -35,10 +35,11 @@ import { dockScroll } from '@/lib/dock-scroll';
 
 export function Screen({
   title,
+  titleLines,
   subtitle,
   overline,
   back = false,
-  backLabel = 'Back',
+  backLabel = 'Volver',
   actions,
   children,
   scrollable = true,
@@ -50,6 +51,8 @@ export function Screen({
   contentContainerStyle,
 }: {
   title: string;
+  /** Clamp the display title to this many lines; use a subtitle for the rest. */
+  titleLines?: number;
   subtitle?: string;
   overline?: string;
   back?: boolean;
@@ -68,6 +71,8 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const desktop = width >= 1024;
+  // Narrow phones (320pt): the title column gets the full width and actions drop below it, so headlines wrap by word.
+  const actionsBelow = width < 360;
   const scrollY = useSharedValue(0);
   const [compactVisible, setCompactVisible] = useState(false);
   const cardTargetRef = useRef<View | null>(null);
@@ -106,21 +111,21 @@ export function Screen({
 
   const headerBlock = (
     <Animated.View style={[{ gap: 6 }, largeTitleStyle]}>
-      <View style={styles.headerTop}>
-        <View style={{ flex: 1, gap: 4 }}>
+      <View style={[styles.headerTop, actionsBelow ? { flexDirection: 'column', alignItems: 'stretch' } : null]}>
+        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
           {overline ? <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{cleanDisplayText(overline)}</Text> : null}
-          <Text accessibilityRole="header" style={[theme.typography.display, { color: theme.colors.textPrimary, fontSize: fontScale >= 1.3 ? 24 : 28, lineHeight: fontScale >= 1.3 ? 30 : 34 }]}>
+          <Text accessibilityRole="header" numberOfLines={titleLines} ellipsizeMode="tail" style={[theme.typography.display, { color: theme.colors.textPrimary, fontSize: fontScale >= 1.3 ? 24 : 28, lineHeight: fontScale >= 1.3 ? 30 : 34 }]}>
             {cleanDisplayText(title)}
           </Text>
           {subtitle ? <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{cleanDisplayText(subtitle)}</Text> : null}
         </View>
-        {actions ? <View style={styles.actions}>{actions}</View> : null}
+        {actions ? <View style={[styles.actions, actionsBelow ? { alignSelf: 'flex-start' } : null]}>{actions}</View> : null}
       </View>
     </Animated.View>
   );
 
   const contentPaddingTop = desktop ? 32 : 16;
-  const bottomPadding = theme.layout.dockHeight + insets.bottom + (bar ? 92 : 24);
+  const bottomPadding = theme.layout.dockHeight + insets.bottom + (bar ? 92 : 48);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.flex, { overflow: 'hidden', backgroundColor: theme.colors.background }]}>

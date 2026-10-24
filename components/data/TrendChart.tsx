@@ -168,7 +168,7 @@ export function TrendChart({
       {mode !== 'spark' && labels.length ? (
         <View style={[styles.labels, { paddingHorizontal: padding.left }]}>
           {labels.map((label, index) => (
-            <Pressable key={`${label}-${index}`} accessibilityRole="button" accessibilityState={{ selected: index === active }} accessibilityLabel={`Show ${label}`} onPress={() => select(index)} hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}>
+            <Pressable key={`${label}-${index}`} accessibilityRole="button" accessibilityState={{ selected: index === active }} accessibilityLabel={`Mostrar ${label}`} onPress={() => select(index)} hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}>
               <Text style={[theme.typography.caption, { color: index === active ? theme.colors.textPrimary : theme.colors.textMuted, fontSize: 10 }]}>{cleanDisplayText(label)}</Text>
             </Pressable>
           ))}

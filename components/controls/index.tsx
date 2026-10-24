@@ -66,7 +66,7 @@ export function Button({
   return (
     <GlassPressable
       accessibilityRole="button"
-      accessibilityLabel={cleanDisplayText(accessibilityLabel ?? label) || 'Button'}
+      accessibilityLabel={cleanDisplayText(accessibilityLabel ?? label) || 'Botón'}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       haptic="light"
@@ -209,10 +209,12 @@ export function SegmentedControl<T extends string>({
                 {
                   height,
                   minWidth: size === 'mini' ? 42 : 64,
-                  paddingHorizontal: size === 'mini' ? 8 : 12,
+                  paddingHorizontal: size === 'mini' ? 8 : 10,
                   borderRadius: theme.radius.pill,
-                  // Mini segments size to their label so short tracks never truncate.
-                  flex: scrollable || size === 'mini' ? undefined : 1,
+                  // Segments size to their label and share leftover width; labels wrap rather than truncate.
+                  flexGrow: scrollable ? 0 : 1,
+                  flexShrink: scrollable ? 0 : 1,
+                  flexBasis: 'auto',
                 },
               ]}
             >
@@ -225,10 +227,11 @@ export function SegmentedControl<T extends string>({
               ) : null}
               {item.label ? (
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={scrollable || size === 'mini' ? 1 : undefined}
                   style={[
                     theme.typography.caption,
                     {
+                      textAlign: 'center',
                       color: selected ? theme.glass.onSelected : theme.colors.textSecondary,
                       fontFamily: selected ? 'Inter_600SemiBold' : 'Inter_500Medium',
                       fontSize: size === 'mini' ? 11 : 12,
@@ -335,10 +338,10 @@ export function ChipGroup<T extends string>({
   selected,
   onChange,
   searchable,
-  searchPlaceholder = 'Search',
+  searchPlaceholder = 'Buscar',
   creatable,
   onCreate,
-  emptyLabel = 'No matches',
+  emptyLabel = 'Sin coincidencias',
 }: {
   items: readonly { value: T; label: string; count?: number; icon?: IconName }[];
   mode?: 'single' | 'multi';
@@ -386,7 +389,7 @@ export function ChipGroup<T extends string>({
           <Chip key={item.value} label={item.label} count={item.count} icon={item.icon} selected={isSelected(item.value)} onPress={() => toggle(item.value)} />
         ))}
         {creatable && normalized && !visible.length ? (
-          <Chip label={`Create “${query.trim()}”`} onPress={() => onCreate?.(query.trim())} icon="plus" />
+          <Chip label={`Crear “${query.trim()}”`} onPress={() => onCreate?.(query.trim())} icon="plus" />
         ) : null}
       </View>
       {!visible.length && !creatable ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{emptyLabel}</Text> : null}
@@ -456,7 +459,7 @@ export function ConfidenceMeter({ value, showValue = false }: { value?: number; 
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const normalized = Math.max(0, Math.min(1, value));
   const level = normalized >= 0.85 ? 3 : normalized >= 0.5 ? 2 : 1;
-  const word = normalized >= 0.85 ? 'Clear' : normalized >= 0.5 ? 'Unsure' : 'Guess';
+  const word = normalized >= 0.85 ? 'Clara' : normalized >= 0.5 ? 'Dudosa' : 'Estimada';
   const color = normalized >= 0.85 ? theme.colors.success : normalized >= 0.5 ? theme.colors.warning : theme.colors.danger;
 
   return (

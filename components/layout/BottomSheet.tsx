@@ -31,12 +31,12 @@ export function BottomSheet({
     <Modal visible={visible} animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={[styles.scrim, { backgroundColor: theme.depth.overlay, paddingTop: insets.top + theme.spacing.sm, paddingBottom: insets.bottom + theme.spacing.md }]}>
-          <GlassPressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={StyleSheet.absoluteFill}> <View /> </GlassPressable>
+          <GlassPressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} style={StyleSheet.absoluteFill}> <View /> </GlassPressable>
           <Animated.View entering={FadeInDown.springify().damping(18).stiffness(180)} style={{ marginTop: 'auto', width: '100%' }}>
             <GlassSurface level="strong" chrome radius="xl" padding="lg" disableBlur={Platform.OS === 'android'} style={{ maxHeight: maxSheetHeight, borderRadius: theme.radius.sheet }} contentStyle={{ gap: theme.spacing.md }}>
               <View style={styles.header}>
                 <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{cleanDisplayText(title)}</Text>
-                <GlassPressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} scaleTo={0.9} style={styles.close}>
+                <GlassPressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} hitSlop={10} scaleTo={0.9} style={styles.close}>
                   <Feather name="x" size={18} color={theme.colors.textPrimary} />
                 </GlassPressable>
               </View>

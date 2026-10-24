@@ -185,9 +185,12 @@ export function Amount({
   // wraps under the value when they do not fit on one line.
   const finalLength = sign.length + (currency ? formatCurrency(Math.abs(target), currency.toUpperCase()) : String(Math.round(Math.abs(target)))).length;
   const tileWidth = largeText ? width - 72 : (Math.min(width, 520) - 48) / 2 - 28;
-  const tileSize = Math.max(14, Math.min(24, tileWidth / (finalLength * 0.62)));
-  const fontSize = size === 'hero' ? heroSize : size === 'tile' ? tileSize : 15;
-  const lineHeight = size === 'hero' ? Math.round(heroSize * 1.17) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
+  const tileSize = Math.max(13, Math.min(24, tileWidth / (finalLength * 0.74)));
+  // Hero numerals shrink to fit the card width (adjustsFontSizeToFit is native-only).
+  const heroFit = Math.max(22, Math.min(heroSize, (width - 104) / (finalLength * 0.7)));
+  const resolvedHero = largeText ? heroSize : heroFit;
+  const fontSize = size === 'hero' ? resolvedHero : size === 'tile' ? tileSize : 15;
+  const lineHeight = size === 'hero' ? Math.round(resolvedHero * 1.17) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
   return (
     <View style={[styles.amountRow, size === 'tile' ? { flexWrap: 'wrap' } : null]} accessibilityLabel={`${sign}${formatted}`}>
       <Text
@@ -201,7 +204,6 @@ export function Amount({
       >
         {sign}{formatted}
       </Text>
-      {currency && size !== 'hero' ? <Text style={[theme.typography.mono, { color: theme.colors.textMuted, fontSize: 10 }]}>{currency.toUpperCase()}</Text> : null}
     </View>
   );
 }
@@ -226,10 +228,10 @@ export function TransactionRow({
   const theme = useTheme();
   const merchant = transaction.displayMerchantLabel ?? transaction.merchantLabel;
   const subtitle = transaction.kind === 'transfer'
-    ? 'Transfer'
+    ? 'Transferencia'
     : transaction.kind === 'income'
-      ? 'Income'
-      : cleanDisplayText(transaction.category || 'Needs category review');
+      ? 'Ingreso'
+      : cleanDisplayText(transaction.category || 'Sin categoría');
   return (
     <Row
       title={merchant}
