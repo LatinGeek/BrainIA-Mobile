@@ -17,6 +17,7 @@ La app consume el backend BrainIA existente en `D:/Coding/BrainIA`.
 - `GET /api/v1/search`
 - `GET /api/v1/entities`
 - `GET /api/v1/entities/resolve`
+- `GET /api/v1/events?limit=&order=&dateField=&from=&to=&source=&category=&status=&cursor=` (paginated summaries; the app uses `limit`, `order=desc` and `dateField=ingestedAt`; see the backend `docs/api.md`)
 - `GET /api/v1/entities/:id/graph`
 - `GET /api/v1/relations`
 - `GET /api/v1/insights`
