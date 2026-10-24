@@ -2,463 +2,83 @@
 
 ## Purpose
 
-Esta especificacion traduce el producto y el sistema de temas a componentes concretos por pantalla.
-
-La regla principal es simple:
-
-- las pantallas ensamblan componentes
-- los componentes consumen tokens semanticos
-- el tema decide el aspecto visual
-
-## Component tiers
-
-### Primitives
+Each screen is a composition of the 24 glass components. Screens own data
+loading and navigation; components own material, motion and accessibility.
 
-- `AppShell`
-- `TopBar`
-- `BottomTabs`
-- `Surface`
-- `SectionHeader`
-- `TextBlock`
-- `IconButton`
-- `Button`
-- `FilterChip`
-- `EmptyState`
-- `ErrorState`
-- `LoadingSkeleton`
-
-### Content cards
-
-- `SummaryCard`
-- `MetricCard`
-- `InsightCard`
-- `DigestCard`
-- `FinancialSnapshotCard`
-- `ChartCard`
-- `ListRow`
-- `EntityPill`
-- `RelationRow`
-- `TransactionRow`
-- `EvidenceRow`
-
-### Detail and action components
-
-- `DetailBlock`
-- `ActionRow`
-- `ExpandablePanel`
-- `Timeline`
-- `GraphNodeCard`
-- `GraphRelationRow`
-- `ResolutionForm`
-- `MergeForm`
-- `CaptureForm`
-
-## Global layout contract
+## Shared frame
 
-Every screen should follow the same structure:
+Every route uses `Screen`:
 
-1. app shell
-2. top bar
-3. page content
-4. optional sticky action area
-5. bottom tabs
+- `title`, `overline`, `subtitle` are the large header.
+- A compact glass bar fades in after 64pt of scroll.
+- `actions` sits in the header; `back` adds the back control.
+- `bar` is the thumb-zone action slot (Capture's Save).
+- Bottom padding always equals dock height + safe-area inset.
+- `Section` groups content and supports `collapsible`.
 
-This keeps the app coherent across themes.
+## Today — `app/(tabs)/index.tsx`
 
-## Screen specs
+- Net hero (`GlassSurface strong` + `Amount hero`), income/expense line.
+- Four quick actions: expense, income, note, search.
+- `SignalCarousel`; the first card starts the review session.
+- Finance stat grid, recent activity (`Row` presets), context card.
+- No duplicate “Needs review” panel: the carousel and dock badge carry review.
+- Ambient drift is enabled only here.
 
-### Dashboard
-
-## Intent
-
-The dashboard is the home screen and the executive summary of the second-brain.
-
-## Primary components
+## Money — `app/(tabs)/financials.tsx`
 
-- `AppShell`
-- `TopBar`
-- `SummaryCard`
-- `InsightCard`
-- `DigestCard`
-- `FinancialSnapshotCard`
-- `MetricCard`
-- `ListRow`
-- `ActionRow`
-- `BottomTabs`
-
-## Required sections
-
-- top summary area
-- insights rail
-- digest preview
-- financial snapshot
-- recent activity
-- quick actions
-
-## State variants
-
-- loading
-- empty
-- partial data
-- error
-- refreshed
+Three views:
 
-## Theme behavior
+1. **Resumen**: expense `MixCard` first (category/merchant toggle), net hero
+   with cycle/year switch, accounts strip, `TrendChart`, signals, recent
+   activity, pending.
+2. **Cuentas**: portfolio `MixCard` first (account colours, net centre), then
+   expandable account rows and create-account.
+3. **Movimientos**: cycle navigator, sort/filter sheet, selectable rows for
+   consolidation, manual entry, pending list.
 
-- Editorial Minimal: compact cards, thin dividers, crisp hierarchy
-- Intelligence Console: darker surfaces, stronger depth, brighter status accents
-- Warm Knowledge: warmer surfaces, softer cards, more breathing room
+One currency switch sits beside the FX stamp. Sheets keep the existing
+account, adjustment, entry, execution, consolidation and filter flows.
 
-### Search
+## Capture — `app/(tabs)/capture.tsx`
 
-## Intent
+- `SegmentedControl` replaces the two large mode tiles.
+- Note mode: `Field multiline`, voice hold-to-record, Save in `Screen.bar`.
+- Money mode: expense/income/transfer switch, large `Field amount`, account
+  rows, optional context section, Save in `Screen.bar`.
+- All logic lives in `CaptureForm`; the screen supplies the pinned bar through
+  an imperative handle.
 
-Search is the main retrieval surface for events, entities, and relations.
+## Discover — `app/(tabs)/search.tsx`
 
-## Primary components
+Frosted `Field search`, prompt chips, `Graph` focus in place with breadcrumbs,
+grouped results. Selecting a node opens its entity/event route.
 
-- `AppShell`
-- `TopBar`
-- `FilterChip`
-- `SearchInput`
-- `SectionHeader`
-- `ListRow`
-- `EntityPill`
-- `RelationRow`
-- `EmptyState`
-- `BottomTabs`
+## Review home — `app/(tabs)/review.tsx`
 
-## Required sections
+Progress ring, effort copy (“2 quick decisions · about 20 seconds”), impact,
+topic tiles, this-week stats, queue preview, and the “Handled for you” card
+(hidden until the backend exposes the auto-review list).
 
-- query input
-- filter chips
-- entity results
-- event results
-- relation results
+## Review session — `app/review-session.tsx`
 
-## State variants
+Full-screen modal, no dock. `DecisionCard` for name, batch, category, same,
+relation and label. Pan to accept/skip, buttons for every gesture, keyboard
+shortcuts, 5-second undo toast, resumable state under `review.session.v1`.
 
-- idle
-- typing
-- loading
-- no results
-- results with mixed entities and relations
-- error
+## Detail routes
 
-## Theme behavior
+- Transaction: 2×2 facts grid in the hero, origin card, context editor,
+  explanation, evidence `Timeline`.
+- Entity: identity card, aliases, preview `Graph`, evidence `Timeline`,
+  relation rows, organize sheet.
+- Insight: `SignalCard block`, why it matters, takeaways, evidence `Timeline`,
+  feedback, optional technical details.
+- Digest: `SignalCard block` with metrics, highlights, next step.
+- Event / Email: interpretation card, correction panel, original content.
 
-- Editorial Minimal: plain, fast, high contrast search
-- Intelligence Console: denser result rows and stronger hierarchy
-- Warm Knowledge: calmer result cards and softer separators
+## Settings — `app/settings.tsx`
 
-### Entity Detail and Graph
-
-## Intent
-
-Entity detail explains what the node is, how it resolves, and how it connects to the graph.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `SummaryCard`
-- `EntityPill`
-- `SectionHeader`
-- `DetailBlock`
-- `GraphNodeCard`
-- `GraphRelationRow`
-- `RelationRow`
-- `ListRow`
-- `ExpandablePanel`
-- `ActionRow`
-
-## Required sections
-
-- entity header
-- canonical resolution summary
-- graph overview
-- relation list
-- related events
-- alias visibility
-- actions for merge or reprocess when allowed
-
-## State variants
-
-- canonical entity
-- alias resolved to canonical root
-- graph truncated
-- graph loading
-- graph empty
-
-## Theme behavior
-
-- Editorial Minimal: structured blocks and readable paths
-- Intelligence Console: higher density graph context and subtle glow for edges
-- Warm Knowledge: more editorial spacing and softer graph surfaces
-
-### Financials
-
-## Intent
-
-Financials is a first-class analytical dashboard.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `FinancialSnapshotCard`
-- `ChartCard`
-- `MetricCard`
-- `TransactionRow`
-- `EvidenceRow`
-- `SectionHeader`
-- `FilterChip`
-- `ListRow`
-- `BottomTabs`
-
-## Required sections
-
-- monthly summary
-- annual summary
-- category breakdown
-- account breakdown
-- transaction list
-- transaction detail
-- evidence timeline
-
-## State variants
-
-- overview
-- filtered
-- transaction detail
-- empty data
-- error
-
-## Theme behavior
-
-- Editorial Minimal: precise, compact analytical layout
-- Intelligence Console: higher contrast charts and stronger data separation
-- Warm Knowledge: softer chart treatment and friendlier money surfaces
-
-### Capture
-
-## Intent
-
-Capture should minimize friction and preserve raw input.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `CaptureForm`
-- `Button`
-- `IconButton`
-- `ActionRow`
-- `SectionHeader`
-- `EmptyState`
-- `LoadingSkeleton`
-
-## Required sections
-
-- capture type selector
-- source-specific form
-- raw preview or metadata preview
-- submit action
-- success feedback
-
-## State variants
-
-- note capture
-- email capture
-- notification capture
-- wallet capture
-- generic event capture
-- batch flush
-- success
-- validation error
-- network error
-
-## Theme behavior
-
-- Editorial Minimal: fast form language and clear affordances
-- Intelligence Console: more compact form blocks and stronger feedback states
-- Warm Knowledge: gentler spacing and more readable helper text
-
-### Review and Operations
-
-## Intent
-
-The review area supports alias cleanup, merges, and reprocess operations.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `ResolutionForm`
-- `MergeForm`
-- `ActionRow`
-- `ListRow`
-- `SectionHeader`
-- `DetailBlock`
-- `Button`
-- `EmptyState`
-
-## Required sections
-
-- pending aliases list
-- alias detail
-- resolve form
-- ignore action
-- merge action
-- reprocess action
-
-## State variants
-
-- pending review
-- resolved review
-- ignored review
-- merge candidate
-- action confirmation
-- error
-
-## Theme behavior
-
-- Editorial Minimal: clean operational panel with restrained emphasis
-- Intelligence Console: more assertive action states and denser lists
-- Warm Knowledge: softer warnings and more explanatory copy
-
-### Insights
-
-## Intent
-
-Insights should feel like compact conclusions with evidence.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `InsightCard`
-- `MetricCard`
-- `SectionHeader`
-- `DetailBlock`
-- `EvidenceRow`
-- `ListRow`
-
-## Required sections
-
-- summary
-- takeaways
-- supporting entities
-- supporting relations
-- audit metadata
-
-## State variants
-
-- fresh insight
-- historical insight
-- summary unavailable
-- error
-
-### Digests
-
-## Intent
-
-Digests summarize a time window and recent activity.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `DigestCard`
-- `ChartCard`
-- `MetricCard`
-- `SectionHeader`
-- `ListRow`
-
-## Required sections
-
-- time window
-- filters
-- aggregate metrics
-- recent events
-- related insights
-- generated summary
-
-## State variants
-
-- default window
-- custom window
-- filtered digest
-- history item
-- error
-
-### Settings
-
-## Intent
-
-Settings should stay compact and functional.
-
-## Primary components
-
-- `AppShell`
-- `TopBar`
-- `ListRow`
-- `SectionHeader`
-- `FilterChip`
-- `Button`
-- `BottomTabs`
-
-## Required sections
-
-- account
-- theme selection
-- notification settings
-- cache and sync settings
-- app metadata
-
-## State variants
-
-- signed in
-- signed out
-- theme preview
-- notification blocked
-
-## Theme behavior
-
-- theme switching must be visible here
-- preview mode should allow visual comparison without changing app logic
-
-## Component contract rules
-
-- no screen should hardcode a color literal
-- no screen should hardcode a font family
-- no screen should bypass semantic tokens
-- charts should receive palette tokens from theme context
-- typography variants should be mapped centrally
-- spacing and radius should be imported from base tokens
-
-## Responsive behavior
-
-- mobile phone layouts should be the default
-- tablet layouts can widen cards and split detail panes
-- the same component tree should support both
-
-## Implementation order
-
-1. define primitive components
-2. define cards and rows
-3. define dashboard and search screens
-4. define detail screens
-5. define financial screens
-6. define capture and review flows
-7. define settings and theme switching
-
-## Recommendation
-
-Implement this as a composition system, not a style sheet collection.
-
-That way:
-
-- the default theme can be Editorial Minimal
-- future themes can reuse the exact same component tree
-- screen logic stays stable while the presentation changes
+Grouped `Row`s with `IconTile`: General, Money, Notifications, Android capture,
+Advanced (collapsed). Connection, v2 credential, diagnostics and reset stay
+available but folded away.

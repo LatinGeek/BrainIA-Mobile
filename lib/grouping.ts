@@ -12,7 +12,7 @@ export function groupTransactionsByField(items: TransactionSummary[], field: 'ca
   const groups = new Map<string, TransactionSummary[]>();
 
   items.forEach((item) => {
-    const key = item[field] || 'Uncategorized';
+    const key = item[field] || 'Sin categoría';
     const next = groups.get(key) ?? [];
     next.push(item);
     groups.set(key, next);
@@ -48,11 +48,11 @@ export function clusterSearchResults(results: SearchResultItem[]): SearchCluster
   });
 
   const typeMeta: Record<SearchResultItem['type'], { title: string; subtitle: string; tone: SearchCluster['tone']; priority: number }> = {
-    entity: { title: 'Items', subtitle: 'People, merchants, places, and topics.', tone: 'positive', priority: 0 },
+    entity: { title: 'Elementos', subtitle: 'Personas, comercios, lugares y temas.', tone: 'positive', priority: 0 },
     insight: { title: 'Perspectivas', subtitle: 'Conclusiones claras y puntos relevantes.', tone: 'positive', priority: 1 },
-    transaction: { title: 'Transactions', subtitle: 'Money movement with merchant and category context.', tone: 'warning', priority: 2 },
-    event: { title: 'Activity', subtitle: 'Notes, notifications, emails, and captured records.', tone: 'warning', priority: 3 },
-    relation: { title: 'Connections', subtitle: 'Readable links between items.', tone: 'neutral', priority: 4 },
+    transaction: { title: 'Movimientos', subtitle: 'Movimientos de dinero con comercio y categoría.', tone: 'warning', priority: 2 },
+    event: { title: 'Actividad', subtitle: 'Notas, notificaciones, correos y registros capturados.', tone: 'warning', priority: 3 },
+    relation: { title: 'Conexiones', subtitle: 'Vínculos legibles entre elementos.', tone: 'neutral', priority: 4 },
   };
 
   return Array.from(groups.entries())

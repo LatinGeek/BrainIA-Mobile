@@ -1,24 +1,21 @@
 import { Feather } from '@expo/vector-icons';
-import { IntelligenceOverview } from '@/components/intelligence';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import {
-  AppScreen,
-  Section,
-  TopBar,
-} from '@/components/layout';
-import { DigestCard, InsightCard } from '@/components/cards';
-import { Button, CommandPanel, FilterChip, ListRow, Panel, SearchField, StatusBadge, Surface, ToggleRow } from '@/components/primitives';
-import { EmptyState, LoadingSkeleton } from '@/components/states';
+import { Button, Chip, ChipGroup, Field, Tag } from '@/components/controls';
+import { IconTile, Row, TransactionRow, transactionRoute } from '@/components/data/Row';
+import { Graph } from '@/components/data/Graph';
+import { SignalCard } from '@/components/data/SignalCard';
+import { StateView } from '@/components/data/StateView';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { Screen, Section } from '@/components/layout/Screen';
+import { SearchClustersSkeleton, SearchMapSkeleton, SearchRecentSkeleton, SearchTopMatchSkeleton } from '@/components/skeletons/SearchSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadSearchBundle } from '@/lib/api';
 import { DigestSummary, ExploreGraph, InsightSummary, TransactionSummary } from '@/lib/domain';
-import { formatCategoryLabel } from '@/lib/format';
 import { useAsyncResource, useDebouncedValue } from '@/lib/hooks';
 import { clusterSearchResults } from '@/lib/grouping';
-import { GraphExplorer } from '@/components/knowledge/GraphExplorer';
 import { recordInteraction } from '@/lib/interaction-telemetry';
 
 const sourceFilters = [
@@ -42,12 +39,11 @@ export default function SearchScreen() {
   const hasQuery = debouncedQuery.trim().length > 0;
 
   const loader = useMemo(
-    () => () =>
-      loadSearchBundle(client, debouncedQuery).then((bundle) => ({
-        ...bundle,
-        results: bundle.results.filter((result) => sourceFilter === 'all' || result.subtitle?.toLowerCase().includes(sourceFilter)),
-      })),
-    [client, debouncedQuery, sourceFilter]
+    () => () => loadSearchBundle(client, debouncedQuery).then((bundle) => ({
+      ...bundle,
+      results: bundle.results.filter((result) => sourceFilter === 'all' || result.subtitle?.toLowerCase().includes(sourceFilter)),
+    })),
+    [client, debouncedQuery, sourceFilter],
   );
   const { data, loading, error, refresh } = useAsyncResource(loader, [loader]);
   const recentLoader = useMemo(
@@ -55,14 +51,9 @@ export default function SearchScreen() {
       const [insights, transactions, digests] = await Promise.all([client.listInsights(3), client.listTransactions(4), client.listDigests(2)]);
       return { insights, transactions, digests };
     },
-    [client]
+    [client],
   );
-  const {
-    data: recentData,
-    loading: recentLoading,
-    error: recentError,
-    refresh: refreshRecent,
-  } = useAsyncResource(recentLoader, [recentLoader]);
+  const { data: recentData, loading: recentLoading, error: recentError, refresh: refreshRecent } = useAsyncResource(recentLoader, [recentLoader]);
   const entityLoader = useMemo(() => () => client.listEntities(), [client]);
   const { data: entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities } = useAsyncResource(entityLoader, [entityLoader]);
   const graphLoader = useMemo(() => () => client.getExploreGraph(80, {
@@ -80,19 +71,19 @@ export default function SearchScreen() {
   const recentPrompts = useMemo(() => {
     const values = [
       'Spotify',
-      'groceries',
-      'last week',
-      'receipts',
+      'compras',
+      'la semana pasada',
+      'recibos',
       ...(recentData?.insights.map((item) => item.title) ?? []),
       ...(recentData?.transactions.map((item) => item.displayMerchantLabel ?? item.merchantLabel) ?? []),
       ...(recentData?.digests.map((item) => item.title) ?? []),
     ];
-
     return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean))).slice(0, 6);
   }, [recentData]);
   const activeRefresh = hasQuery ? refresh : refreshRecent;
   const activeRefreshing = hasQuery ? loading : recentLoading;
   const nameSuggestions = useMemo(() => (entities ?? []).filter((entity) => query.trim().length > 0 && entity.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 5), [entities, query]);
+
   useEffect(() => {
     if (!focusedEntityId || graph?.nodes.some((node) => node.id === focusedEntityId)) return;
     let cancelled = false;
@@ -102,10 +93,11 @@ export default function SearchScreen() {
       const relations = neighborhood.relations
         .filter((relation) => relation.sourceEntityId && relation.targetEntityId)
         .map((relation) => ({ id: relation.id, sourceEntityId: relation.sourceEntityId!, targetEntityId: relation.targetEntityId!, relationType: relation.relationType ?? 'related_to', label: relation.label, description: relation.description, confidence: 1, importanceScore: relation.importanceScore ?? 1 }));
-      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `${nodes[0]?.name ?? 'Selected'} network`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
+      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `Red de ${nodes[0]?.name ?? 'la selección'}`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
     }).catch(() => setExpandedGraph(undefined));
     return () => { cancelled = true; };
   }, [client, focusedEntityId, graph?.nodes]);
+
   const displayGraph = useMemo<ExploreGraph | undefined>(() => {
     if (!graph) return undefined;
     if (expandedGraph && expandedGraph.nodes.some((node) => node.id === focusedEntityId)) {
@@ -120,200 +112,156 @@ export default function SearchScreen() {
   }, [entities, expandedGraph, focusedEntityId, graph]);
 
   return (
-    <AppScreen refreshing={activeRefreshing} onRefresh={activeRefresh} contentStyle={{ paddingTop: theme.spacing.md }}>
-      <IntelligenceOverview/>
-      <TopBar
-        title="Descubrir"
-        subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
-        secondaryAction={<StatusBadge label={loading ? 'Buscando' : hasQuery ? `${results.length} resultados` : `${entities?.length ?? 0} nodos`} />}
-      />
-
-      <CommandPanel>
-        <SearchField
-          label="Busca en tu conocimiento"
+    <Screen
+      title="Descubrir"
+      overline={displayGraph || entities ? `${displayGraph?.stats.nodesCount ?? entities?.length ?? 0} nodos` : 'Mapa de conocimiento'}
+      subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
+      refreshing={activeRefreshing}
+      onRefresh={activeRefresh}
+      actions={<Tag label={loading ? 'Buscando' : hasQuery ? `${results.length} resultados` : 'Mapa en vivo'} tone={loading ? 'warning' : 'neutral'} live={!loading} />}
+    >
+      <View style={{ gap: 10 }}>
+        <Field
+          variant="search"
           value={query}
           onChangeText={setQuery}
           placeholder="Spotify, compras, un contacto, un tema…"
           accessibilityLabel="Busca en tu mapa de conocimiento"
+          leading={<Feather name="search" size={16} color={theme.colors.textMuted} />}
           autoCapitalize="none"
           autoCorrect={false}
         />
-        {nameSuggestions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{nameSuggestions.map((entity) => <FilterChip key={entity.id} label={entity.name} selected={entity.id === focusedEntityId} onPress={() => { setQuery(entity.name); setFocusedEntityId(entity.id); }} />)}</View> : null}
-        {hasQuery ? (
+        {nameSuggestions.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {sourceFilters.map((item) => (
-              <FilterChip key={item.value} label={item.label} selected={sourceFilter === item.value} onPress={() => setSourceFilter(item.value)} />
-            ))}
+            {nameSuggestions.map((entity) => <Chip key={entity.id} label={entity.name} selected={entity.id === focusedEntityId} onPress={() => { setQuery(entity.name); setFocusedEntityId(entity.id); }} />)}
           </ScrollView>
+        ) : null}
+        {hasQuery ? (
+          <ChipGroup items={sourceFilters} selected={sourceFilter} onChange={(value) => setSourceFilter(value as typeof sourceFilter)} />
         ) : (
-          <View style={{ gap: 8 }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prueba un punto de partida o explora el mapa inferior</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {recentPrompts.map((item) => (
-                <FilterChip key={item} label={item} selected={false} onPress={() => setQuery(item)} />
-              ))}
-            </View>
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {recentPrompts.map((item) => <Chip key={item} label={item} onPress={() => setQuery(item)} />)}
+          </ScrollView>
         )}
-      </CommandPanel>
+      </View>
 
-      {error ? <EmptyState title="Búsqueda no disponible" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
+      {error ? <StateView kind="error" title="Búsqueda no disponible" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
 
       {!hasQuery ? (
         <>
-          <Section title="Mapa de conocimiento" subtitle="Explora las conexiones entre tus actividades.">
-            {entitiesError || graphError ? <EmptyState title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} primaryActionLabel="Reintentar" onPrimaryAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
-            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <LoadingSkeleton variant="card" count={2} /> : null}
+          <GlassSurface level="thin" padding="none">
+            <Row title="Conocimiento" subtitle="Pregunta, descubre y conserva lo que importa" leading={<IconTile icon="zap" />} onPress={() => router.push('/intelligence')} />
+          </GlassSurface>
+          <Section title="Tus conexiones" subtitle="Cómo se relacionan tus actividades, comercios y personas.">
+            {entitiesError || graphError ? <StateView kind="error" title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} actionLabel="Reintentar" onAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
+            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <SearchMapSkeleton /> : null}
             {displayGraph?.nodes.length ? (
-              <Panel tone="accent" style={{ gap: theme.spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-                  <Feather name="share-2" size={20} color={theme.colors.accentStrong} />
+              <GlassSurface level="regular" tone="accent" padding="md" contentStyle={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa de conocimiento interactivo</Text>
-                    <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Start broad, then tap a node to reveal the relationships that matter.</Text>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa interactivo</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca un nodo para enfocarlo; abre el elemento para ver todo lo que BrainIA sabe de él.</Text>
                   </View>
+                  <Tag label={`${displayGraph.stats.nodesCount} nodos`} tone="info" />
                 </View>
-                <ToggleRow
-                  title="Mostrar personas y servicios"
-                  subtitle="Muestra comercios, aplicaciones, contactos y cuentas conectados con el mapa de categorías."
-                  value={showIdentityNodes}
-                  onValueChange={(value) => {
-                    setShowIdentityNodes(value);
-                    if (value) setShowEvidenceNodes(false);
-                    setTaxonomyStack([]);
-                    setFocusedEntityId(undefined);
-                    setExpandedGraph(undefined);
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <Chip label="Personas y servicios" selected={showIdentityNodes} onPress={() => { setShowIdentityNodes((value) => !value); if (!showIdentityNodes) setShowEvidenceNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
+                  <Chip label="Evidencia" selected={showEvidenceNodes} onPress={() => { setShowEvidenceNodes((value) => !value); if (!showEvidenceNodes) setShowIdentityNodes(false); setTaxonomyStack([]); setFocusedEntityId(undefined); setExpandedGraph(undefined); }} />
+                </View>
+                {!showEvidenceNodes && !showIdentityNodes && taxonomyStack.length ? (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <Chip label="Todas las áreas" onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
+                    {taxonomyStack.map((item, index) => <Chip key={item.key} label={item.label} selected={index === taxonomyStack.length - 1} onPress={() => { setTaxonomyStack((current) => current.slice(0, index + 1)); setFocusedEntityId(undefined); }} />)}
+                  </View>
+                ) : null}
+                <Graph
+                  mode="explore"
+                  graph={displayGraph}
+                  focusedEntityId={focusedEntityId}
+                  onFocus={(entity) => {
+                    setFocusedEntityId(entity.id);
+                    if (!showEvidenceNodes && !showIdentityNodes && entity.taxonomyKey && entity.hasMore) {
+                      setTaxonomyStack((current) => current.some((item) => item.key === entity.taxonomyKey) ? current : [...current, { key: entity.taxonomyKey!, label: entity.name }]);
+                    }
                   }}
+                  onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)}
                 />
-                <ToggleRow
-                  title="Mostrar evidencia"
-                  subtitle="Incluye los correos, notificaciones y eventos financieros capturados que sostienen este mapa."
-                  value={showEvidenceNodes}
-                  onValueChange={(value) => {
-                    setShowEvidenceNodes(value);
-                    if (value) setShowIdentityNodes(false);
-                    setTaxonomyStack([]);
-                    setFocusedEntityId(undefined);
-                    setExpandedGraph(undefined);
-                  }}
-                />
-                {!showEvidenceNodes && !showIdentityNodes && taxonomyStack.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <FilterChip label="All domains" selected={false} onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
-                  {taxonomyStack.map((item, index) => <FilterChip key={item.key} label={item.label} selected={index === taxonomyStack.length - 1} onPress={() => { setTaxonomyStack((current) => current.slice(0, index + 1)); setFocusedEntityId(undefined); }} />)}
-                </View> : null}
-                <GraphExplorer graph={displayGraph} focusedEntityId={focusedEntityId} onFocus={(entity) => {
-                  setFocusedEntityId(entity.id);
-                  if (!showEvidenceNodes && !showIdentityNodes && entity.taxonomyKey && entity.hasMore) {
-                    setTaxonomyStack((current) => current.some((item) => item.key === entity.taxonomyKey) ? current : [...current, { key: entity.taxonomyKey!, label: entity.name }]);
-                  }
-                }} onOpen={(entity) => entity.eventId ? router.push(`/event/${entity.eventId}`) : router.push(`/entity/${entity.id}`)} />
-                <Button label="Actualizar mapa" onPress={() => { void refreshEntities(); void refreshGraph(); }} variant="secondary" />
-              </Panel>
-            ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? <EmptyState title="Tu conocimiento está creciendo" description="Captura notas, correos o notificaciones para crear personas, comercios, temas y conexiones." /> : null}
-          </Section>
-
-          <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
-            {recentError ? <EmptyState title="Actividad reciente no disponible" description={recentError} primaryActionLabel="Reintentar" onPrimaryAction={refreshRecent} /> : null}
-            {recentLoading && !recentData ? <LoadingSkeleton variant="card" count={3} /> : null}
-            {!recentLoading && recentData ? (
-              <View style={{ gap: theme.spacing.md }}>
-                {recentData.insights.slice(0, 2).map((insight: InsightSummary) => (
-                  <InsightCard key={insight.id} insight={insight} onPress={() => router.push(`/insight/${insight.id}`)} />
-                ))}
-                {recentData.digests.slice(0, 1).map((digest: DigestSummary) => (
-                  <DigestCard key={digest.id} digest={digest} onPress={() => router.push(`/digest/${digest.id}`)} />
-                ))}
-                {recentData.transactions.slice(0, 3).map((transaction: TransactionSummary) => (
-                  <ListRow
-                    key={transaction.id}
-                    title={transaction.displayMerchantLabel ?? transaction.merchantLabel}
-                    subtitle={transaction.kind === 'income' ? 'Ingresos' : formatCategoryLabel(transaction.category)}
-                    description={transaction.observedAt ? `Seen ${transaction.observedAt}` : 'Recent transaction'}
-                    trailing={<StatusBadge label={transaction.amount} tone={transaction.kind === 'income' ? 'positive' : 'danger'} />}
-                    onPress={() => router.push(`/transaction/${transaction.id}`)}
-                  />
-                ))}
-              </View>
+                <Button label="Actualizar mapa" variant="secondary" size="sm" onPress={() => { void refreshEntities(); void refreshGraph(); }} />
+              </GlassSurface>
+            ) : !entitiesLoading && !graphLoading && !entitiesError && !graphError ? (
+              <StateView title="Tu conocimiento está creciendo" description="Captura notas, correos o notificaciones para crear personas, comercios, temas y conexiones." actionLabel="Capturar" onAction={() => router.push('/capture')} />
             ) : null}
           </Section>
 
-          <Section title="Cómo funciona la exploración" subtitle="Todo lo que capturas se puede buscar y conectar.">
-            <Panel tone="accent" style={{ gap: theme.spacing.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-                <Feather name="search" size={20} color={theme.colors.accentStrong} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Búsqueda unificada</Text>
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                    La búsqueda encuentra actividad relevante y nodos de conocimiento. Al abrir un nodo verás sus conexiones cercanas y el motivo de cada relación.
-                  </Text>
-                </View>
+          <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
+            {recentError ? <StateView kind="error" title="Actividad reciente no disponible" description={recentError} actionLabel="Reintentar" onAction={refreshRecent} /> : null}
+            {recentLoading && !recentData ? <SearchRecentSkeleton /> : null}
+            {!recentLoading && recentData ? (
+              <View style={{ gap: 10 }}>
+                {recentData.insights.slice(0, 2).map((insight: InsightSummary) => (
+                  <SignalCard key={insight.id} variant="brief" origin="model" title={insight.title} summary={insight.summary} confidence={insight.confidence} onPress={() => router.push(`/insight/${insight.id}`)} />
+                ))}
+                {recentData.digests.slice(0, 1).map((digest: DigestSummary) => (
+                  <SignalCard key={digest.id} variant="brief" origin="model" meta={digest.windowLabel} title={digest.title} summary={digest.summary} onPress={() => router.push(`/digest/${digest.id}`)} />
+                ))}
+                {recentData.transactions.slice(0, 3).map((transaction: TransactionSummary) => (
+                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(transactionRoute(transaction))} />
+                ))}
               </View>
-            </Panel>
+            ) : null}
           </Section>
         </>
       ) : null}
 
       {hasQuery ? (
         <>
-          <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado disponible para esta consulta.'}>
-            {loading ? <LoadingSkeleton variant="card" count={1} /> : null}
+          <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado para esta búsqueda.'}>
+            {loading ? <SearchTopMatchSkeleton /> : null}
             {!loading && topMatch ? (
-              <Panel tone="accent" style={{ gap: theme.spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.spacing.md }}>
+              <GlassSurface level="regular" tone="accent" padding="lg" contentStyle={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>{topMatch.title}</Text>
                     <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{topMatch.description}</Text>
                   </View>
-                  <StatusBadge label={resultTypeLabel(topMatch.type)} />
+                  <Tag label={resultTypeLabel(topMatch.type)} tone="info" />
                 </View>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>
-                  {topMatch.hint ?? `Matched ${topMatch.subtitle ?? topMatch.type} content.`}
-                </Text>
-                <Button label="Abrir resultado" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} variant="secondary" />
-              </Panel>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{topMatch.hint ?? `Coincide con contenido de tipo ${topMatch.subtitle ?? topMatch.type}.`}</Text>
+                <Button label="Abrir resultado" variant="secondary" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} />
+              </GlassSurface>
             ) : null}
-            {!loading && !error && !topMatch ? <EmptyState title="Sin coincidencias" description="Prueba otra frase o quita el filtro." /> : null}
+            {!loading && !error && !topMatch ? <StateView title="Sin coincidencias" description="Prueba otra frase o quita el filtro." /> : null}
           </Section>
 
           <Section title="Resultados agrupados" subtitle="Grupos fáciles de revisar con acciones directas." count={results.length}>
+            {loading && !data ? <SearchClustersSkeleton /> : null}
             {clusters.map((cluster) => (
-              <Surface key={cluster.id} variant="subtle" style={{ gap: theme.spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.spacing.md }}>
+              <GlassSurface key={cluster.id} level="thin" padding="md" contentStyle={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{cluster.title}</Text>
                     <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{cluster.subtitle}</Text>
                   </View>
-                  <StatusBadge label={`${cluster.count}`} tone={cluster.tone} />
+                  <Tag label={`${cluster.count}`} tone={String(cluster.tone) === 'positive' ? 'positive' : String(cluster.tone) === 'warning' ? 'warning' : String(cluster.tone) === 'danger' ? 'danger' : 'neutral'} />
                 </View>
                 {cluster.items.slice(0, 3).map((result) => (
-                  <ListRow
-                    key={result.id}
-                    title={result.title}
-                    subtitle={result.subtitle}
-                    description={result.hint ?? result.description}
-                    onPress={() => router.push(result.route as never)}
-                  />
+                  <Row key={result.id} title={result.title} subtitle={result.subtitle} description={result.hint ?? result.description} leading={<IconTile icon="link-2" />} onPress={() => router.push(result.route as never)} />
                 ))}
-              </Surface>
+              </GlassSurface>
             ))}
           </Section>
         </>
       ) : null}
-    </AppScreen>
+    </Screen>
   );
 }
 
 function resultTypeLabel(type: string) {
   switch (type) {
-    case 'entity':
-      return 'Item';
-    case 'insight':
-      return 'Perspectiva';
-    case 'transaction':
-      return 'Transaction';
-    case 'event':
-      return 'Activity';
-    default:
-      return 'Conexión';
+    case 'entity': return 'Elemento';
+    case 'insight': return 'Hallazgo';
+    case 'transaction': return 'Movimiento';
+    case 'event': return 'Actividad';
+    default: return 'Conexión';
   }
 }

@@ -2,42 +2,35 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, Text, View } from 'react-native';
-import Animated, {
-  FadeInDown,
-  FadeOutUp,
-  LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { Alert, Platform, Pressable, StyleSheet, Text, TextProps, View } from 'react-native';
+import Animated, { Easing, FadeInDown, FadeOut, FadeOutUp } from 'react-native-reanimated';
 
-import {
-  InsightCard,
-} from '@/components/cards';
-import { MonthlyCashFlowBar, MonthlyCashFlowLine, SpendingRadial, type MonthlyCashFlowPoint } from '@/components/charts';
-import { TransactionRow } from '@/components/finance';
-import { AccountIcon } from '@/components/finance/AccountIcon';
-import { AppScreen, Section, TopBar } from '@/components/layout';
-import { AnimatedPressable, BottomSheet, Button, FilterChip, Input, ListRow, Panel, SegmentedControl, StatusBadge, Surface } from '@/components/primitives';
-import { EmptyState, LoadingSkeleton } from '@/components/states';
-import { FxStamp } from '@/components/trust';
+import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
+import { Amount, IconTile, Row, TransactionRow, transactionRoute, useCountedAmount } from '@/components/data/Row';
+import { MixCard } from '@/components/data/MixCard';
+import { SignalCard } from '@/components/data/SignalCard';
+import { StateView } from '@/components/data/StateView';
+import { TrendChart } from '@/components/data/TrendChart';
+import { GlassPressable } from '@/components/glass/GlassPressable';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { KeepAliveViews } from '@/components/layout/KeepAliveViews';
+import { withoutAssumptions } from '@/lib/rules';
+import { Screen, Section } from '@/components/layout/Screen';
+import { FinancialsSkeleton } from '@/components/skeletons/FinancialsSkeleton';
+import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
 import { hasFinancialCurrencyConversion, summarizeFinancialTransactions } from '@/lib/financial-summary';
-import { useAsyncResource } from '@/lib/hooks';
-import { convertCurrency, formatCategoryLabel, formatCurrency, isUncategorizedLabel, parseCurrency, SupportedCurrency } from '@/lib/format';
-import type { TransactionGroup } from '@/lib/grouping';
+import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
+import { listLayout } from '@/lib/motion';
+import { accountTypeLabel, convertCurrency, formatCategoryLabel, formatCurrency, isUncategorizedLabel, parseCurrency, FIXED_FX_LABEL, type SupportedCurrency } from '@/lib/format';
 import type { FinancialAccount, PendingTransaction, TransactionSummary } from '@/lib/domain';
 import { DEFAULT_FINANCIAL_ACCOUNT_COLOR, FINANCIAL_ACCOUNT_COLORS } from '@/lib/financial-accounts';
 
 const views = [
   { value: 'overview', label: 'Resumen' },
-  { value: 'trends', label: 'Tendencias' },
   { value: 'accounts', label: 'Cuentas' },
-  { value: 'transactions', label: 'Movimientos' },
-  { value: 'pending', label: 'Pendientes' },
-  { value: 'insights', label: 'Perspectivas' },
+  { value: 'activity', label: 'Movimientos' },
 ] as const;
 
 const periods = [
@@ -45,17 +38,23 @@ const periods = [
   { value: 'year', label: 'Año' },
 ] as const;
 
-type FinanceView = (typeof views)[number]['value'];
-type FinancePeriod = (typeof periods)[number]['value'];
-type TrendChartMode = 'line' | 'bars';
-type TransactionKindFilter = 'all' | 'expense' | 'income' | 'transfer';
-type TransactionSort = 'recent' | 'oldest' | 'highest' | 'lowest';
-type ManualEntryKind = 'expense' | 'income';
-
 const displayCurrencies = [
   { value: 'UYU', label: 'UYU' },
   { value: 'USD', label: 'USD' },
 ] as const;
+
+const mixModes = [
+  { value: 'category', label: '', icon: 'pie-chart' as const, accessibilityLabel: 'Category' },
+  { value: 'merchant', label: '', icon: 'shopping-bag' as const, accessibilityLabel: 'Merchant' },
+] as const;
+
+type FinanceView = (typeof views)[number]['value'];
+type FinancePeriod = (typeof periods)[number]['value'];
+type MixMode = (typeof mixModes)[number]['value'];
+type TrendMode = 'line' | 'bars';
+type TransactionKindFilter = 'all' | 'expense' | 'income' | 'transfer';
+type TransactionSort = 'recent' | 'oldest' | 'highest' | 'lowest';
+type ManualEntryKind = 'expense' | 'income';
 
 const TRANSACTION_CYCLE_LIMIT = 1000;
 
@@ -65,72 +64,6 @@ const transactionSortLabels: Record<TransactionSort, string> = {
   highest: 'Mayor importe',
   lowest: 'Menor importe',
 };
-
-function CompactFinanceSwitch<T extends string>({
-  value,
-  onChange,
-  options,
-  accessibilityLabel,
-  minOptionWidth = 40,
-}: {
-  value: T;
-  onChange: (value: T) => void;
-  options: readonly { value: T; label: string }[];
-  accessibilityLabel: string;
-  minOptionWidth?: number;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View
-      accessibilityRole="radiogroup"
-      style={{
-        flexDirection: 'row',
-        padding: 3,
-        borderRadius: 999,
-        backgroundColor: theme.colors.surfaceSubtle,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        gap: 2,
-      }}
-    >
-      {options.map((option) => {
-        const selected = value === option.value;
-        return (
-          <AnimatedPressable
-            key={option.value}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: selected }}
-            accessibilityLabel={`${accessibilityLabel}: ${option.label}`}
-            onPress={() => onChange(option.value)}
-            scaleTo={0.96}
-            style={{
-              minWidth: minOptionWidth,
-              height: 28,
-              paddingHorizontal: 8,
-              borderRadius: 999,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: selected ? theme.colors.accentSoft : 'transparent',
-              borderWidth: 1,
-              borderColor: selected ? theme.colors.accentStrong + '99' : 'transparent',
-            }}
-          >
-            <Text style={[theme.typography.caption, { color: selected ? theme.colors.accentStrong : theme.colors.textMuted, fontWeight: '700' }]}>{option.label}</Text>
-          </AnimatedPressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function CompactCurrencySwitch({ value, onChange }: { value: SupportedCurrency; onChange: (value: SupportedCurrency) => void }) {
-  return <CompactFinanceSwitch value={value} onChange={onChange} options={displayCurrencies} accessibilityLabel="Moneda de visualización" />;
-}
-
-function CompactPeriodSwitch({ value, onChange }: { value: FinancePeriod; onChange: (value: FinancePeriod) => void }) {
-  return <CompactFinanceSwitch value={value} onChange={onChange} options={periods} accessibilityLabel="Período financiero" minOptionWidth={48} />;
-}
 
 function displayAmount(transaction: { amount: string; currency: string }, currency: SupportedCurrency) {
   return convertCurrency(parseCurrency(transaction.amount), transaction.currency, currency);
@@ -181,15 +114,13 @@ function buildMonthlyCashFlow(
   financialPeriodStartDay: number,
   currency: SupportedCurrency,
   monthCount = 6,
-): MonthlyCashFlowPoint[] {
+) {
   const currentStart = new Date(currentFinancialPeriodRange(financialPeriodStartDay).from);
   const points = Array.from({ length: monthCount }, (_, index) => {
     const start = new Date(currentStart.getFullYear(), currentStart.getMonth() - (monthCount - 1 - index), financialPeriodStartDay);
     const next = new Date(start.getFullYear(), start.getMonth() + 1, financialPeriodStartDay);
     const end = new Date(next.getTime() - 1);
     return {
-      // A cycle that starts on the 28th carries the following month's cash flow
-      // (for example, 28 Aug–27 Sept is shown as "Sept").
       label: end.toLocaleDateString(undefined, { month: 'short' }),
       periodLabel: financialPeriodLabel({ from: start.toISOString(), to: end.toISOString() }),
       income: 0,
@@ -210,22 +141,17 @@ function buildMonthlyCashFlow(
     else point.spending += value;
   });
 
-  return points.map(({ label, periodLabel, income, spending }) => ({
-    label,
-    periodLabel,
-    income: Math.max(0, income),
-    spending: Math.max(0, spending),
-  }));
+  return points.map(({ label, periodLabel, income, spending }) => ({ label, periodLabel, income: Math.max(0, income), spending: Math.max(0, spending) }));
 }
 
 function groupTransactionsInCurrency(
-  transactions: import('@/lib/domain').TransactionSummary[],
-  field: 'category' | 'account',
+  transactions: TransactionSummary[],
+  field: 'category' | 'merchant',
   currency: SupportedCurrency,
-): TransactionGroup[] {
-  const groups = new Map<string, import('@/lib/domain').TransactionSummary[]>();
+) {
+  const groups = new Map<string, TransactionSummary[]>();
   transactions.forEach((transaction) => {
-    const label = transaction[field] || 'Uncategorized';
+    const label = field === 'category' ? transaction.category || 'Uncategorized' : transaction.displayMerchantLabel ?? transaction.merchantLabel;
     groups.set(label, [...(groups.get(label) ?? []), transaction]);
   });
   return Array.from(groups.entries())
@@ -238,163 +164,14 @@ function groupTransactionsInCurrency(
     .sort((a, b) => b.total - a.total || b.count - a.count || a.label.localeCompare(b.label));
 }
 
-function AccountListItem({
-  account,
-  displayCurrency,
-  expanded,
-  onToggle,
-  onEdit,
-  onAdjust,
-  onDelete,
-  deleting,
-}: {
-  account: FinancialAccount;
-  displayCurrency: SupportedCurrency;
-  expanded: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onAdjust: () => void;
-  onDelete: () => void;
-  deleting: boolean;
-}) {
-  const theme = useTheme();
-  const expansion = useSharedValue(expanded ? 1 : 0);
-  const nativeCurrency = account.currency ?? 'UYU';
-  const nativeBalance = parseCurrency(account.balance);
-  const convertedBalance = convertCurrency(nativeBalance, nativeCurrency, displayCurrency);
-  const accountColor = account.color ?? DEFAULT_FINANCIAL_ACCOUNT_COLOR;
-
-  useEffect(() => {
-    expansion.value = withSpring(expanded ? 1 : 0, { damping: 17, stiffness: 190, mass: 0.7 });
-  }, [expanded, expansion]);
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${expansion.value * 180}deg` }],
-  }));
-
-  return (
-    <Animated.View layout={LinearTransition.springify().damping(18).stiffness(180)}>
-      <Surface
-        variant={expanded ? 'raised' : 'subtle'}
-        padding="none"
-        style={{
-          overflow: 'hidden',
-          borderColor: expanded ? `${accountColor}66` : theme.depth.hairline,
-          shadowColor: expanded ? accountColor : undefined,
-        }}
-      >
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: accountColor }} />
-        <AnimatedPressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          accessibilityLabel={`${account.name}, ${nativeCurrency !== displayCurrency ? 'approximately ' : ''}${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
-          onPress={onToggle}
-          scaleTo={0.993}
-          style={{
-            minHeight: 72,
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingLeft: theme.spacing.md + 3,
-            paddingRight: theme.spacing.sm,
-            paddingVertical: theme.spacing.sm,
-            gap: theme.spacing.sm,
-          }}
-        >
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: `${accountColor}1F`,
-              borderWidth: 1,
-              borderColor: `${accountColor}38`,
-            }}
-          >
-            <AccountIcon color={accountColor} size={36} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{account.name}</Text>
-            <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, textTransform: 'capitalize' }]}>
-              {account.type} · {nativeCurrency}{account.mask ? ` · ${account.mask}` : ''}
-            </Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', minWidth: 84, gap: 2 }}>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.72}
-              style={[
-                theme.typography.bodyStrong,
-                {
-                  color: convertedBalance >= 0 ? theme.colors.textPrimary : theme.status.expense,
-                  fontVariant: ['tabular-nums'],
-                  maxWidth: 128,
-                },
-              ]}
-            >
-              {nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}
-            </Text>
-            {nativeCurrency !== displayCurrency ? (
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
-            ) : (
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo disponible</Text>
-            )}
-          </View>
-          <Animated.View style={[{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: expanded ? `${accountColor}20` : theme.colors.surface }, chevronStyle]}>
-            <Feather name="chevron-down" size={17} color={expanded ? accountColor : theme.colors.textMuted} />
-          </Animated.View>
-        </AnimatedPressable>
-
-        {expanded ? (
-          <Animated.View
-            entering={FadeInDown.duration(220)}
-            exiting={FadeOutUp.duration(150)}
-            style={{ paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.md, paddingLeft: theme.spacing.md + 3 }}
-          >
-            <View style={{ height: 1, backgroundColor: theme.colors.border, marginBottom: theme.spacing.md }} />
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-              <View style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, gap: 3 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo en moneda original</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
-              </View>
-              <View style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: `${accountColor}12`, gap: 3 }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Valor de tus cuentas</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <View style={{ flex: 1 }}>
-                <Button label="Editar cuenta" variant="secondary" size="sm" onPress={onEdit} icon={<Feather name="edit-2" size={14} color={theme.colors.textPrimary} />} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button label="Ajustar saldo" variant="secondary" size="sm" onPress={onAdjust} icon={<Feather name="sliders" size={14} color={theme.colors.textPrimary} />} />
-              </View>
-            </View>
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <Button
-                label={deleting ? 'Deleting account...' : 'Delete account'}
-                variant="danger"
-                size="sm"
-                loading={deleting}
-                onPress={onDelete}
-                icon={<Feather name="trash-2" size={14} color={theme.colors.onAccent} />}
-              />
-            </View>
-          </Animated.View>
-        ) : null}
-      </Surface>
-    </Animated.View>
-  );
-}
-
 export default function FinancialsScreen() {
   const { client, financialDataRevision, invalidateFinancialData, settings, theme } = useAppState();
   const [view, setView] = useState<FinanceView>('overview');
   const [period, setPeriod] = useState<FinancePeriod>('month');
-  const [trendChartMode, setTrendChartMode] = useState<TrendChartMode>('line');
+  const [mixMode, setMixMode] = useState<MixMode>('category');
+  const [trendMode, setTrendMode] = useState<TrendMode>('line');
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>('UYU');
+  const [selectedMixId, setSelectedMixId] = useState<string | null>(null);
   const [accountEditorOpen, setAccountEditorOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<FinancialAccount | null>(null);
   const [accountName, setAccountName] = useState('');
@@ -433,42 +210,30 @@ export default function FinancialsScreen() {
   const [entrySaving, setEntrySaving] = useState(false);
   const [executingPending, setExecutingPending] = useState<PendingTransaction | null>(null);
   const [executionDate, setExecutionDate] = useState(localDateInputValue());
+
   const loader = useMemo(
     () => () => loadFinancialBundle(client, settings.financialPeriodStartDay),
     [client, settings.financialPeriodStartDay],
   );
   const { data, loading, error, refresh } = useAsyncResource(loader, [financialDataRevision, loader]);
-  useFocusEffect(useCallback(() => {
-    void refresh();
-  }, [refresh]));
-  const financialPeriodRange = useMemo(
-    () => currentFinancialPeriodRange(settings.financialPeriodStartDay),
-    [settings.financialPeriodStartDay],
-  );
+  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
+
+  const financialPeriodRange = useMemo(() => currentFinancialPeriodRange(settings.financialPeriodStartDay), [settings.financialPeriodStartDay]);
   const cycleLabel = financialPeriodLabel(financialPeriodRange);
   const selectedTransactionCycleRange = useMemo(
     () => financialPeriodRangeAtOffset(settings.financialPeriodStartDay, transactionCycleOffset),
     [settings.financialPeriodStartDay, transactionCycleOffset],
   );
   const selectedTransactionCycleLabel = financialPeriodLabel(selectedTransactionCycleRange);
-  const selectedTransactionCycleMonth = new Date(selectedTransactionCycleRange.to).toLocaleDateString(undefined, { month: 'short' });
+  const selectedTransactionCycleMonth = (() => { const label = new Date(selectedTransactionCycleRange.to).toLocaleDateString('es-UY', { month: 'short', year: 'numeric' }).replace('.', ''); return label.charAt(0).toUpperCase() + label.slice(1); })();
 
   useEffect(() => {
-    if (transactionCycleOffset === 0) {
-      return;
-    }
-
+    if (transactionCycleOffset === 0) return;
     let active = true;
     void client.listTransactions(TRANSACTION_CYCLE_LIMIT, selectedTransactionCycleRange)
-      .then((items) => {
-        if (active) setHistoricalTransactions(items);
-      })
-      .catch(() => {
-        if (active) setHistoricalTransactions([]);
-      })
-      .finally(() => {
-        if (active) setHistoricalTransactionsLoading(false);
-      });
+      .then((items) => { if (active) setHistoricalTransactions(items); })
+      .catch(() => { if (active) setHistoricalTransactions([]); })
+      .finally(() => { if (active) setHistoricalTransactionsLoading(false); });
     return () => { active = false; };
   }, [client, financialDataRevision, selectedTransactionCycleRange, transactionCycleOffset]);
 
@@ -477,82 +242,54 @@ export default function FinancialsScreen() {
   const selectedCycleTransactions = transactionCycleOffset === 0 ? transactions : historicalTransactions;
   const selectedCycleTransactionsLoading = transactionCycleOffset > 0 && historicalTransactionsLoading;
   const filteredCycleTransactions = useMemo(() => {
-    const filtered = transactionKindFilter === 'all'
-      ? selectedCycleTransactions
-      : selectedCycleTransactions.filter((transaction) => transaction.kind === transactionKindFilter);
+    const filtered = transactionKindFilter === 'all' ? selectedCycleTransactions : selectedCycleTransactions.filter((transaction) => transaction.kind === transactionKindFilter);
     return filtered.slice().sort((left, right) => {
       const leftDate = new Date(left.observedAt ?? 0).getTime();
       const rightDate = new Date(right.observedAt ?? 0).getTime();
       if (transactionSort === 'recent') return rightDate - leftDate;
       if (transactionSort === 'oldest') return leftDate - rightDate;
       const amountDifference = displayAmount(left, displayCurrency) - displayAmount(right, displayCurrency);
-      return transactionSort === 'highest'
-        ? amountDifference === 0 ? rightDate - leftDate : -amountDifference
-        : amountDifference === 0 ? rightDate - leftDate : amountDifference;
+      return transactionSort === 'highest' ? (amountDifference === 0 ? rightDate - leftDate : -amountDifference) : (amountDifference === 0 ? rightDate - leftDate : amountDifference);
     });
   }, [displayCurrency, selectedCycleTransactions, transactionKindFilter, transactionSort]);
+
   const accounts = data?.accounts ?? [];
   const selectedTransactions = useMemo(
     () => selectedTransactionIds.map((id) => selectedCycleTransactions.find((transaction) => transaction.id === id)).filter((transaction): transaction is TransactionSummary => Boolean(transaction)),
     [selectedCycleTransactions, selectedTransactionIds],
   );
+  // Consolidation writes category and account, so it only offers what the backend knew, never what a rule assumed.
+  const confirmedSelected = useMemo(() => selectedTransactions.map(withoutAssumptions), [selectedTransactions]);
   const transactionSelectionMode = selectedTransactionIds.length > 0;
   const insights = data?.insights ?? [];
-  const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => [
-    'spending_variation',
-    'recurrence_subscription',
-  ].includes(detector)));
+  const financeInsights = insights.filter((insight) => insight.detectors?.some((detector) => ['spending_variation', 'recurrence_subscription'].includes(detector)));
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
   const expenses = reportTransactions.filter((transaction) => transaction.kind === 'expense');
-  const categoryGroups = groupTransactionsInCurrency(expenses, 'category', displayCurrency);
   const financialSummary = summarizeFinancialTransactions(transactions, displayCurrency);
-  const monthlySpend = financialSummary.expenses;
-  const totalIncome = financialSummary.income;
-  const netMovement = totalIncome - monthlySpend;
   const periodMultiplier = period === 'year' ? 12 : 1;
-  const periodSpend = monthlySpend * periodMultiplier;
-  const periodIncome = totalIncome * periodMultiplier;
-  const periodNet = netMovement * periodMultiplier;
+  const periodSpend = financialSummary.expenses * periodMultiplier;
+  const periodIncome = financialSummary.income * periodMultiplier;
+  const periodNet = (financialSummary.income - financialSummary.expenses) * periodMultiplier;
+  const categoryGroups = useMemo(() => groupTransactionsInCurrency(expenses, 'category', displayCurrency), [displayCurrency, expenses]);
+  const merchantGroups = useMemo(() => groupTransactionsInCurrency(expenses, 'merchant', displayCurrency), [displayCurrency, expenses]);
+  const mixGroups = mixMode === 'category' ? categoryGroups : merchantGroups;
   const monthlyCashFlow = useMemo(
     () => buildMonthlyCashFlow(data?.trendTransactions ?? [], settings.financialPeriodStartDay, displayCurrency),
     [data?.trendTransactions, displayCurrency, settings.financialPeriodStartDay],
   );
-  const merchantGroups = Array.from(expenses.reduce((groups, transaction) => {
-    const label = transaction.displayMerchantLabel ?? transaction.merchantLabel;
-    groups.set(label, (groups.get(label) ?? 0) + displayAmount(transaction, displayCurrency));
-    return groups;
-  }, new Map<string, number>()).entries()).map(([label, total]) => ({ label, total }));
-  const topCategory = categoryGroups[0];
-  const topMerchant = expenses[0];
-  const totalAccountBalance = accounts.reduce(
-    (total, account) => total + convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency),
-    0,
-  );
-  const hasCurrencyConversion = hasFinancialCurrencyConversion(transactions, displayCurrency)
-    || accounts.some((account) => (account.currency ?? 'UYU') !== displayCurrency);
+  const totalAccountBalance = accounts.reduce((total, account) => total + convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency), 0);
+  const hasCurrencyConversion = hasFinancialCurrencyConversion(transactions, displayCurrency) || accounts.some((account) => (account.currency ?? 'UYU') !== displayCurrency);
   const displayTotal = (value: number) => `${hasCurrencyConversion ? '≈ ' : ''}${formatCurrency(value, displayCurrency)}`;
-  const displaySummaryTotal = (value: number) => formatCurrency(value, displayCurrency);
+  // Every account and every category keeps its own slice; the dial itself makes crowded splits readable.
   const portfolioSegments = accounts.map((account) => {
     const convertedBalance = convertCurrency(parseCurrency(account.balance), account.currency ?? 'UYU', displayCurrency);
-    return {
-      label: account.name,
-      value: Math.abs(convertedBalance),
-      displayValue: convertedBalance,
-      color: account.color,
-    };
+    return { id: account.id, label: account.name, value: Math.abs(convertedBalance), displayValue: convertedBalance, color: account.color };
   });
-  const radialSegments = categoryGroups.length
-    ? categoryGroups.map((group) => ({
-        id: group.label,
-        label: formatCategoryLabel(group.label),
-        value: group.total * periodMultiplier,
-      }))
-    : [
-        {
-          label: 'Sin gastos',
-          value: 1,
-        },
-      ];
+  // The unreviewed bucket gets the warning tone instead of the brand accent.
+  // Stable between selections: a selection re-renders this screen, and fresh segment objects every time would defeat the dial's own memoisation.
+  const warningColor = theme.status.warning;
+  const mixSegments = useMemo(() => mixGroups.map((group) => ({ id: group.label, label: formatCategoryLabel(group.label), value: group.total * periodMultiplier, color: isUncategorizedLabel(group.label) ? warningColor : undefined })), [mixGroups, periodMultiplier, warningColor]);
+  const selectedMixGroup = mixGroups.find((group) => group.label === selectedMixId);
 
   function openCreateAccount() {
     setEditingAccount(null);
@@ -560,6 +297,15 @@ export default function FinancialsScreen() {
     setAccountMask('');
     setAccountCurrency(displayCurrency);
     setAccountColor(DEFAULT_FINANCIAL_ACCOUNT_COLOR);
+    setAccountEditorOpen(true);
+  }
+
+  function openEditAccount(account: FinancialAccount) {
+    setEditingAccount(account);
+    setAccountName(account.name);
+    setAccountMask(account.mask ?? '');
+    setAccountCurrency(account.currency ?? 'UYU');
+    setAccountColor(account.color ?? DEFAULT_FINANCIAL_ACCOUNT_COLOR);
     setAccountEditorOpen(true);
   }
 
@@ -603,24 +349,12 @@ export default function FinancialsScreen() {
       Alert.alert('Fecha inválida', 'Usa el formato AAAA-MM-DD.');
       return;
     }
-
     setEntrySaving(true);
     try {
-      const baseInput = {
-        title: entryTitle.trim(),
-        kind: entryKind,
-        amount,
-        currency: entryCurrency,
-        category: entryCategory.trim() || null,
-        accountId: entryAccountId,
-      };
-      if (editingPending) {
-        await client.updatePendingTransaction(editingPending.id, { ...baseInput, estimatedExecutionDate: entryDate });
-      } else if (entryIsPending) {
-        await client.createPendingTransaction({ ...baseInput, estimatedExecutionDate: entryDate });
-      } else {
-        await client.createManualTransaction({ ...baseInput, observedAt: localDateToIso(entryDate) });
-      }
+      const baseInput = { title: entryTitle.trim(), kind: entryKind, amount, currency: entryCurrency, category: entryCategory.trim() || null, accountId: entryAccountId };
+      if (editingPending) await client.updatePendingTransaction(editingPending.id, { ...baseInput, estimatedExecutionDate: entryDate });
+      else if (entryIsPending) await client.createPendingTransaction({ ...baseInput, estimatedExecutionDate: entryDate });
+      else await client.createManualTransaction({ ...baseInput, observedAt: localDateToIso(entryDate) });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEntryEditorOpen(false);
       invalidateFinancialData();
@@ -668,7 +402,7 @@ export default function FinancialsScreen() {
       if (globalThis.confirm(`Cancelar pendiente?\n\n${message}`)) void cancelPending(pending);
       return;
     }
-    Alert.alert('Cancelar pendiente?', message, [
+    Alert.alert('¿Cancelar el pendiente?', message, [
       { text: 'Volver', style: 'cancel' },
       { text: 'Cancelar pendiente', style: 'destructive', onPress: () => void cancelPending(pending) },
     ]);
@@ -691,7 +425,7 @@ export default function FinancialsScreen() {
 
   function openConsolidation() {
     if (selectedTransactions.length !== 2) return;
-    const [first, second] = selectedTransactions;
+    const [first, second] = confirmedSelected;
     setCanonicalTransactionId(first.id);
     setConsolidationCategory([first, second].map((transaction) => transaction.category).find((category): category is string => Boolean(category && !isUncategorizedLabel(category))) ?? first.category ?? second.category ?? null);
     setConsolidationAccountId([first, second].map((transaction) => transaction.accountId).find((accountId): accountId is string => Boolean(accountId)) ?? null);
@@ -706,10 +440,7 @@ export default function FinancialsScreen() {
     setConsolidating(true);
     setConsolidationError(null);
     try {
-      await client.updateTransactionContext(canonical.id, {
-        category: consolidationCategory,
-        accountId: consolidationAccountId,
-      });
+      await client.updateTransactionContext(canonical.id, { category: consolidationCategory, accountId: consolidationAccountId });
       await client.mergeTransactions(canonical.id, duplicate.id);
       invalidateFinancialData();
       setSelectedTransactionIds([]);
@@ -722,15 +453,6 @@ export default function FinancialsScreen() {
     }
   }
 
-  function openEditAccount(account: FinancialAccount) {
-    setEditingAccount(account);
-    setAccountName(account.name);
-    setAccountMask(account.mask ?? '');
-    setAccountCurrency(account.currency ?? 'UYU');
-    setAccountColor(account.color ?? DEFAULT_FINANCIAL_ACCOUNT_COLOR);
-    setAccountEditorOpen(true);
-  }
-
   async function saveAccount() {
     if (!accountName.trim()) return;
     setSaving(true);
@@ -741,7 +463,7 @@ export default function FinancialsScreen() {
       setAccountEditorOpen(false);
       await refresh();
     } catch (saveError) {
-      Alert.alert('Unable to save account', saveError instanceof Error ? saveError.message : 'Try again.');
+      Alert.alert('No se pudo guardar la cuenta', saveError instanceof Error ? saveError.message : 'Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -754,13 +476,10 @@ export default function FinancialsScreen() {
       setExpandedAccountId((current) => current === account.id ? null : current);
       await refresh();
       if (result.detachedTransactions > 0) {
-        Alert.alert(
-          'Cuenta eliminada',
-          `${result.detachedTransactions} ${result.detachedTransactions === 1 ? 'transacción permanece' : 'transacciones permanecen'} en tu historial sin una cuenta asignada.`,
-        );
+        Alert.alert('Cuenta eliminada', `${result.detachedTransactions} ${result.detachedTransactions === 1 ? 'transacción permanece' : 'transacciones permanecen'} en tu historial sin una cuenta asignada.`);
       }
     } catch (deleteError) {
-      Alert.alert('Unable to delete account', deleteError instanceof Error ? deleteError.message : 'Try again.');
+      Alert.alert('No se pudo eliminar la cuenta', deleteError instanceof Error ? deleteError.message : 'Inténtalo de nuevo.');
     } finally {
       setDeletingAccountId(null);
     }
@@ -772,9 +491,9 @@ export default function FinancialsScreen() {
       if (globalThis.confirm(`Delete account?\n\n${message}`)) void deleteAccount(account);
       return;
     }
-    Alert.alert('Delete account?', message, [
+    Alert.alert('¿Eliminar la cuenta?', message, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void deleteAccount(account) },
+      { text: 'Eliminar', style: 'destructive', onPress: () => void deleteAccount(account) },
     ]);
   }
 
@@ -788,7 +507,7 @@ export default function FinancialsScreen() {
     if (!adjustingAccount) return;
     const parsedTarget = Number(targetBalance.replace(',', '.'));
     if (!Number.isFinite(parsedTarget)) {
-      Alert.alert('Invalid balance', 'Enter the current account balance as a number.');
+      Alert.alert('Saldo inválido', 'Ingresa el saldo actual de la cuenta como número.');
       return;
     }
     setSaving(true);
@@ -797,131 +516,171 @@ export default function FinancialsScreen() {
       setAdjustingAccount(null);
       await refresh();
     } catch (saveError) {
-      Alert.alert('Unable to adjust balance', saveError instanceof Error ? saveError.message : 'Try again.');
+      Alert.alert('No se pudo ajustar el saldo', saveError instanceof Error ? saveError.message : 'Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <AppScreen refreshing={loading} onRefresh={refresh}>
-      <TopBar
-        title="Dinero"
-        subtitle="Dónde se movió tu dinero y qué cambió."
-        secondaryAction={<StatusBadge label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Current'} tone={error ? 'warning' : 'positive'} />}
-      />
-
-      {error ? <EmptyState title="No se pudo cargar Dinero" description={error} primaryActionLabel="Reintentar" onPrimaryAction={refresh} /> : null}
-      {loading && !data ? <LoadingSkeleton variant="chart" count={2} /> : null}
+    <Screen
+      title="Dinero"
+      overline={cycleLabel}
+      subtitle="Dónde se movió tu dinero y qué cambió."
+      refreshing={loading}
+      onRefresh={refresh}
+      actions={<Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Actual'} tone={error ? 'warning' : 'positive'} />}
+    >
+      {error ? <StateView kind="error" title="No se pudo cargar Dinero" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
+      {loading && !data ? <FinancialsSkeleton /> : null}
 
       {data ? (
         <>
-          <SegmentedControl
-            scrollable
-            value={view}
-            onChange={setView}
-            options={views.map((item) => ({
-              ...item,
-              count: item.value === 'transactions' ? transactions.length : item.value === 'pending' ? pendingTransactions.length : undefined,
-            }))}
-          />
-          {hasCurrencyConversion ? <FxStamp /> : null}
+          <View style={{ gap: 8 }}>
+            <SegmentedControl items={views as unknown as typeof views} value={view} onChange={setView} scrollable />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              {hasCurrencyConversion ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>{FIXED_FX_LABEL}</Text> : <View style={{ flex: 1 }} />}
+              <SegmentedControl items={displayCurrencies as unknown as typeof displayCurrencies} value={displayCurrency} onChange={setDisplayCurrency} size="mini" accessibilityLabel="Moneda de visualización" />
+            </View>
+          </View>
 
-          {view === 'overview' ? (
+          <KeepAliveViews active={view} views={{
+            overview: () => (
             <>
-              <Panel tone="finance" style={{ gap: theme.spacing.lg, paddingTop: theme.spacing.lg }}>
-                <View style={{ gap: theme.spacing.sm }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{period === 'year' ? 'Movimiento neto proyectado' : 'Movimiento neto'}</Text>
-                    <CompactPeriodSwitch value={period} onChange={setPeriod} />
-                  </View>
-                  <Text style={[theme.typography.numeral, { color: periodNet >= 0 ? theme.colors.accent : theme.status.expense }]}>
-                    {displaySummaryTotal(periodNet)}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                  <MoneyTile label="Ingresos" value={displaySummaryTotal(periodIncome)} tone="positive" compact />
-                  <MoneyTile label="Gastos" value={displaySummaryTotal(periodSpend)} tone="danger" compact />
-                </View>
-              </Panel>
-              <SpendingRadial
+              <MixCard
+                overline={`Gastos · ${period === 'year' ? 'año proyectado' : cycleLabel}`}
                 title="Distribución de gastos"
-                subtitle={period === 'year' ? 'Participación proyectada por categoría' : `Participación por categoría · ${cycleLabel}`}
-                amount={displayTotal(periodSpend)}
-                segments={radialSegments}
+                action={<SegmentedControl items={mixModes as unknown as typeof mixModes} value={mixMode} onChange={setMixMode} size="mini" />}
+                segments={mixSegments}
+                centerValue={displayTotal(periodSpend)}
+                centerAmount={periodSpend}
+                currency={displayCurrency}
+                centerLabel="Gasto total"
+                selectedId={selectedMixId}
+                onSelect={(segment) => setSelectedMixId(segment?.id ?? null)}
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
-                drilldown={{
-                  getItems: (segment) => categoryGroups.find((group) => group.label === segment.id)?.items
-                    .slice()
-                    .sort((left, right) => new Date(right.observedAt ?? 0).getTime() - new Date(left.observedAt ?? 0).getTime()) ?? [],
-                  renderItem: (item) => {
-                    const transaction = expenses.find((candidate) => candidate.id === item.id);
-                    return transaction ? <TransactionRow transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} /> : null;
-                  },
-                }}
+                delta={{ text: period === 'year' ? 'Proyectado desde este ciclo' : 'Ciclo actual', tone: 'neutral' }}
+                percentageNoun="del gasto"
               />
-              <Section title="De un vistazo" subtitle={period === 'year' ? 'Proyección anual basada en los datos del ciclo actual.' : `Las señales principales de ${cycleLabel}.`}>
-                <ListRow title={topCategory ? formatCategoryLabel(topCategory.label) : 'Todavía no hay categorías'} subtitle="Principal grupo de gastos" description={topCategory ? `${topCategory.count} transacciones` : 'Las categorías agrupadas aparecerán después de sincronizar.'} />
-                <ListRow title={topMerchant ? topMerchant.displayMerchantLabel ?? topMerchant.merchantLabel : 'Todavía no hay comercios'} subtitle="Comercio destacado" description={topMerchant?.amount ?? 'Esperando datos de transacciones.'} />
+
+              <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Movimiento neto</Text>
+                    <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>{period === 'year' ? 'Proyección anual basada en los datos del ciclo actual.' : cycleLabel}</Text>
+                  </View>
+                  <View style={{ flexShrink: 0 }}>
+                    <SegmentedControl
+                      role="radio"
+                      items={periods.map((item) => ({ ...item, accessibilityLabel: `Período financiero: ${item.value === 'year' ? 'Año' : 'Ciclo'}` }))}
+                      value={period}
+                      onChange={setPeriod}
+                      size="mini"
+                    />
+                  </View>
+                </View>
+                <View style={{ alignItems: 'flex-start' }}><Amount value={periodNet} currency={displayCurrency} tone={periodNet >= 0 ? 'positive' : 'expense'} size="hero" signed /></View>
+                <View style={{ flexDirection: 'row', gap: 18 }}>
+                  <View style={{ gap: 2 }}>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Ingresos</Text>
+                    <FinancialTotal value={periodIncome} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.bodyStrong, { color: theme.status.income, fontVariant: ['tabular-nums'] }]} />
+                  </View>
+                  <View style={{ gap: 2 }}>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Gastos</Text>
+                    <FinancialTotal value={periodSpend} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.bodyStrong, { color: theme.status.expense, fontVariant: ['tabular-nums'] }]} />
+                  </View>
+                </View>
+              </GlassSurface>
+
+              <Section title="Cuentas" subtitle="Los saldos incluyen transferencias y ajustes." actionLabel="Gestionar" onActionPress={() => setView('accounts')} count={accounts.length}>
+                <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <IconTile icon="credit-card" color={theme.colors.accent} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Total disponible</Text>
+                    <FinancialTotal value={totalAccountBalance} currency={displayCurrency} approximate={hasCurrencyConversion} style={[theme.typography.headline, { color: totalAccountBalance >= 0 ? theme.colors.textPrimary : theme.status.expense }]} />
+                  </View>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{accounts.length} {accounts.length === 1 ? 'cuenta' : 'cuentas'}</Text>
+                </GlassSurface>
+                {accounts.slice(0, 2).map((account) => (
+                  <AccountRow
+                    key={account.id}
+                    account={account}
+                    displayCurrency={displayCurrency}
+                    expanded={false}
+                    onToggle={() => { setView('accounts'); setExpandedAccountId(account.id); }}
+                    onEdit={() => openEditAccount(account)}
+                    onAdjust={() => openAdjustment(account)}
+                    onDelete={() => confirmDeleteAccount(account)}
+                    deleting={deletingAccountId === account.id}
+                  />
+                ))}
               </Section>
+
+              <Section title="Flujo de caja" subtitle="Ingresos y gastos de los últimos seis ciclos.">
+                <TrendChart
+                  mode={trendMode}
+                  title={trendMode === 'line' ? 'Ingresos y gastos' : 'Movimiento mensual'}
+                  subtitle={cycleLabel}
+                  labels={monthlyCashFlow.map((point) => point.label)}
+                  series={[
+                    { label: 'Ingresos', color: theme.status.income, data: monthlyCashFlow.map((point) => point.income) },
+                    { label: 'Gastos', color: theme.status.expense, data: monthlyCashFlow.map((point) => point.spending) },
+                  ]}
+                  formatValue={(value) => formatCurrency(value, displayCurrency)}
+                  action={<SegmentedControl items={[{ value: 'line', label: 'Línea' }, { value: 'bars', label: 'Barras' }] as const} value={trendMode} onChange={(value) => setTrendMode(value as TrendMode)} size="mini" />}
+                />
+              </Section>
+
+              {selectedMixGroup ? (
+                <Section title={selectedMixGroup.label} subtitle={`${selectedMixGroup.count} ${selectedMixGroup.count === 1 ? 'movimiento' : 'movimientos'} en este grupo`} actionLabel="Quitar" onActionPress={() => setSelectedMixId(null)}>
+                  {selectedMixGroup.items.slice(0, 3).map((transaction) => (
+                    <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(transactionRoute(transaction))} />
+                  ))}
+                </Section>
+              ) : null}
+
+              {financeInsights.length ? (
+                <Section title="Señales" subtitle="Patrones que vale la pena notar este ciclo.">
+                  {financeInsights.slice(0, 2).map((insight) => (
+                    <SignalCard key={insight.id} variant="card" origin="model" title={insight.title} summary={insight.summary} confidence={insight.confidence} onPress={() => router.push(`/insight/${insight.id}`)} />
+                  ))}
+                </Section>
+              ) : null}
+
+              <Section title="Actividad reciente" subtitle="Tus últimos movimientos, con acceso directo a su evidencia." actionLabel="Ver todo" onActionPress={() => setView('activity')}>
+                {transactions.length ? transactions.slice(0, 3).map((transaction) => (
+                  <TransactionRow key={transaction.id} transaction={transaction} currency={displayCurrency} onPress={() => router.push(transactionRoute(transaction))} />
+                )) : <StateView title="Sin actividad reciente" description="Aquí aparecerán tus notas, notificaciones, correos y movimientos." />}
+              </Section>
+
+              {pendingTransactions.length ? (
+                <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length} actionLabel="Ver todo" onActionPress={() => setView('activity')}>
+                  {pendingTransactions.slice(0, 2).map((pending) => (
+                    <PendingTransactionRow key={pending.id} pending={pending} onExecute={() => { setExecutionDate(localDateInputValue()); setExecutingPending(pending); }} onEdit={() => openPendingEditor(pending)} onCancel={() => confirmCancelPending(pending)} />
+                  ))}
+                </Section>
+              ) : null}
             </>
-          ) : null}
+            ),
 
-          {view === 'trends' ? (
-            <Section title="Tendencias" subtitle="Evolución de los últimos movimientos.">
-              <SegmentedControl value={trendChartMode} onChange={(value) => setTrendChartMode(value as TrendChartMode)} options={[{ value: 'line', label: 'Línea' }, { value: 'bars', label: 'Barras' }]} />
-              {trendChartMode === 'line' ? <MonthlyCashFlowLine
-                points={monthlyCashFlow}
-                subtitle="Ingresos y gastos de los últimos seis ciclos financieros."
-                formatValue={(value) => formatCurrency(value, displayCurrency)}
-                headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
-              /> : <MonthlyCashFlowBar points={monthlyCashFlow} subtitle="Ingresos y gastos de los últimos seis ciclos financieros." formatValue={(value) => formatCurrency(value, displayCurrency)} headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />} />}
-              <SpendingRadial
-                title="Movimiento de dinero"
-                subtitle={period === 'year' ? 'Participación proyectada por comercio' : `Participación por comercio · ${cycleLabel}`}
-                amount={displayTotal(periodSpend)}
-                segments={merchantGroups.map((group) => ({ id: group.label, label: group.label, value: group.total * periodMultiplier }))}
-                formatValue={(value) => formatCurrency(value, displayCurrency)}
-                itemNoun="comercio"
-                percentageNoun="gasto"
-                emptyLabel="Sin comercios"
-                headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
-                drilldown={{
-                  getItems: (segment) => expenses.filter((transaction) => (transaction.displayMerchantLabel ?? transaction.merchantLabel) === segment.id),
-                  renderItem: (item) => {
-                    const transaction = expenses.find((candidate) => candidate.id === item.id);
-                    return transaction ? <TransactionRow transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} /> : null;
-                  },
-                }}
-              />
-            </Section>
-          ) : null}
-
-          {view === 'accounts' ? (
-            <Section title="Cuentas" subtitle="Tu dinero en las cuentas vinculadas." count={accounts.length}>
-              <SpendingRadial
-                title="Resumen de cuentas"
-                subtitle="Valor neto distribuido entre tus cuentas. Los saldos negativos se ponderan por su magnitud."
-                amount={displayTotal(totalAccountBalance)}
+            accounts: () => (
+            <>
+              <MixCard
+                overline="Cartera · hoy"
+                title="Distribución de la cartera"
                 segments={portfolioSegments}
+                centerValue={displayTotal(totalAccountBalance)}
+                centerAmount={totalAccountBalance}
+                currency={displayCurrency}
+                centerLabel="Cartera neta"
                 formatValue={(value) => formatCurrency(value, displayCurrency)}
-                totalLabel="Total de cuentas"
-                itemNoun="cuenta"
-                percentageNoun="cartera"
-                emptyLabel="Sin cuentas"
-                headerAction={<CompactCurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />}
+                percentageNoun="de la cartera"
+                delta={{ text: 'Incluye transferencias', tone: 'neutral' }}
               />
-              <Panel tone="finance" style={{ gap: theme.spacing.md }}>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Total disponible en {displayCurrency}</Text>
-                <Text style={[theme.typography.numeral, { color: totalAccountBalance >= 0 ? theme.colors.accent : theme.status.expense }]}>
-                  {displayTotal(totalAccountBalance)}
-                </Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Los saldos incluyen transferencias y ajustes. Los ajustes no afectan los informes de Dinero.</Text>
-                <Button label="Crear cuenta" onPress={openCreateAccount} icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} />
-              </Panel>
+              <Button label="Crear cuenta" icon={<Feather name="plus" size={16} color={theme.colors.onAccent} />} onPress={openCreateAccount} full />
+              <View style={{ gap: 22 }}>
               {accounts.length ? accounts.map((account) => (
-                <AccountListItem
+                <AccountRow
                   key={account.id}
                   account={account}
                   displayCurrency={displayCurrency}
@@ -932,305 +691,249 @@ export default function FinancialsScreen() {
                   onDelete={() => confirmDeleteAccount(account)}
                   deleting={deletingAccountId === account.id}
                 />
-              )) : <EmptyState title="Todavía no hay cuentas" description="Crea una cuenta y luego establece su saldo actual con un ajuste." />}
-            </Section>
-          ) : null}
+              )) : <StateView title="Todavía no hay cuentas" description="Crea una cuenta y luego establece su saldo actual con un ajuste." actionLabel="Crear cuenta" onAction={openCreateAccount} />}
+              </View>
+            </>
+            ),
 
-          {view === 'transactions' ? (
-            <Section title="Movimientos" subtitle={transactionSelectionMode ? 'Tocá los registros que querés comparar.' : `Registros financieros · ${selectedTransactionCycleLabel} · Mantené presionado para consolidar`} count={filteredCycleTransactions.length}>
-              {!transactionSelectionMode ? <Button label="Nuevo movimiento" size="sm" onPress={() => openEntryEditor(false)} icon={<Feather name="plus" size={15} color={theme.colors.onAccent} />} /> : null}
-              {selectedTransactionIds.length ? (
-                <Panel tone="finance" style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{`${selectedTransactionIds.length} de 2 seleccionados`}</Text>
-                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{selectedTransactionIds.length === 1 ? 'Tocá otro movimiento para compararlo.' : 'Revisá los datos que vas a conservar.'}</Text>
-                    </View>
-                    <Button label="Cancelar" size="sm" variant="secondary" onPress={() => setSelectedTransactionIds([])} />
-                  </View>
-                  {selectedTransactionIds.length === 2 ? <Button label="Revisar y consolidar" size="sm" onPress={openConsolidation} /> : null}
-                </Panel>
-              ) : null}
-              <Panel tone="finance" style={{ padding: theme.spacing.xs }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceSubtle, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Ver ciclo anterior"
-                    onPress={() => {
-                      setHistoricalTransactionsLoading(true);
-                      setTransactionCycleOffset((offset) => offset + 1);
-                    }}
-                    style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
-                  >
+            activity: () => (
+            <>
+              <GlassSurface level="thin" padding="sm" contentStyle={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 1 }}>
+                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver ciclo anterior" onPress={() => { setHistoricalTransactionsLoading(true); setTransactionCycleOffset((offset) => offset + 1); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center' }}>
                     <Feather name="chevron-left" size={18} color={theme.colors.textPrimary} />
-                  </Pressable>
-                  <View style={{ minWidth: 42, alignItems: 'center' }}>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, fontWeight: '700' }]}>{selectedTransactionCycleMonth}</Text>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Ver próximo ciclo"
-                    accessibilityState={{ disabled: transactionCycleOffset === 0 }}
-                    disabled={transactionCycleOffset === 0}
-                    onPress={() => {
-                      setHistoricalTransactionsLoading(transactionCycleOffset > 1);
-                      setTransactionCycleOffset((offset) => Math.max(0, offset - 1));
-                    }}
-                    style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.4 : 1 }}
-                  >
+                  </GlassPressable>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textPrimary, minWidth: 40, textAlign: 'center', flexShrink: 1 }]} numberOfLines={1}>{selectedTransactionCycleMonth}</Text>
+                  <GlassPressable accessibilityRole="button" accessibilityLabel="Ver próximo ciclo" disabled={transactionCycleOffset === 0} onPress={() => { setHistoricalTransactionsLoading(transactionCycleOffset > 1); setTransactionCycleOffset((offset) => Math.max(0, offset - 1)); }} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, alignItems: 'center', justifyContent: 'center', opacity: transactionCycleOffset === 0 ? 0.35 : 1 }}>
                     <Feather name="chevron-right" size={18} color={theme.colors.textPrimary} />
-                  </Pressable>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Filtrar y ordenar movimientos. Orden actual: ${transactionSortLabels[transactionSort]}`}
-                    onPress={() => setTransactionFiltersOpen(true)}
-                    style={{ height: 34, paddingHorizontal: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: theme.radius.md, backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.accentStrong + '66' }}
-                  >
-                    <Feather name="sliders" size={14} color={theme.colors.accentStrong} />
-                    <Text style={[theme.typography.caption, { color: theme.colors.accentStrong, fontWeight: '700' }]}>{transactionSortLabels[transactionSort]}</Text>
-                  </Pressable>
+                  </GlassPressable>
                 </View>
-              </Panel>
-              {selectedCycleTransactionsLoading ? <LoadingSkeleton variant="list" count={3} /> : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <Chip label={transactionSortLabels[transactionSort]} icon="sliders" onPress={() => setTransactionFiltersOpen(true)} />
+                  <Chip label={`${filteredCycleTransactions.length}`} static />
+                </View>
+              </GlassSurface>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>{transactionSelectionMode ? 'Toca los registros que quieres comparar.' : selectedTransactionCycleLabel}</Text>
+                {!transactionSelectionMode ? <Button label="Nuevo" size="sm" icon={<Feather name="plus" size={14} color={theme.colors.onAccent} />} onPress={() => openEntryEditor(false)} /> : null}
+              </View>
+
+              {selectedTransactionIds.length ? (
+                <GlassSurface level="regular" tone="finance" padding="md" contentStyle={{ gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{`${selectedTransactionIds.length} de 2 seleccionados`}</Text>
+                    <Chip label="Cancelar" onPress={() => setSelectedTransactionIds([])} />
+                  </View>
+                  {selectedTransactionIds.length === 2 ? <Button label="Revisar y consolidar" size="sm" onPress={openConsolidation} /> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca otro movimiento para compararlo.</Text>}
+                </GlassSurface>
+              ) : null}
+
+              {selectedCycleTransactionsLoading ? <StateView kind="loading" title="Cargando" skeleton="list" skeletonCount={3} /> : null}
               {!selectedCycleTransactionsLoading && filteredCycleTransactions.length ? (
-                filteredCycleTransactions.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    selected={selectedTransactionIds.includes(transaction.id)}
-                    selectionMode={transactionSelectionMode}
-                    onLongPress={() => toggleTransactionSelection(transaction)}
-                    onPress={() => transactionSelectionMode ? toggleTransactionSelection(transaction) : router.push(`/transaction/${transaction.id}`)}
-                  />
-                ))
-              ) : (
-                <EmptyState title="Sin movimientos coincidentes" description="Prueba otro período o cambia el filtro." />
-              )}
-            </Section>
-          ) : null}
+                <View>
+                  {filteredCycleTransactions.map((transaction) => (
+                    <TransactionRow
+                      key={transaction.id}
+                      transaction={transaction}
+                      currency={displayCurrency}
+                      selected={selectedTransactionIds.includes(transaction.id)}
+                      selectionMode={transactionSelectionMode}
+                      onLongPress={() => toggleTransactionSelection(transaction)}
+                      onPress={() => transactionSelectionMode ? toggleTransactionSelection(transaction) : router.push(transactionRoute(transaction))}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              {!selectedCycleTransactionsLoading && !filteredCycleTransactions.length ? <StateView title="Sin movimientos coincidentes" description="Prueba otro período o cambia el filtro." /> : null}
 
-          {view === 'pending' ? (
-            <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length}>
-              <Button label="Nuevo pendiente" size="sm" onPress={() => openEntryEditor(true)} icon={<Feather name="plus" size={15} color={theme.colors.onAccent} />} />
-              {pendingTransactions.length ? pendingTransactions.map((pending) => (
-                <PendingTransactionRow
-                  key={pending.id}
-                  pending={pending}
-                  onExecute={() => {
-                    setExecutionDate(localDateInputValue());
-                    setExecutingPending(pending);
-                  }}
-                  onEdit={() => openPendingEditor(pending)}
-                  onCancel={() => confirmCancelPending(pending)}
-                />
-              )) : <EmptyState title="No hay pendientes" description="Anota un cobro o una deuda futura para tenerla presente sin alterar tu balance." primaryActionLabel="Crear pendiente" onPrimaryAction={() => openEntryEditor(true)} />}
-            </Section>
-          ) : null}
-
-          {view === 'insights' ? (
-            <Section title="Perspectivas financieras" subtitle="Patrones que merecen atención.">
-              {financeInsights.length ? (
-                financeInsights.map((insight) => <InsightCard key={insight.id} insight={insight} onPress={() => router.push(`/insight/${insight.id}`)} />)
-              ) : (
-                <EmptyState title="Todavía no hay perspectivas financieras" description="Aquí aparecerán recurrencias, cambios importantes y tendencias." />
-              )}
-            </Section>
-          ) : null}
+              <Section title="Pendientes" subtitle="Cobros y deudas previstos. No afectan tus saldos hasta ejecutarlos." count={pendingTransactions.length}>
+                <Button label="Nuevo pendiente" size="sm" variant="secondary" onPress={() => openEntryEditor(true)} />
+                {pendingTransactions.length ? pendingTransactions.map((pending) => (
+                  <PendingTransactionRow key={pending.id} pending={pending} onExecute={() => { setExecutionDate(localDateInputValue()); setExecutingPending(pending); }} onEdit={() => openPendingEditor(pending)} onCancel={() => confirmCancelPending(pending)} />
+                )) : <StateView title="No hay pendientes" description="Anota un cobro o una deuda futura para tenerla presente sin alterar tu balance." actionLabel="Crear pendiente" onAction={() => openEntryEditor(true)} />}
+              </Section>
+            </>
+            ),
+          }} />
         </>
       ) : null}
 
       <BottomSheet visible={consolidationOpen} title="Consolidar movimientos" onClose={() => !consolidating && setConsolidationOpen(false)}>
-        <View style={{ gap: theme.spacing.md }}>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Se conservará un único movimiento y las fuentes del otro quedarán adjuntas como evidencia. Elegí qué información representa el pago real.</Text>
-
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Monto y movimiento principal</Text>
-          {selectedTransactions.map((transaction) => (
-            <ListRow
-              key={transaction.id}
-              title={`${transaction.displayMerchantLabel ?? transaction.merchantLabel} · ${formatCurrency(parseCurrency(transaction.amount), transaction.currency)}`}
-              subtitle={transaction.observedAt}
-              trailing={<Text style={{ color: canonicalTransactionId === transaction.id ? theme.colors.success : theme.colors.textMuted }}>{canonicalTransactionId === transaction.id ? 'Conservar' : 'Usar'}</Text>}
-              onPress={() => setCanonicalTransactionId(transaction.id)}
-            />
-          ))}
-
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
-          {Array.from(new Set(selectedTransactions.map((transaction) => transaction.category).filter((category): category is string => Boolean(category)))).map((category) => (
-            <FilterChip key={category} label={formatCategoryLabel(category)} selected={consolidationCategory === category} onPress={() => setConsolidationCategory(category)} />
-          ))}
-          {!consolidationCategory ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene categoría: el movimiento quedará sin categorizar.</Text> : null}
-
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Cuenta o método de pago</Text>
-          {Array.from(new Set(selectedTransactions.map((transaction) => transaction.accountId).filter((accountId): accountId is string => Boolean(accountId)))).map((accountId) => {
-            const account = accounts.find((candidate) => candidate.id === accountId);
-            return <ListRow key={accountId} title={account?.name ?? 'Cuenta vinculada'} subtitle={account?.currency ?? ''} trailing={<Text style={{ color: consolidationAccountId === accountId ? theme.colors.success : theme.colors.textMuted }}>{consolidationAccountId === accountId ? 'Conservar' : 'Usar'}</Text>} onPress={() => setConsolidationAccountId(accountId)} />;
-          })}
-          {!consolidationAccountId ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene una cuenta asociada.</Text> : null}
-
-          {consolidationError ? <Text style={{ color: theme.colors.danger }}>{consolidationError}</Text> : null}
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button label="Consolidar" loading={consolidating} disabled={!canonicalTransactionId || selectedTransactions.length !== 2} onPress={consolidateSelectedTransactions} />
-            <Button label="Cancelar" variant="secondary" disabled={consolidating} onPress={() => setConsolidationOpen(false)} />
-          </View>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Se conservará un único movimiento y las fuentes del otro quedarán adjuntas como evidencia. Elige qué información representa el pago real.</Text>
+        <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Monto y movimiento principal</Text>
+        {selectedTransactions.map((transaction) => (
+          <Row key={transaction.id} title={`${transaction.displayMerchantLabel ?? transaction.merchantLabel} · ${formatCurrency(parseCurrency(transaction.amount), transaction.currency)}`} subtitle={transaction.observedAt} trailing={<Text style={{ color: canonicalTransactionId === transaction.id ? theme.colors.success : theme.colors.textMuted }}>{canonicalTransactionId === transaction.id ? 'Conservar' : 'Usar'}</Text>} onPress={() => setCanonicalTransactionId(transaction.id)} />
+        ))}
+        <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
+        {Array.from(new Set(confirmedSelected.map((transaction) => transaction.category).filter((category): category is string => Boolean(category)))).map((category) => (
+          <Chip key={category} label={formatCategoryLabel(category)} selected={consolidationCategory === category} onPress={() => setConsolidationCategory(category)} />
+        ))}
+        {!consolidationCategory ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene categoría: el movimiento quedará sin categorizar.</Text> : null}
+        <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Cuenta o método de pago</Text>
+        {Array.from(new Set(confirmedSelected.map((transaction) => transaction.accountId).filter((accountId): accountId is string => Boolean(accountId)))).map((accountId) => {
+          const account = accounts.find((candidate) => candidate.id === accountId);
+          return <Row key={accountId} title={account?.name ?? 'Cuenta vinculada'} subtitle={account?.currency ?? ''} trailing={<Text style={{ color: consolidationAccountId === accountId ? theme.colors.success : theme.colors.textMuted }}>{consolidationAccountId === accountId ? 'Conservar' : 'Usar'}</Text>} onPress={() => setConsolidationAccountId(accountId)} />;
+        })}
+        {!consolidationAccountId ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ninguno tiene una cuenta asociada.</Text> : null}
+        {selectedTransactions.some((transaction) => transaction.assumed?.length) ? <Text style={[theme.typography.caption, { color: theme.colors.model }]}>Lo que pusieron tus reglas no se guarda al consolidar: solo cuenta lo que Brain IA ya conocía.</Text> : null}
+        {consolidationError ? <Text style={{ color: theme.colors.danger }}>{consolidationError}</Text> : null}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button label="Consolidar" loading={consolidating} disabled={!canonicalTransactionId || selectedTransactions.length !== 2} onPress={consolidateSelectedTransactions} />
+          <Button label="Cancelar" variant="secondary" disabled={consolidating} onPress={() => setConsolidationOpen(false)} />
         </View>
       </BottomSheet>
 
-      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Editar cuenta' : 'Crear cuenta'} onClose={() => setAccountEditorOpen(false)}>
-        <Input label="Nombre de la cuenta" value={accountName} onChangeText={setAccountName} placeholder="Cuenta bancaria principal" autoCapitalize="words" />
-        <Input label="Últimos dígitos (opcional)" value={accountMask} onChangeText={setAccountMask} placeholder="•••• 5343" />
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
-          <SegmentedControl value={accountCurrency} onChange={(value) => setAccountCurrency(value as SupportedCurrency)} options={displayCurrencies} />
+      <BottomSheet visible={accountEditorOpen} title={editingAccount ? 'Editar cuenta' : 'Crear cuenta'} onClose={() => setAccountEditorOpen(false)} footer={<Button label={editingAccount ? 'Guardar cambios' : 'Crear cuenta'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} full />}>
+        <Field label="Nombre de la cuenta" value={accountName} onChangeText={setAccountName} placeholder="Cuenta bancaria principal" autoCapitalize="words" />
+        <Field label="Últimos dígitos (opcional)" value={accountMask} onChangeText={setAccountMask} placeholder="•••• 5343" />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
+        <SegmentedControl items={displayCurrencies as unknown as typeof displayCurrencies} value={accountCurrency} onChange={(value) => setAccountCurrency(value as SupportedCurrency)} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Color de la cuenta</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {FINANCIAL_ACCOUNT_COLORS.map((option) => (
+            <Pressable key={option.value} accessibilityRole="radio" accessibilityLabel={option.label} accessibilityState={{ selected: accountColor === option.value }} onPress={() => setAccountColor(option.value)} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: option.value, borderWidth: accountColor === option.value ? 3 : 0, borderColor: theme.colors.textPrimary }}>
+              {accountColor === option.value ? <Feather name="check" size={18} color={theme.colors.onAccent} /> : null}
+            </Pressable>
+          ))}
         </View>
-        <View style={{ gap: theme.spacing.sm }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Color de la cuenta</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            {FINANCIAL_ACCOUNT_COLORS.map((option) => (
-              <Pressable
-                key={option.value}
-                accessibilityRole="radio"
-                accessibilityLabel={option.label}
-                accessibilityState={{ selected: accountColor === option.value }}
-                onPress={() => setAccountColor(option.value)}
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 21,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: option.value,
-                  borderWidth: accountColor === option.value ? 3 : 0,
-                  borderColor: theme.colors.textPrimary,
-                }}
-              >
-                {accountColor === option.value ? <Feather name="check" size={18} color="#FFFFFF" /> : null}
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        <Button label={editingAccount ? 'Guardar cambios' : 'Crear cuenta'} onPress={saveAccount} loading={saving} disabled={!accountName.trim()} />
       </BottomSheet>
 
       <BottomSheet visible={Boolean(adjustingAccount)} title="Ajustar saldo de la cuenta" onClose={() => setAdjustingAccount(null)}>
         {adjustingAccount ? (
           <>
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Establece el saldo real de {adjustingAccount.name}. Brain IA creará un ingreso o gasto excluido por la diferencia.</Text>
-            <Input label={`Saldo actual (${adjustingAccount.currency ?? 'UYU'})`} value={targetBalance} onChangeText={setTargetBalance} keyboardType="decimal-pad" placeholder="0.00" />
-            <Input label="Nota (opcional)" value={adjustmentNote} onChangeText={setAdjustmentNote} placeholder="Conciliación de saldo" />
+            <Field label={`Saldo actual (${adjustingAccount.currency ?? 'UYU'})`} value={targetBalance} onChangeText={setTargetBalance} keyboardType="decimal-pad" placeholder="0.00" />
+            <Field label="Nota (opcional)" value={adjustmentNote} onChangeText={setAdjustmentNote} placeholder="Conciliación de saldo" />
             <Button label="Ajustar saldo" onPress={saveAdjustment} loading={saving} />
           </>
         ) : null}
       </BottomSheet>
 
-      <BottomSheet
-        visible={entryEditorOpen}
-        title={editingPending ? 'Editar pendiente' : entryIsPending ? 'Nuevo pendiente' : 'Nuevo movimiento'}
-        onClose={() => !entrySaving && setEntryEditorOpen(false)}
-      >
-        <View style={{ gap: theme.spacing.md }}>
-          {!editingPending ? (
-            <View style={{ gap: theme.spacing.xs }}>
-              <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Registro</Text>
-              <SegmentedControl
-                value={entryIsPending ? 'pending' : 'posted'}
-                onChange={(value) => setEntryIsPending(value === 'pending')}
-                options={[{ value: 'posted', label: 'Movimiento' }, { value: 'pending', label: 'Pendiente' }]}
-              />
-              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                {entryIsPending ? 'No afectará tus saldos hasta que lo marques como ejecutado.' : 'Afectará tus saldos e informes al guardarlo.'}
-              </Text>
-            </View>
-          ) : null}
-
-          <Input label="Título" value={entryTitle} onChangeText={setEntryTitle} placeholder="Ej. Cobro de cliente" autoCapitalize="sentences" />
-          <View style={{ gap: theme.spacing.xs }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
-            <SegmentedControl
-              value={entryKind}
-              onChange={(value) => setEntryKind(value as ManualEntryKind)}
-              options={[{ value: 'expense', label: 'Gasto' }, { value: 'income', label: 'Ingreso' }]}
-            />
-          </View>
-          <View style={{ gap: theme.spacing.xs }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
-            <SegmentedControl
-              value={entryCurrency}
-              onChange={(value) => {
-                setEntryCurrency(value as SupportedCurrency);
-                setEntryAccountId(null);
-              }}
-              options={displayCurrencies}
-            />
-          </View>
-          <Input label={`Monto (${entryCurrency})`} value={entryAmount} onChangeText={setEntryAmount} keyboardType="decimal-pad" placeholder="0.00" />
-          <Input label="Categoría (opcional)" value={entryCategory} onChangeText={setEntryCategory} placeholder={entryKind === 'income' ? 'Ej. Sueldo' : 'Ej. Servicios'} />
-
-          <View style={{ gap: theme.spacing.xs }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cuenta (opcional)</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-              <FilterChip label="Sin cuenta" selected={!entryAccountId} onPress={() => setEntryAccountId(null)} />
-              {accounts.filter((account) => (account.currency ?? 'UYU') === entryCurrency).map((account) => (
-                <FilterChip key={account.id} label={account.name} selected={entryAccountId === account.id} onPress={() => setEntryAccountId(account.id)} />
-              ))}
-            </View>
-          </View>
-
-          <Input
-            label={entryIsPending ? 'Fecha estimada de ejecución' : 'Fecha del movimiento'}
-            value={entryDate}
-            onChangeText={setEntryDate}
-            placeholder="AAAA-MM-DD"
-            autoCapitalize="none"
-            accessibilityHint="Usa el formato año, mes y día."
-          />
-          <Button label={editingPending ? 'Guardar cambios' : entryIsPending ? 'Guardar pendiente' : 'Guardar movimiento'} onPress={saveEntry} loading={entrySaving} disabled={!entryTitle.trim() || !entryAmount.trim()} />
+      <BottomSheet visible={entryEditorOpen} title={editingPending ? 'Editar pendiente' : entryIsPending ? 'Nuevo pendiente' : 'Nuevo movimiento'} onClose={() => !entrySaving && setEntryEditorOpen(false)} footer={<Button label={editingPending ? 'Guardar cambios' : entryIsPending ? 'Guardar pendiente' : 'Guardar movimiento'} onPress={saveEntry} loading={entrySaving} disabled={!entryTitle.trim() || !entryAmount.trim()} full />}>
+        {!editingPending ? (
+          <>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Registro</Text>
+            <SegmentedControl items={[{ value: 'posted', label: 'Movimiento' }, { value: 'pending', label: 'Pendiente' }]} value={entryIsPending ? 'pending' : 'posted'} onChange={(value) => setEntryIsPending(value === 'pending')} />
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{entryIsPending ? 'No afectará tus saldos hasta que lo marques como ejecutado.' : 'Afectará tus saldos e informes al guardarlo.'}</Text>
+          </>
+        ) : null}
+        <Field label="Título" value={entryTitle} onChangeText={setEntryTitle} placeholder="Ej. Cobro de cliente" />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
+        <SegmentedControl items={[{ value: 'expense', label: 'Gasto' }, { value: 'income', label: 'Ingreso' }]} value={entryKind} onChange={(value) => setEntryKind(value as ManualEntryKind)} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Moneda</Text>
+        <SegmentedControl items={displayCurrencies as unknown as typeof displayCurrencies} value={entryCurrency} onChange={(value) => { setEntryCurrency(value as SupportedCurrency); setEntryAccountId(null); }} />
+        <Field label={`Monto (${entryCurrency})`} value={entryAmount} onChangeText={setEntryAmount} keyboardType="decimal-pad" placeholder="0.00" variant="amount" />
+        <Field label="Categoría (opcional)" value={entryCategory} onChangeText={setEntryCategory} placeholder={entryKind === 'income' ? 'Ej. Sueldo' : 'Ej. Servicios'} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cuenta (opcional)</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <Chip label="Sin cuenta" selected={!entryAccountId} onPress={() => setEntryAccountId(null)} />
+          {accounts.filter((account) => (account.currency ?? 'UYU') === entryCurrency).map((account) => (
+            <Chip key={account.id} label={account.name} selected={entryAccountId === account.id} onPress={() => setEntryAccountId(account.id)} />
+          ))}
         </View>
+        <Field label={entryIsPending ? 'Fecha estimada de ejecución' : 'Fecha del movimiento'} value={entryDate} onChangeText={setEntryDate} placeholder="AAAA-MM-DD" autoCapitalize="none" />
       </BottomSheet>
 
       <BottomSheet visible={Boolean(executingPending)} title="Marcar como ejecutado" onClose={() => !entrySaving && setExecutingPending(null)}>
         {executingPending ? (
-          <View style={{ gap: theme.spacing.md }}>
+          <>
             <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>“{executingPending.title}” pasará a Movimientos y empezará a afectar tus saldos e informes.</Text>
-            <Input label="Fecha real de ejecución" value={executionDate} onChangeText={setExecutionDate} placeholder="AAAA-MM-DD" autoCapitalize="none" />
+            <Field label="Fecha real de ejecución" value={executionDate} onChangeText={setExecutionDate} placeholder="AAAA-MM-DD" autoCapitalize="none" />
             <Button label="Confirmar ejecución" onPress={executePending} loading={entrySaving} />
-          </View>
+          </>
         ) : null}
       </BottomSheet>
 
       <BottomSheet visible={transactionFiltersOpen} title="Filtrar movimientos" onClose={() => setTransactionFiltersOpen(false)}>
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
-          <SegmentedControl
-            scrollable
-            value={transactionKindFilter}
-            onChange={setTransactionKindFilter}
-            options={[
-              { value: 'all', label: 'Todos' },
-              { value: 'expense', label: 'Gastos' },
-              { value: 'income', label: 'Ingresos' },
-              { value: 'transfer', label: 'Transferencias' },
-            ]}
-          />
-        </View>
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ordenar</Text>
-          <SegmentedControl
-            scrollable
-            value={transactionSort}
-            onChange={setTransactionSort}
-            options={[
-              { value: 'recent', label: 'Recientes' },
-              { value: 'oldest', label: 'Más antiguos' },
-              { value: 'highest', label: 'Mayor importe' },
-              { value: 'lowest', label: 'Menor importe' },
-            ]}
-          />
-        </View>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo</Text>
+        <SegmentedControl scrollable items={[{ value: 'all', label: 'Todos' }, { value: 'expense', label: 'Gastos' }, { value: 'income', label: 'Ingresos' }, { value: 'transfer', label: 'Transferencias' }]} value={transactionKindFilter} onChange={setTransactionKindFilter} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Ordenar</Text>
+        <SegmentedControl scrollable items={[{ value: 'recent', label: 'Recientes' }, { value: 'oldest', label: 'Más antiguos' }, { value: 'highest', label: 'Mayor importe' }, { value: 'lowest', label: 'Menor importe' }]} value={transactionSort} onChange={setTransactionSort} />
         <Button label="Listo" onPress={() => setTransactionFiltersOpen(false)} />
       </BottomSheet>
-    </AppScreen>
+    </Screen>
+  );
+}
+
+function FinancialTotal({ value, currency, approximate, style }: { value: number; currency: SupportedCurrency; approximate: boolean; style: TextProps['style'] }) {
+  const display = useCountedAmount(value);
+  const format = (amount: number) => `${approximate ? '≈ ' : ''}${formatCurrency(amount, currency)}`;
+  return <Text accessibilityLabel={format(value)} style={style}>{format(display)}</Text>;
+}
+
+function AccountRow({
+  account,
+  displayCurrency,
+  expanded,
+  onToggle,
+  onEdit,
+  onAdjust,
+  onDelete,
+  deleting,
+}: {
+  account: FinancialAccount;
+  displayCurrency: SupportedCurrency;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onAdjust: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  const nativeCurrency = account.currency ?? 'UYU';
+  const nativeBalance = parseCurrency(account.balance);
+  const convertedBalance = convertCurrency(nativeBalance, nativeCurrency, displayCurrency);
+  const accountColor = account.color ?? DEFAULT_FINANCIAL_ACCOUNT_COLOR;
+
+  return (
+    <Animated.View layout={reduceMotion ? undefined : listLayout} exiting={reduceMotion ? undefined : FadeOut.duration(theme.motion.duration.quick).easing(Easing.bezier(...theme.motion.easing.in))}>
+      <GlassSurface level={expanded ? 'regular' : 'thin'} padding="none" style={{ borderColor: expanded ? `${accountColor}55` : theme.glass.divider }}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: accountColor, zIndex: 2 }} />
+        <GlassPressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={`${account.name}, ${nativeCurrency !== displayCurrency ? 'aproximadamente ' : ''}${formatCurrency(convertedBalance, displayCurrency)}. ${expanded ? 'Collapse account options' : 'Expand account options'}`}
+          onPress={onToggle}
+          scaleTo={0.99}
+          style={{ minHeight: 68, flexDirection: 'row', alignItems: 'center', paddingLeft: 15, paddingRight: 10, paddingVertical: 8, gap: 10 }}
+        >
+          <IconTile icon="credit-card" size="lg" color={accountColor} tint={`${accountColor}22`} />
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text numberOfLines={1} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{account.name}</Text>
+            <Text numberOfLines={1} style={[theme.typography.caption, { color: theme.colors.textSecondary, textTransform: 'capitalize' }]}>{accountTypeLabel(account.type)} · {nativeCurrency}{account.mask ? ` · ${account.mask}` : ''}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 2 }}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: convertedBalance >= 0 ? theme.colors.textPrimary : theme.status.expense, fontVariant: ['tabular-nums'], maxWidth: 130 }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{nativeCurrency !== displayCurrency ? formatCurrency(nativeBalance, nativeCurrency) : 'Available'}</Text>
+          </View>
+          <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textMuted} />
+        </GlassPressable>
+        {expanded ? (
+          <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(theme.motion.duration.quick)} exiting={reduceMotion ? undefined : FadeOutUp.duration(theme.motion.duration.press)} style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.glass.divider }} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={{ gap: 2 }}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Saldo original</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{formatCurrency(nativeBalance, nativeCurrency)}</Text>
+              </GlassSurface>
+              <GlassSurface level="thin" padding="sm" radius="md" style={{ flex: 1 }} contentStyle={{ gap: 2 }}>
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `${accountColor}14` }]} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Valor en cartera</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[theme.typography.bodyStrong, { color: accountColor, fontVariant: ['tabular-nums'] }]}>{nativeCurrency !== displayCurrency ? '≈ ' : ''}{formatCurrency(convertedBalance, displayCurrency)}</Text>
+              </GlassSurface>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button label="Editar" variant="secondary" size="sm" onPress={onEdit} icon={<Feather name="edit-2" size={13} color={theme.colors.textPrimary} />} /></View>
+              <View style={{ flex: 1 }}><Button label="Ajustar" variant="secondary" size="sm" onPress={onAdjust} icon={<Feather name="sliders" size={13} color={theme.colors.textPrimary} />} /></View>
+            </View>
+            <Button label={deleting ? 'Deleting account...' : 'Delete account'} variant="danger" size="sm" loading={deleting} onPress={onDelete} icon={<Feather name="trash-2" size={13} color={theme.colors.onAccent} />} />
+          </Animated.View>
+        ) : null}
+      </GlassSurface>
+    </Animated.View>
   );
 }
 
@@ -1248,44 +951,22 @@ function PendingTransactionRow({
   const theme = useTheme();
   const isIncome = pending.kind === 'income';
   const amountColor = isIncome ? theme.status.income : theme.status.expense;
+
   return (
-    <Surface variant="subtle" padding="md" style={{ gap: theme.spacing.sm, borderColor: `${amountColor}44` }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
-        <View style={{ width: 36, height: 36, borderRadius: theme.radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: `${amountColor}1A` }}>
-          <Feather name={isIncome ? 'arrow-down-left' : 'arrow-up-right'} size={17} color={amountColor} />
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text numberOfLines={2} style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{pending.title}</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-            {isIncome ? 'Ingreso previsto' : 'Gasto previsto'}{pending.category ? ` · ${formatCategoryLabel(pending.category)}` : ''}{pending.account ? ` · ${pending.account}` : ''}
-          </Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.warning }]}>{`Estimado: ${formatEstimatedExecutionDate(pending.estimatedExecutionDate)}`}</Text>
-        </View>
-        <Text style={[theme.typography.bodyStrong, { color: amountColor, fontVariant: ['tabular-nums'] }]}>{formatCurrency(parseCurrency(pending.amount), pending.currency)}</Text>
-      </View>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+    <GlassSurface level="thin" padding="md" contentStyle={{ gap: 8 }}>
+      <Row
+        title={pending.title}
+        subtitle={`${isIncome ? 'Ingreso previsto' : 'Gasto previsto'}${pending.category ? ` · ${formatCategoryLabel(pending.category)}` : ''}${pending.account ? ` · ${pending.account}` : ''}`}
+        description={`Estimado: ${formatEstimatedExecutionDate(pending.estimatedExecutionDate)}`}
+        leading={<IconTile icon={isIncome ? 'arrow-down-left' : 'arrow-up-right'} color={amountColor} />}
+        trailing={<Amount value={pending.amount} currency={pending.currency} tone={isIncome ? 'income' : 'expense'} size="row" animated={false} />}
+        accessory="none"
+      />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}><Button label="Ejecutar" size="sm" onPress={onExecute} /></View>
         <Button label="Editar" size="sm" variant="secondary" onPress={onEdit} />
-        <Pressable accessibilityRole="button" accessibilityLabel={`Cancelar pendiente ${pending.title}`} onPress={onCancel} hitSlop={8} style={{ width: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.md, backgroundColor: theme.colors.surface }}>
-          <Feather name="x" size={17} color={theme.colors.danger} />
-        </Pressable>
+        <Button label="Cancelar" size="sm" variant="ghost" onPress={onCancel} accessibilityLabel={`Cancelar pendiente ${pending.title}`} />
       </View>
-    </Surface>
-  );
-}
-
-function MoneyTile({ label, value, tone, compact = false }: { label: string; value: string; tone: 'neutral' | 'positive' | 'warning' | 'danger'; compact?: boolean }) {
-  const theme = useTheme();
-  const color = tone === 'positive' ? theme.colors.success : tone === 'warning' ? theme.colors.warning : tone === 'danger' ? theme.colors.danger : theme.colors.textPrimary;
-  const directionIcon = tone === 'positive' ? 'arrow-up-right' : tone === 'warning' || tone === 'danger' ? 'arrow-down-right' : null;
-
-  return (
-    <Surface variant="subtle" padding={compact ? 'sm' : 'md'} style={{ flex: 1, minWidth: compact ? 0 : '47%', gap: 4, borderColor: color + '33' }}>
-      <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{label}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        {directionIcon ? <Feather name={directionIcon} size={compact ? 14 : 16} color={color} /> : null}
-        <Text style={[theme.typography.numeral, { color, fontSize: compact ? 17 : 18, lineHeight: compact ? 22 : 24 }]}>{value}</Text>
-      </View>
-    </Surface>
+    </GlassSurface>
   );
 }

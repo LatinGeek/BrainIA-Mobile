@@ -101,3 +101,25 @@ Before shipping a UI refinement inspired by this reference:
 - Lime is limited to primary actions, live status, selection, and the most important signal.
 - Placeholder, backend, or generic copy is removed from primary UI.
 - The result passes `npm run lint`, `npx tsc --noEmit`, and relevant runtime/smoke checks.
+
+## Glass token update (v2.1)
+
+The brief's direction is now implemented with a teal ambient field instead of
+pure black, and with a single lime accent. The shipped values supersede the
+suggested list above where they differ:
+
+- `background`: `#091315` (ambient base), second base `#0D1C1F`.
+- Solid ladder: `#142124 / #1A2B2F / #22363B`.
+- Accent/live/positive: `#C4F54A`; `onAccent` `#0B1205`.
+- Income `#9FE870`, expense `#FF8E85`, transfer/user `#B5A8FF`, model
+  `#74D7EE`, pending/review `#F6C65B`, captured `#AFBBC2`.
+- Text primary `#F4F7F6`, secondary 76% white, muted 58% white.
+- Selected pill `rgba(246,249,248,.95)` with `#0B1113` text.
+- Radii 10 / 14 / 20 / 28, sheet 34, pill 999.
+- Blur 12 / 22 / 36 with solid fallbacks.
+- Motion 140 / 240 / 420 / 800ms, 45ms stagger.
+- Display: Poppins 600. Body: Inter. Numerals: Inter 700 tabular. Mono:
+  JetBrains Mono 500.
+
+See `docs/theme-system.md` for the full token contract.
+

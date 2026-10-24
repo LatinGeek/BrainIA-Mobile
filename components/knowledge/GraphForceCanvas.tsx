@@ -77,9 +77,11 @@ export default function GraphForceCanvas({
   focusedEntityId,
   onFocus,
   dom,
+  background = '#090F1D',
 }: {
   nodes: GraphNode[];
   relations: GraphRelation[];
+  background?: string;
   communities: Community[];
   focusedEntityId?: string;
   onFocus: (id: string) => Promise<void>;
@@ -143,21 +145,21 @@ export default function GraphForceCanvas({
     graph.d3Force('charge')?.strength(-92);
     graph.d3Force('link')?.distance((link: ForceLink) => isHierarchyLink(link) ? 48 : 95).strength((link: ForceLink) => isHierarchyLink(link) ? 0.86 : 0.12);
     graph.d3ReheatSimulation();
-    const timer = window.setTimeout(() => graph.zoomToFit(450, 68), 650);
+    const timer = window.setTimeout(() => graph.zoomToFit(450, 28), 650);
     return () => window.clearTimeout(timer);
   }, [dataKey]);
 
   const selectedLinks = new Set(graphData.links.filter((link) => endpointId(link.source) === focusedEntityId || endpointId(link.target) === focusedEntityId).map((link) => link.id));
 
   if (!ForceGraph2D) {
-    return <div aria-label="graph loading state" style={{ width: '100%', height: '100%', background: '#090F1D' }} />;
+    return <div aria-label="graph loading state" style={{ width: '100%', height: '100%', background }} />;
   }
 
-  return <div style={{ width: '100%', height: '100%', background: '#090F1D', overflow: 'hidden', touchAction: 'none' }}>
+  return <div style={{ width: '100%', height: '100%', background, overflow: 'hidden', touchAction: 'none' }}>
     <ForceGraph2D
       ref={graphRef}
       graphData={graphData}
-      backgroundColor="#090F1D"
+      backgroundColor={background}
       nodeId="id"
       linkSource="source"
       linkTarget="target"
@@ -174,7 +176,7 @@ export default function GraphForceCanvas({
       onEngineStop={() => {
         if (didFinalFitRef.current) return;
         didFinalFitRef.current = true;
-        graphRef.current?.zoomToFit(520, 72);
+        graphRef.current?.zoomToFit(520, 28);
       }}
       linkColor={(link) => selectedLinks.has(link.id) ? '#D9D4FF' : isHierarchyLink(link) ? '#536887' : '#34425E'}
       linkWidth={(link) => selectedLinks.has(link.id) ? 2 : isHierarchyLink(link) ? Math.max(0.8, link.confidence) : 0.55}
