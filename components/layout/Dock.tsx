@@ -2,13 +2,16 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { dockScroll } from '@/lib/dock-scroll';
+import { useReduceMotion } from '@/lib/hooks';
+import { reducedFade } from '@/lib/motion';
+import { refreshReviewQueueSize, useReviewQueueSize } from '@/lib/review-queue';
 
 type DockTab = {
   key: string;
@@ -39,8 +42,10 @@ export function Dock({
   const insets = useSafeAreaInsets();
   const client = useBrainIAClient();
   const { width } = useWindowDimensions();
-  const [reviewCount, setReviewCount] = useState(0);
+  const reviewCount = useReviewQueueSize() ?? 0;
   const [barWidth, setBarWidth] = useState(0);
+  const reduceMotion = useReduceMotion();
+  const pillOpacity = useSharedValue(1);
   const pillX = useSharedValue(0);
   const activeRoute = state.routes[state.index]?.name ?? 'index';
   const visibleTabs = tabs;
@@ -48,20 +53,19 @@ export function Dock({
   const compactDock = width >= 1024;
 
   useEffect(() => {
-    let active = true;
-    void client.listReviews('pending')
-      .then((items) => { if (active) setReviewCount(items.length); })
-      .catch(() => undefined);
-    return () => { active = false; };
+    void refreshReviewQueueSize(client);
   }, [client]);
 
   useEffect(() => {
     if (!barWidth || !visibleTabs.length) return;
     const cell = (barWidth - 12) / visibleTabs.length;
-    pillX.value = withSpring(6 + activeVisibleIndex * cell, theme.motion.spring.thumb);
-  }, [activeVisibleIndex, barWidth, pillX, theme.motion.spring.thumb, visibleTabs.length]);
+    const target = 6 + activeVisibleIndex * cell;
+    pillX.value = reduceMotion ? target : withSpring(target, theme.motion.spring.thumb);
+    pillOpacity.value = reduceMotion ? 0 : 1;
+    if (reduceMotion) pillOpacity.value = withTiming(1, reducedFade);
+  }, [reduceMotion, pillOpacity, activeVisibleIndex, barWidth, pillX, theme.motion.spring.thumb, visibleTabs.length]);
 
-  const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: pillX.value }] }));
+  const pillStyle = useAnimatedStyle(() => ({ opacity: pillOpacity.value, transform: [{ translateX: pillX.value }] }));
   const minScale = theme.layout.dockMinScale;
   const dockStyle = useAnimatedStyle(() => ({
     transform: [
@@ -72,7 +76,6 @@ export function Dock({
   // Opacity and transform only: animating height relayouts every tab per frame.
   const labelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dockScroll.value, [0, 0.6], [1, 0]),
-    transform: [{ translateY: interpolate(dockScroll.value, [0, 1], [0, 4]) }],
   }));
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(dockScroll.value, [0, 1], [0, 7]) }] }));
 
@@ -95,7 +98,7 @@ export function Dock({
                   key={tab.key}
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}
-                  accessibilityLabel={isCapture ? 'Capture' : tab.label}
+                  accessibilityLabel={isCapture ? 'Capturar' : tab.label}
                   haptic="selection"
                   scaleTo={0.9}
                   onPress={() => {
@@ -107,7 +110,8 @@ export function Dock({
                     const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                     if (!event.defaultPrevented) navigation.navigate(tab.key);
                   }}
-                  style={styles.tab}
+                  hitSlop={theme.layout.minTarget * (1 / minScale - 1) / 2}
+                  style={[styles.tab, { minWidth: theme.layout.minTarget, minHeight: theme.layout.minTarget }]}
                 >
                   {isCapture ? (
                     <View style={[styles.captureButton, { backgroundColor: theme.colors.accent }]}>

@@ -1,6 +1,7 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, AppState, Platform, Text, View } from 'react-native';
+import { type Href, router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, AppState, Platform, Text, TextInput, View } from 'react-native';
+import Animated, { Easing, FadeIn, FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated';
 
 import { Button, Field, SegmentedControl, Tag } from '@/components/controls';
 import { IconTile, Row } from '@/components/data/Row';
@@ -8,37 +9,37 @@ import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Screen, Section } from '@/components/layout/Screen';
+import { useToast } from '@/components/layout/Toast';
+import { SettingsAppsSkeleton, SettingsBridgeSkeleton, SettingsHealthSkeleton } from '@/components/skeletons/SettingsSkeleton';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { clearAllJsonCache } from '@/lib/cache';
 import { clearDiagnostics, readDiagnostics } from '@/lib/diagnostics';
 import { AppSettings } from '@/lib/domain';
 import { UYU_PER_USD } from '@/lib/format';
-import { useAsyncResource } from '@/lib/hooks';
+import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
+import { listLayout } from '@/lib/motion';
+import { useRules } from '@/lib/rules';
 import { allowCredentialRecovery, enrollV2AccessToken, logoutV2Session, readV2Credential, revokeV2AccessToken, rotateV2AccessToken, type V2CredentialSnapshot } from '@/lib/storage';
 import { flushNotificationBridgeDiagnostics, getInstalledCaptureApps, getNotificationBridgeStatus, openNotificationBridgeSettings, reconcileActiveNotifications, setCaptureAppPackages } from '@/lib/notification-bridge';
 
 const dashboardModes = [
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'knowledge', label: 'Knowledge' },
-  { value: 'finance', label: 'Money' },
+  { value: 'balanced', label: 'Equilibrado' },
+  { value: 'knowledge', label: 'Conocimiento' },
+  { value: 'finance', label: 'Dinero' },
 ] as const;
 
 const visibilityModes = [
-  { value: 'essential', label: 'Essential' },
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'detailed', label: 'Detailed' },
+  { value: 'essential', label: 'Esencial' },
+  { value: 'balanced', label: 'Equilibrado' },
+  { value: 'detailed', label: 'Detallado' },
 ] as const;
-
-function ordinalDay(day: number) {
-  if (day >= 11 && day <= 13) return `${day}th`;
-  if (day % 10 === 1) return `${day}st`;
-  if (day % 10 === 2) return `${day}nd`;
-  if (day % 10 === 3) return `${day}rd`;
-  return `${day}th`;
-}
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const toast = useToast();
+  const reduceMotion = useReduceMotion();
+  const { rules } = useRules();
+  const [maintenance, setMaintenance] = useState<string | null>(null);
   const client = useBrainIAClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [financialPeriodOpen, setFinancialPeriodOpen] = useState(false);
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [credentialTokenDraft, setCredentialTokenDraft] = useState('');
   const [credentialExpiryDraft, setCredentialExpiryDraft] = useState('');
   const [credentialBusy, setCredentialBusy] = useState(false);
+  const expiryRef = useRef<TextInput>(null);
   const {
     settings,
     setApiKey,
@@ -66,6 +68,26 @@ export default function SettingsScreen() {
     refreshSettings,
     resetSettings,
   } = useAppState();
+  // Connection fields hold a draft only while they are being edited, and commit on blur:
+  // every committed change rebuilds the API client and triggers a health check, so typing
+  // must not commit. A null draft shows the saved value.
+  const [baseUrlDraft, setBaseUrlDraft] = useState<string | null>(null);
+  const [clientIdDraft, setClientIdDraft] = useState<string | null>(null);
+  const [apiKeyDraft, setApiKeyDraft] = useState<string | null>(null);
+  const dayValid = /^\d{1,2}$/.test(financialPeriodDraft) && +financialPeriodDraft >= 1 && +financialPeriodDraft <= 28;
+
+  const runMaintenance = async (name: string, action: () => unknown | Promise<unknown>, message: string) => {
+    if (maintenance) return;
+    setMaintenance(name);
+    try {
+      await action();
+      toast.show(message, { tone: 'positive' });
+    } catch {
+      toast.show('No se pudo completar la acción. Intenta de nuevo.', { tone: 'danger' });
+    } finally {
+      setMaintenance(null);
+    }
+  };
 
   const openFinancialPeriod = () => {
     setFinancialPeriodDraft(String(settings.financialPeriodStartDay));
@@ -74,18 +96,16 @@ export default function SettingsScreen() {
 
   const saveFinancialPeriod = () => {
     const day = Number(financialPeriodDraft);
-    if (!Number.isInteger(day) || day < 1 || day > 28) {
-      Alert.alert('Invalid start day', 'Choose a day from 1 through 28 so every month has a valid cycle boundary.');
-      return;
-    }
+    if (!dayValid) return;
     setFinancialPeriodStartDay(day);
     setFinancialPeriodOpen(false);
+    toast.show('Ciclo financiero guardado', { tone: 'positive' });
   };
 
   const healthLoader = useMemo(() => () => client.health(), [client]);
-  const { data, loading, error, refresh } = useAsyncResource(healthLoader, [healthLoader]);
+  const { data, loading, error, refresh, reload: reloadHealth } = useAsyncResource(healthLoader, [healthLoader]);
   const diagnosticsLoader = useMemo(() => () => readDiagnostics(), []);
-  const { data: diagnostics, refresh: refreshDiagnostics } = useAsyncResource(diagnosticsLoader, [diagnosticsLoader]);
+  const { data: diagnostics, reload: refreshDiagnostics } = useAsyncResource(diagnosticsLoader, [diagnosticsLoader]);
   const notificationBridgeLoader = useMemo(() => () => getNotificationBridgeStatus(), []);
   const { data: notificationBridgeStatus, loading: notificationBridgeLoading, refresh: refreshNotificationBridge } = useAsyncResource(notificationBridgeLoader, [notificationBridgeLoader]);
   const notificationBridgeInitialLoading = notificationBridgeLoading && !notificationBridgeStatus;
@@ -99,6 +119,8 @@ export default function SettingsScreen() {
     setAppSelectionLoading(true);
     try {
       setCaptureApps(await getInstalledCaptureApps());
+    } catch {
+      toast.show('No se pudieron cargar las aplicaciones. Intenta de nuevo.', { tone: 'danger' });
     } finally {
       setAppSelectionLoading(false);
     }
@@ -114,6 +136,9 @@ export default function SettingsScreen() {
     try {
       await flushNotificationBridgeDiagnostics();
       refreshNotificationBridge();
+      toast.show('Diagnóstico enviado', { tone: 'positive' });
+    } catch {
+      toast.show('No se pudo enviar el diagnóstico.', { tone: 'danger' });
     } finally {
       setSendingListenerDiagnostics(false);
     }
@@ -123,6 +148,9 @@ export default function SettingsScreen() {
     try {
       await reconcileActiveNotifications();
       await Promise.all([refreshCaptureApps(), refreshNotificationBridge()]);
+      toast.show('Notificaciones comprobadas', { tone: 'positive' });
+    } catch {
+      toast.show('No se pudieron comprobar las notificaciones.', { tone: 'danger' });
     } finally {
       setCheckingActiveNotifications(false);
     }
@@ -152,12 +180,14 @@ export default function SettingsScreen() {
 
   const saveCaptureSelection = async (next: typeof captureApps) => {
     if (appSelectionSaving) return;
+    const previous = captureApps;
+    setCaptureApps(next);
     setAppSelectionSaving(true);
     try {
       await setCaptureAppPackages(next.filter((app) => app.selected).map((app) => app.packageName));
-      setCaptureApps(next);
       refreshNotificationBridge();
     } catch {
+      setCaptureApps(previous);
       Alert.alert('No se guardó la selección', 'Intenta de nuevo. Tu selección anterior sigue vigente.');
     } finally {
       setAppSelectionSaving(false);
@@ -174,6 +204,12 @@ export default function SettingsScreen() {
     setCredentialExpiryDraft('');
     setCredentialSheetOpen(true);
   };
+  const closeCredentialSheet = () => {
+    if (credentialBusy) return;
+    setCredentialTokenDraft('');
+    setCredentialExpiryDraft('');
+    setCredentialSheetOpen(false);
+  };
 
   const commitCredential = async () => {
     if (credentialBusy) return;
@@ -185,7 +221,7 @@ export default function SettingsScreen() {
       setCredentialTokenDraft('');
       setCredentialExpiryDraft('');
       setCredentialSheetOpen(false);
-      Alert.alert('Sesión segura guardada', 'La credencial quedó cifrada en el almacén seguro del dispositivo.');
+      toast.show('Sesión segura guardada', { tone: 'positive' });
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       Alert.alert('No se guardó la credencial', /expir/i.test(message) ? 'La fecha de vencimiento no es válida o ya pasó. Usa ISO-8601 o epoch en milisegundos.' : 'Revisa la credencial e intenta de nuevo. No se mostró ni se registró el valor.');
@@ -224,13 +260,25 @@ export default function SettingsScreen() {
   const clearLocalData = async () => {
     await clearAllJsonCache();
     await clearDiagnostics();
-    await refresh();
+    refresh();
     await refreshDiagnostics();
+  };
+  const confirmClearLocalData = () => {
+    Alert.alert('¿Vaciar la caché?', 'Se borrarán los datos guardados en este dispositivo. Se volverán a descargar al abrir cada pantalla.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Vaciar', style: 'destructive', onPress: () => { void runMaintenance('cache', clearLocalData, 'Caché vaciada'); } },
+    ]);
+  };
+  const confirmResetSettings = () => {
+    Alert.alert('¿Restablecer los ajustes?', 'Se restablecerán la conexión y las preferencias locales a sus valores predeterminados.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Restablecer', style: 'destructive', onPress: () => { void runMaintenance('reset', resetSettings, 'Ajustes restablecidos'); } },
+    ]);
   };
 
   const credentialStatus = credentialState?.status ?? 'unconfigured';
   const credentialSummary = credentialStatus === 'active'
-    ? `Sesión activa (generación ${credentialState?.generation ?? 1}).${credentialState?.expiresAt ? ` Vence ${new Date(credentialState.expiresAt).toLocaleDateString()}.` : ' Sin vencimiento declarado.'}`
+    ? `Sesión activa (generación ${credentialState?.generation ?? 1}).${credentialState?.expiresAt ? ` Vence ${new Date(credentialState.expiresAt).toLocaleDateString('es-UY')}.` : ' Sin vencimiento declarado.'}`
     : credentialStatus === 'expired'
       ? 'La credencial venció. Vuelve a conectar una sesión para reanudar la entrega v2.'
       : credentialStatus === 'revoked'
@@ -242,107 +290,127 @@ export default function SettingsScreen() {
 
   return (
     <Screen
+      back backLabel="Volver"
       title="Ajustes"
-      overline="Preferences"
+      overline="Preferencias"
       subtitle="Personaliza tu experiencia y administra tus fuentes."
-      actions={<Tag label={data?.ok ? 'Connected' : loading ? 'Checking' : 'Saved'} tone={data?.ok ? 'positive' : 'neutral'} />}
+      actions={<Tag label={loading ? 'Comprobando' : data?.ok ? 'Conectado' : 'Sin conexión'} tone={loading ? 'neutral' : data?.ok ? 'positive' : 'warning'} live={loading} />}
     >
       <Section title="General" subtitle="La interfaz está en español. La evidencia conserva su idioma original.">
-        <Row title="Idioma de la aplicación" subtitle="Español" description="Brain IA comprende información en español e inglés." leading={<IconTile icon="globe" />} accessory="none" />
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Source detail</Text>
-        <SegmentedControl items={visibilityModes as unknown as typeof visibilityModes} value={settings.dataVisibility} onChange={(value) => setDataVisibility(value as AppSettings['dataVisibility'])} />
+        <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.sm }}>
+        <Row style={{ borderRadius: 0 }} title="Idioma de la aplicación" descriptionLines={4} subtitle="Español" description="Brain IA comprende información en español e inglés." leading={<IconTile icon="globe" />} accessory="none" />
+        <View style={{ paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm }}>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Detalle de las fuentes</Text>
+        <SegmentedControl role="radio" accessibilityLabel="Detalle de las fuentes" items={visibilityModes as unknown as typeof visibilityModes} value={settings.dataVisibility} onChange={(value) => setDataVisibility(value as AppSettings['dataVisibility'])} />
+        </View>
+        </GlassSurface>
       </Section>
 
-      <Section title="Money" subtitle="Configura tu ciclo mensual y la presencia de Dinero en la vista de Hoy.">
-        <Row title={`${UYU_PER_USD.toFixed(4)} UYU/USD`} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
-        <Row title={`${ordinalDay(settings.financialPeriodStartDay)} of each month`} subtitle="Inicio del ciclo financiero" description="Monthly reports run from this day through the day before the next cycle." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambio</Text>} accessory="none" onPress={openFinancialPeriod} />
+      <Section title="Dinero" subtitle="Configura tu ciclo mensual y la presencia de Dinero en la vista de Hoy.">
+        <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.sm }}>
+        <Row style={{ borderRadius: 0 }} title={`1 USD = ${UYU_PER_USD} UYU`} descriptionLines={4} subtitle="Tipo de cambio de referencia" description="Los totales convertidos son estimaciones. Cada transacción conserva siempre su moneda original." leading={<IconTile icon="repeat" color={theme.colors.model} />} accessory="none" />
+        <Row style={{ borderRadius: 0 }} title={`Día ${settings.financialPeriodStartDay} de cada mes`} descriptionLines={4} subtitle="Inicio del ciclo financiero" description="Los informes mensuales van desde este día hasta el día anterior al próximo ciclo." leading={<IconTile icon="calendar" color={theme.colors.accent} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Cambiar</Text>} accessory="none" onPress={openFinancialPeriod} />
+        <Row style={{ borderRadius: 0 }} title="Reglas" descriptionLines={4} subtitle={rules.length ? `${rules.filter((rule) => rule.enabled).length} de ${rules.length} activas` : 'Qué asumir cuando falta un dato'} description="Por ejemplo: si viene de PedidosYa y la moneda es incierta, asumir UYU." leading={<IconTile icon="sliders" color={theme.colors.model} />} trailing={<Text style={[theme.typography.bodyStrong, { color: theme.colors.accentStrong }]}>Abrir</Text>} accessory="none" onPress={() => router.push('/rules' as Href)} />
+        <View style={{ paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm }}>
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Prioridad en Hoy</Text>
-        <SegmentedControl items={dashboardModes as unknown as typeof dashboardModes} value={settings.dashboardMode} onChange={(value) => setDashboardMode(value as AppSettings['dashboardMode'])} />
+        <SegmentedControl role="radio" accessibilityLabel="Prioridad en Hoy" items={dashboardModes as unknown as typeof dashboardModes} value={settings.dashboardMode} onChange={(value) => setDashboardMode(value as AppSettings['dashboardMode'])} />
+        </View>
+        </GlassSurface>
       </Section>
 
-      <Section title="Notifications" subtitle="Recibe recordatorios para lecturas y decisiones útiles.">
-        <Row title="Recordatorios de resúmenes" subtitle="Un aviso periódico cuando haya un nuevo resumen útil." leading={<IconTile icon="book-open" />} accessory="switch" switchValue={settings.digestNotifications} onSwitchChange={setDigestNotifications} />
-        <Row title="Recordatorios de revisión" subtitle="Un recordatorio cuando un nombre o una categoría necesiten una decisión." leading={<IconTile icon="shield" color={theme.status.review} />} accessory="switch" switchValue={settings.reviewNotifications} onSwitchChange={setReviewNotifications} />
+      <Section title="Notificaciones" subtitle="Recibe recordatorios para lecturas y decisiones útiles.">
+        <GlassSurface level="thin" padding="sm">
+        <Row style={{ borderRadius: 0 }} title="Recordatorios de resúmenes" descriptionLines={4} subtitle="Un aviso periódico cuando haya un nuevo resumen útil." leading={<IconTile icon="book-open" />} accessory="switch" switchValue={settings.digestNotifications} onSwitchChange={setDigestNotifications} />
+        <Row style={{ borderRadius: 0 }} title="Recordatorios de revisión" descriptionLines={4} subtitle="Un recordatorio cuando un nombre o una categoría necesiten una decisión." leading={<IconTile icon="shield" color={theme.status.review} />} accessory="switch" switchValue={settings.reviewNotifications} onSwitchChange={setReviewNotifications} />
+        </GlassSurface>
       </Section>
 
       {Platform.OS === 'android' ? (
         <Section title="Captura de notificaciones" subtitle="Lee notificaciones de apps seleccionadas y las envía a Brain IA.">
-          <GlassSurface level="thin" padding="md" contentStyle={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {notificationBridgeInitialLoading ? <SettingsBridgeSkeleton /> : <GlassSurface level="thin" padding="md" contentStyle={{ gap: theme.spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
               <IconTile icon="bell" color={listenerConnected ? theme.colors.accent : theme.status.warning} />
-              <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flex: 1, gap: theme.spacing.xs }}>
                 <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Acceso a notificaciones</Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                  {notificationBridgeInitialLoading ? 'Checking notification access...' : listenerConnected ? (lastForwardedAt ? `Listener connected. Last forwarded ${new Date(lastForwardedAt).toLocaleString()}.` : 'Listener connected and ready.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Access enabled; the listener is reconnecting.' : 'Access enabled. Connecting the listener service.') : 'Notification access is disabled.'}
+                  {listenerConnected ? (lastForwardedAt ? `Escucha conectada. Último envío: ${new Date(lastForwardedAt).toLocaleString('es-UY')}` : 'Escucha conectada y lista.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Acceso activado; la escucha se está reconectando.' : 'Acceso activado. Conectando el servicio de escucha.') : 'El acceso a notificaciones está desactivado.'}
                 </Text>
               </View>
-              <Tag label={notificationBridgeInitialLoading ? 'Checking' : listenerConnected ? 'Running' : listenerNeedsAttention ? 'Needs attention' : notificationBridgeStatus?.accessEnabled ? 'Reconnecting' : 'Disabled'} tone={listenerConnected ? 'positive' : 'warning'} />
+              <Tag label={listenerConnected ? 'Activo' : listenerNeedsAttention ? 'Requiere atención' : notificationBridgeStatus?.accessEnabled ? 'Reconectando' : 'Desactivado'} tone={listenerConnected ? 'positive' : 'warning'} />
             </View>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{notificationBridgeStatus?.captureConsent === 'unconfigured' ? 'Elige qué aplicaciones pueden compartir notificaciones.' : notificationBridgeStatus?.captureConsent === 'empty' ? 'Captura pausada: no seleccionaste ninguna aplicación.' : 'Solo se capturan notificaciones de las aplicaciones que seleccionaste.'}</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{lastReceivedAt ? `Last notification read: ${new Date(lastReceivedAt).toLocaleString()}.` : 'No supported notification has been read yet.'}</Text>
-            {lastReconciledAt ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Active notifications last checked: {new Date(lastReconciledAt).toLocaleString()}.</Text> : null}
-            {notificationBridgeStatus?.lastError ? <Text style={[theme.typography.caption, { color: theme.status.warning }]}>{notificationBridgeStatus.lastError}</Text> : null}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{lastReceivedAt ? `Última notificación leída: ${new Date(lastReceivedAt).toLocaleString('es-UY')}` : 'Todavía no se leyó ninguna notificación compatible.'}</Text>
+            {lastReconciledAt ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Notificaciones activas comprobadas por última vez: {new Date(lastReconciledAt).toLocaleString('es-UY')}</Text> : null}
+            {notificationBridgeStatus?.lastError ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.status.warning }]}>No se pudo conectar con el servicio de notificaciones. Comprueba el acceso e intenta de nuevo.</Text> : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
               <Button label="Elegir aplicaciones" variant="secondary" size="sm" onPress={openAppSelection} />
               <Button label="Abrir acceso" size="sm" onPress={() => { void openNotificationBridgeSettings(); }} />
-              <Button label={checkingActiveNotifications ? 'Checking...' : 'Check active'} variant="secondary" size="sm" onPress={() => { void refreshNotificationBridgeStatus(); }} disabled={checkingActiveNotifications} />
-              <Button label={sendingListenerDiagnostics ? 'Sending...' : 'Send diagnostics'} variant="ghost" size="sm" onPress={() => { void sendListenerDiagnostics(); }} disabled={sendingListenerDiagnostics} />
+              <Button label="Comprobar activas" loading={checkingActiveNotifications} variant="secondary" size="sm" onPress={() => { void refreshNotificationBridgeStatus(); }} disabled={checkingActiveNotifications} />
+              <Button label="Enviar diagnóstico" loading={sendingListenerDiagnostics} variant="secondary" size="sm" onPress={() => { void sendListenerDiagnostics(); }} disabled={sendingListenerDiagnostics} />
             </View>
-          </GlassSurface>
+          </GlassSurface>}
         </Section>
       ) : null}
 
-      <Section title="Advanced" subtitle="Connection, credentials and maintenance.">
-        <Row title="Advanced tools" subtitle={advancedOpen ? 'Hide connection and diagnostics.' : 'Show connection and diagnostics.'} leading={<IconTile icon="tool" />} accessory="expand" expanded={advancedOpen} onPress={() => setAdvancedOpen((value) => !value)} />
+      <Animated.View layout={reduceMotion ? undefined : listLayout}>
+      <Section title="Avanzado" subtitle="Conexión, credenciales y mantenimiento.">
+        <GlassSurface level="thin" padding="sm">
+        <Row style={{ borderRadius: 0 }} title="Herramientas avanzadas" subtitle={advancedOpen ? 'Ocultar conexión y diagnóstico.' : 'Mostrar conexión y diagnóstico.'} leading={<IconTile icon="tool" />} accessory="expand" expanded={advancedOpen} onPress={() => setAdvancedOpen((value) => !value)} />
+        </GlassSurface>
         {advancedOpen ? (
-          <GlassSurface level="thin" padding="md" contentStyle={{ gap: 12 }}>
-            <Field label="Base URL" value={settings.baseUrl} onChangeText={setBaseUrl} autoCapitalize="none" autoCorrect={false} />
-            <Field label="Client ID" value={settings.clientId} onChangeText={(value) => { allowCredentialRecovery('clientId'); setClientId(value); }} autoCapitalize="none" autoCorrect={false} placeholder="opcional" />
-            <Field label="API key" value={settings.apiKey} onChangeText={(value) => { allowCredentialRecovery('apiKey'); setApiKey(value); }} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="opcional" />
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Sesión de datos v2</Text>
+          <Animated.View entering={reduceMotion ? FadeIn.duration(theme.motion.duration.reduced).reduceMotion(ReduceMotion.Never) : FadeInDown.duration(theme.motion.duration.quick).easing(Easing.bezier(...theme.motion.easing.out))} exiting={FadeOut.duration(reduceMotion ? theme.motion.duration.reduced : theme.motion.duration.press).reduceMotion(ReduceMotion.Never)} layout={reduceMotion ? undefined : listLayout} style={{ gap: theme.spacing.sm }}>
+          <GlassSurface title="Conexión" level="thin" padding="md" contentStyle={{ gap: theme.spacing.md }}>
+            <Field label="URL base" value={baseUrlDraft ?? settings.baseUrl} onChangeText={setBaseUrlDraft} onEndEditing={() => { if (baseUrlDraft !== null && baseUrlDraft.trim() !== settings.baseUrl) setBaseUrl(baseUrlDraft.trim()); setBaseUrlDraft(null); }} keyboardType="url" returnKeyType="done" autoCapitalize="none" autoCorrect={false} />
+            <Field label="ID de cliente" value={clientIdDraft ?? settings.clientId} onChangeText={(value) => { allowCredentialRecovery('clientId'); setClientIdDraft(value); }} onEndEditing={() => { if (clientIdDraft !== null && clientIdDraft.trim() !== settings.clientId) setClientId(clientIdDraft.trim()); setClientIdDraft(null); }} autoCapitalize="none" autoCorrect={false} placeholder="opcional" />
+            <Field label="Clave de API" value={apiKeyDraft ?? settings.apiKey} onChangeText={(value) => { allowCredentialRecovery('apiKey'); setApiKeyDraft(value); }} onEndEditing={() => { if (apiKeyDraft !== null && apiKeyDraft !== settings.apiKey) setApiKey(apiKeyDraft); setApiKeyDraft(null); }} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="opcional" />
+            {loading ? <SettingsHealthSkeleton /> : <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{error ? 'No se pudo conectar con el servicio.' : data?.ok ? 'Servicio disponible.' : 'El servicio no responde en este momento.'}</Text>}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              <Button label="Comprobar servicio" loading={loading} disabled={loading || maintenance !== null} variant="secondary" size="sm" onPress={() => { void runMaintenance('health', async () => { const result = await reloadHealth(); if (!result.ok) throw new Error('unavailable'); }, 'Servicio disponible'); }} />
+              <Button label="Recuperar valores" loading={maintenance === 'settings'} disabled={maintenance !== null} variant="ghost" size="sm" onPress={() => { void runMaintenance('settings', refreshSettings, 'Valores recuperados'); }} />
+            </View>
+          </GlassSurface>
+          <GlassSurface title="Sesión de datos v2" level="thin" padding="md" contentStyle={{ gap: theme.spacing.md }}>
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{credentialSummary}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
               {credentialNeedsRotation ? <Button label={credentialStatus === 'active' ? 'Rotar credencial' : 'Volver a conectar'} size="sm" onPress={() => openCredentialSheet(credentialStatus === 'active' ? 'rotate' : 'enroll')} /> : <Button label="Conectar sesión v2" size="sm" onPress={() => openCredentialSheet('enroll')} />}
               {credentialStatus === 'active' || credentialStatus === 'expired' ? <Button label="Revocar" variant="secondary" size="sm" onPress={confirmRevokeCredential} disabled={credentialBusy} /> : null}
               {credentialStatus !== 'unconfigured' ? <Button label="Cerrar sesión" variant="ghost" size="sm" onPress={confirmLogout} disabled={credentialBusy} /> : null}
             </View>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Conexión</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{loading ? 'Checking connection...' : error ? error : data?.ok ? 'Service reachable.' : 'Service is not responding right now.'}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Button label={loading ? 'Checking...' : 'Check service'} variant="secondary" size="sm" onPress={refresh} />
-              <Button label="Recuperar valores" variant="ghost" size="sm" onPress={refreshSettings} />
-            </View>
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Diagnóstico</Text>
-            {diagnostics?.[0] ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{diagnostics[0].label} · {new Date(diagnostics[0].timestamp).toLocaleString()}</Text> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>No hay diagnósticos registrados.</Text>}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Button label="Actualizar diagnóstico" variant="secondary" size="sm" onPress={refreshDiagnostics} />
-              <Button label="Vaciar caché" variant="ghost" size="sm" onPress={clearLocalData} />
-            </View>
-            <StateView title="Restablecer preferencias locales" description="Esto restablece la apariencia y la conexión predeterminadas de la aplicación." actionLabel="Restablecer ajustes" onAction={resetSettings} />
           </GlassSurface>
+          <GlassSurface title="Diagnóstico" level="thin" padding="md" contentStyle={{ gap: theme.spacing.md }}>
+            {diagnostics?.[0] ? <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{diagnostics[0].label} · {new Date(diagnostics[0].timestamp).toLocaleString('es-UY')}</Text> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>No hay diagnósticos registrados.</Text>}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              <Button label="Actualizar diagnóstico" variant="secondary" size="sm" loading={maintenance === 'diagnostics'} disabled={maintenance !== null} onPress={() => { void runMaintenance('diagnostics', refreshDiagnostics, 'Diagnóstico actualizado'); }} />
+              <Button label="Vaciar caché" variant="secondary" size="sm" loading={maintenance === 'cache'} disabled={maintenance !== null} onPress={confirmClearLocalData} />
+            </View>
+          </GlassSurface>
+          <GlassSurface title="Restablecer preferencias locales" level="thin" padding="md" contentStyle={{ gap: theme.spacing.md }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Esto restablece la apariencia y la conexión predeterminadas de la aplicación.</Text>
+              <Button label="Restablecer ajustes" variant="danger" size="sm" loading={maintenance === 'reset'} disabled={maintenance !== null} onPress={confirmResetSettings} />
+          </GlassSurface>
+          </Animated.View>
         ) : null}
       </Section>
+      </Animated.View>
 
-      <BottomSheet visible={financialPeriodOpen} title="Ciclo financiero" onClose={() => setFinancialPeriodOpen(false)}>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Choose when a new monthly money cycle begins. Day 28, for example, creates cycles from the 28th through the 27th.</Text>
-        <Field label="Día de inicio (1–28)" value={financialPeriodDraft} onChangeText={setFinancialPeriodDraft} keyboardType="number-pad" placeholder="1" error={!Number.isInteger(Number(financialPeriodDraft)) || Number(financialPeriodDraft) < 1 || Number(financialPeriodDraft) > 28 ? 'Choose a day from 1 through 28.' : undefined} />
-        <Button label="Guardar ciclo financiero" onPress={saveFinancialPeriod} />
+      <BottomSheet visible={financialPeriodOpen} title="Ciclo financiero" onClose={() => setFinancialPeriodOpen(false)} footer={<Button label="Guardar ciclo financiero" onPress={saveFinancialPeriod} disabled={!dayValid} full />}>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Elige cuándo empieza un nuevo ciclo mensual de dinero. El día 28, por ejemplo, crea ciclos del 28 al 27 del mes siguiente.</Text>
+        <Field label="Día de inicio (1–28)" value={financialPeriodDraft} onChangeText={setFinancialPeriodDraft} keyboardType="number-pad" returnKeyType="done" onSubmitEditing={saveFinancialPeriod} placeholder="1" error={financialPeriodDraft && !dayValid ? 'Elige un día del 1 al 28.' : undefined} />
       </BottomSheet>
 
       <BottomSheet visible={appSelectionOpen} title="Aplicaciones de origen" onClose={() => setAppSelectionOpen(false)}>
         <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Elige las aplicaciones instaladas cuyas notificaciones puede capturar Brain IA.</Text>
-        <Button label={appSelectionSaving ? 'Guardando…' : 'Pausar toda la captura'} disabled={appSelectionLoading || appSelectionSaving} onPress={() => { void saveCaptureSelection(captureApps.map((app) => ({ ...app, selected: false }))); }} variant="secondary" />
-        {appSelectionLoading ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Buscando aplicaciones instaladas…</Text> : null}
+        <Button label="Pausar toda la captura" loading={appSelectionSaving} disabled={appSelectionLoading || appSelectionSaving} onPress={() => { void saveCaptureSelection(captureApps.map((app) => ({ ...app, selected: false }))); }} variant="secondary" />
+        {appSelectionLoading && !captureApps.length ? <SettingsAppsSkeleton /> : null}
         {!appSelectionLoading && !captureApps.length ? <StateView title="No se encontraron aplicaciones" description="Actualiza la lista después de instalar una aplicación." actionLabel="Reintentar" onAction={() => { void refreshCaptureApps(); }} /> : null}
-        {captureApps.map((app) => <Row key={app.packageName} title={app.name} subtitle={app.packageName} accessory="switch" switchValue={app.selected} onSwitchChange={() => toggleCaptureApp(app.packageName)} />)}
+        {captureApps.map((app) => <Row style={{ borderRadius: 0 }} key={app.packageName} title={app.name} subtitle={app.packageName} accessory="switch" disabled={appSelectionSaving} switchValue={app.selected} onSwitchChange={() => toggleCaptureApp(app.packageName)} />)}
       </BottomSheet>
 
-      <BottomSheet visible={credentialSheetOpen} title={credentialMode === 'rotate' ? 'Rotar credencial v2' : 'Conectar sesión v2'} onClose={() => setCredentialSheetOpen(false)}>
+      <BottomSheet visible={credentialSheetOpen} title={credentialMode === 'rotate' ? 'Rotar credencial v2' : 'Conectar sesión v2'} onClose={closeCredentialSheet} footer={<Button label={credentialMode === 'rotate' ? 'Guardar rotación' : 'Guardar credencial'} onPress={saveCredential} loading={credentialBusy} disabled={credentialBusy || credentialTokenDraft.trim().length === 0} full />}>
         <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Pega la credencial de dispositivo emitida por Brain IA. Se guarda cifrada y no se muestra de nuevo.</Text>
-        <Field label="Credencial de dispositivo" value={credentialTokenDraft} onChangeText={setCredentialTokenDraft} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="Obligatoria" />
-        <Field label="Vencimiento (opcional)" value={credentialExpiryDraft} onChangeText={setCredentialExpiryDraft} autoCapitalize="none" autoCorrect={false} placeholder="2027-01-31T00:00:00Z" />
+        <Field label="Credencial de dispositivo" value={credentialTokenDraft} onChangeText={setCredentialTokenDraft} autoFocus returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => expiryRef.current?.focus()} editable={!credentialBusy} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="Obligatoria" />
+        <Field inputRef={expiryRef} label="Vencimiento (opcional)" value={credentialExpiryDraft} onChangeText={setCredentialExpiryDraft} returnKeyType="done" onSubmitEditing={saveCredential} editable={!credentialBusy} autoCapitalize="none" autoCorrect={false} placeholder="2027-01-31T00:00:00Z" />
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Acepta ISO-8601 o epoch en milisegundos. Sin vencimiento declarado, la credencial se usa hasta que la revoques o cierres sesión.</Text>
-        <Button label={credentialBusy ? 'Guardando…' : credentialMode === 'rotate' ? 'Guardar rotación' : 'Guardar credencial'} onPress={saveCredential} disabled={credentialBusy || credentialTokenDraft.trim().length === 0} />
       </BottomSheet>
     </Screen>
   );

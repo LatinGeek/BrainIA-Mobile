@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, Ref, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -10,12 +10,14 @@ import {
   ViewStyle,
   useWindowDimensions,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, withSpring } from 'react-native-reanimated';
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
+import { useReduceMotion } from '@/lib/hooks';
+import { reducedFade } from '@/lib/motion';
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -141,19 +143,24 @@ export function SegmentedControl<T extends string>({
   const theme = useTheme();
   const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
   const [containerWidth, setContainerWidth] = useState(0);
+  const reduceMotion = useReduceMotion();
+  const thumbOpacity = useSharedValue(1);
   const thumbX = useSharedValue(0);
   const thumbWidth = useSharedValue(0);
   const height = size === 'mini' ? 28 : 38;
   useEffect(() => {
     const layout = layouts[value];
     if (!layout) return;
-    thumbX.value = withSpring(layout.x, theme.motion.spring.thumb);
-    thumbWidth.value = withSpring(layout.width, theme.motion.spring.thumb);
-  }, [containerWidth, layouts, theme.motion.spring.thumb, thumbWidth, thumbX, value]);
+    thumbX.value = reduceMotion ? layout.x : withSpring(layout.x, theme.motion.spring.thumb);
+    thumbWidth.value = reduceMotion ? layout.width : withSpring(layout.width, theme.motion.spring.thumb);
+    thumbOpacity.value = reduceMotion ? 0 : 1;
+    if (reduceMotion) thumbOpacity.value = withTiming(1, reducedFade);
+  }, [reduceMotion, thumbOpacity, containerWidth, layouts, theme.motion.spring.thumb, thumbWidth, thumbX, value]);
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: thumbX.value }],
     width: thumbWidth.value,
+    opacity: thumbOpacity.value,
   }));
 
   return (
@@ -284,7 +291,7 @@ export function Chip({
       {canonical ? <Feather name="check-circle" size={12} color={selected ? theme.glass.onSelected : theme.colors.success} /> : null}
       {alias ? <Feather name="corner-down-right" size={12} color={selected ? theme.glass.onSelected : theme.colors.textMuted} /> : null}
       {icon ? <Feather name={icon} size={13} color={selected ? theme.glass.onSelected : theme.colors.textSecondary} /> : null}
-      <Text numberOfLines={1} style={[theme.typography.caption, { color: selected ? theme.glass.onSelected : theme.colors.textSecondary, fontFamily: selected ? 'Inter_600SemiBold' : 'Inter_400Regular' }]}>
+      <Text numberOfLines={1} style={[theme.typography.caption, { flexShrink: 1, color: selected ? theme.glass.onSelected : theme.colors.textSecondary, fontFamily: selected ? 'Inter_600SemiBold' : 'Inter_400Regular' }]}>
         {cleanDisplayText(label)}
       </Text>
       {typeof count === 'number' ? (
@@ -386,7 +393,7 @@ export function ChipGroup<T extends string>({
           <Chip key={item.value} label={item.label} count={item.count} icon={item.icon} selected={isSelected(item.value)} onPress={() => toggle(item.value)} />
         ))}
         {creatable && normalized && !visible.length ? (
-          <Chip label={`Create “${query.trim()}”`} onPress={() => onCreate?.(query.trim())} icon="plus" />
+          <Chip label={`Crear “${query.trim()}”`} onPress={() => onCreate?.(query.trim())} icon="plus" />
         ) : null}
       </View>
       {!visible.length && !creatable ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{emptyLabel}</Text> : null}
@@ -456,11 +463,11 @@ export function ConfidenceMeter({ value, showValue = false }: { value?: number; 
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const normalized = Math.max(0, Math.min(1, value));
   const level = normalized >= 0.85 ? 3 : normalized >= 0.5 ? 2 : 1;
-  const word = normalized >= 0.85 ? 'Clear' : normalized >= 0.5 ? 'Unsure' : 'Guess';
+  const word = normalized >= 0.85 ? 'Segura' : normalized >= 0.5 ? 'Dudosa' : 'Posible';
   const color = normalized >= 0.85 ? theme.colors.success : normalized >= 0.5 ? theme.colors.warning : theme.colors.danger;
 
   return (
-    <View accessibilityLabel={`${word} confidence${showValue ? `, ${Math.round(normalized * 100)} percent` : ''}`} style={styles.confidence}>
+    <View accessibilityLabel={`Confianza ${word.toLowerCase()}${showValue ? `, ${Math.round(normalized * 100)} por ciento` : ''}`} style={styles.confidence}>
       <View style={styles.confidenceBars}>
         {[1, 2, 3].map((bar) => (
           <View key={bar} style={[styles.confidenceBar, { height: 4 + bar * 3, backgroundColor: bar <= level ? color : theme.glass.divider }]} />
@@ -483,9 +490,12 @@ export function Field({
   leading,
   trailing,
   style,
+  inputRef,
   ...props
 }: TextInputProps & {
   variant?: 'default' | 'search' | 'amount';
+  /** Ref to the underlying TextInput, for focus chaining. */
+  inputRef?: Ref<TextInput>;
   label?: string;
   hint?: string;
   error?: string;
@@ -513,8 +523,9 @@ export function Field({
         ]}
       >
         <View style={styles.fieldRow}>
-          {leading ? <View style={{ marginRight: 8 }}>{leading}</View> : null}
+          {leading ? <View style={{ marginLeft: 16, marginRight: -4 }}>{leading}</View> : null}
           <TextInput
+            ref={inputRef}
             accessibilityLabel={props.accessibilityLabel ?? label}
             placeholderTextColor={theme.colors.textMuted}
             selectionColor={theme.colors.accent}
@@ -527,6 +538,8 @@ export function Field({
                 paddingHorizontal: 14,
                 paddingVertical: isAmount ? 12 : 10,
               },
+              // A multiline input on Android centres its text vertically and stays one line tall.
+              props.multiline ? { minHeight: 88, textAlignVertical: 'top' } : null,
               isAmount ? theme.typography.numeral : theme.typography.body,
               style,
             ]}
@@ -584,6 +597,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     minHeight: 34,
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,

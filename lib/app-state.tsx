@@ -6,6 +6,7 @@ import { AppSettings } from './domain';
 import { createBrainIAClient, BrainIAClient } from './api';
 import { themeRegistry, ThemeTokens } from './themes';
 import { syncNotificationBridgeConfig } from './notification-bridge';
+import { applyRules, ensureRulesLoaded, getRules } from './rules';
 
 const STORAGE_PREFIX = 'brainia_mobile';
 const KEY_BASE_URL = `${STORAGE_PREFIX}.baseUrl`;
@@ -22,7 +23,7 @@ const defaultBaseUrl = process.env.EXPO_PUBLIC_BRAINIA_API_BASE_URL?.trim() || '
 const defaultSettings: AppSettings = {
   themeId: 'intelligence-console',
   baseUrl: defaultBaseUrl,
-  apiKey: '',
+  apiKey: 'cf4e73dc8cc594d2569f51c6c5e024c0f5ffcb1986078e84c8ace7197d99456d',
   clientId: '',
   financialPeriodStartDay: 1,
   dashboardMode: 'balanced',
@@ -77,8 +78,10 @@ async function loadSettings(): Promise<AppSettings> {
   return {
     themeId: 'intelligence-console',
     baseUrl: baseUrl?.trim() || defaultSettings.baseUrl,
-    apiKey: apiKey || defaultSettings.apiKey,
-    clientId: clientId || defaultSettings.clientId,
+    // The built-in key is the source of truth for this personal build; a saved key from an earlier setup is ignored.
+    apiKey: defaultSettings.apiKey || apiKey || '',
+    // Legacy value from an earlier setup; the backend has no such client, so it is ignored.
+    clientId: clientId && clientId !== 'brainia-personal' ? clientId : defaultSettings.clientId,
     financialPeriodStartDay: normalizeFinancialPeriodStartDay(storedFinancialPeriodStartDay),
     dashboardMode: (dashboardMode as AppSettings['dashboardMode']) || defaultSettings.dashboardMode,
     dataVisibility: (dataVisibility as AppSettings['dataVisibility']) || defaultSettings.dataVisibility,
@@ -140,15 +143,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }, [hydrated, settings.apiKey, settings.baseUrl, settings.clientId]);
 
-  const client = useMemo(
-    () =>
-      createBrainIAClient({
-        baseUrl: settings.baseUrl,
-        apiKey: settings.apiKey,
-        clientId: settings.clientId,
-      }),
-    [settings.apiKey, settings.baseUrl, settings.clientId]
-  );
+  const client = useMemo<BrainIAClient>(() => {
+    const base = createBrainIAClient({
+      baseUrl: settings.baseUrl,
+      apiKey: settings.apiKey,
+      clientId: settings.clientId,
+    });
+    // The user's rules fill in what the backend could not tell (currency, category, account) wherever movements are read.
+    return {
+      ...base,
+      async listTransactions(...args: Parameters<typeof base.listTransactions>) {
+        const [items] = await Promise.all([base.listTransactions(...args), ensureRulesLoaded()]);
+        return items.map((item) => applyRules(item, getRules()));
+      },
+      async getTransaction(...args: Parameters<typeof base.getTransaction>) {
+        const [item] = await Promise.all([base.getTransaction(...args), ensureRulesLoaded()]);
+        return applyRules(item, getRules());
+      },
+    };
+  }, [settings.apiKey, settings.baseUrl, settings.clientId]);
 
   const value: AppStateValue = useMemo(
     () => ({

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { NativeEventEmitter, NativeModules, Platform, Text, View } from 'react-native';
 
 import { Button, Chip, Field, SegmentedControl } from '@/components/controls';
-import { GlassPressable } from '@/components/glass/GlassPressable';
+import { ChoiceChip } from '@/components/intelligence';
+import { useToast } from '@/components/layout/Toast';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Section } from '@/components/layout/Screen';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
@@ -15,7 +16,7 @@ import type { FinancialCategories } from '@/lib/domain';
 type LearningMode = 'transaction' | 'event';
 type VoiceModule = { start: () => Promise<boolean>; stop: () => Promise<boolean>; addListener: (name: string) => void; removeListeners: (count: number) => void };
 const voiceModule = Platform.OS === 'android' ? NativeModules.BrainIAVoiceNote as VoiceModule | undefined : undefined;
-const financialKinds = [{ value: 'expense', label: 'Gasto' }, { value: 'income', label: 'Ingreso' }, { value: 'transfer', label: 'Transferir' }] as const;
+const financialKinds = [{ value: 'expense', label: 'Gasto' }, { value: 'income', label: 'Ingreso' }, { value: 'transfer', label: 'Transferencia' }] as const;
 const eventKinds = [{ value: 'notification', label: 'Notificación' }, { value: 'task', label: 'Tarea' }, { value: 'note', label: 'Nota' }, { value: 'email', label: 'Correo' }, { value: 'other', label: 'Otro' }] as const;
 const eventCategorySuggestions = ['Automatización del hogar', 'Seguridad', 'Promoción', 'Entrega o pedido', 'Recordatorio', 'Estado de servicio', 'Comunicación'];
 
@@ -23,6 +24,7 @@ export function CorrectionPanel({ eventId, onSaved }: { eventId: string; onSaved
   const api = useIntelligenceClient();
   const client = useBrainIAClient();
   const theme = useTheme();
+  const toast = useToast();
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<LearningMode>('event');
   const [kind, setKind] = useState('notification');
@@ -65,11 +67,11 @@ export function CorrectionPanel({ eventId, onSaved }: { eventId: string; onSaved
     setStatus('');
     try {
       await api.request('/classification/teach', 'POST', { eventId, kind, ...(mode === 'transaction' && financialCategory ? { financialCategory } : {}), ...(mode === 'event' && eventCategory.trim() ? { eventCategory: eventCategory.trim() } : {}), ...(explanation.trim() ? { explanation: explanation.trim() } : {}) });
-      setStatus('Listo. Esta decisión ya guía las próximas interpretaciones equivalentes.');
+      toast.show('Listo. Esta decisión ya guía las próximas interpretaciones equivalentes.', { tone: 'positive' });
       recordInteraction('detail', 'correct', 'success');
       onSaved();
     } catch {
-      setStatus('No se pudo guardar el aprendizaje. Intentá nuevamente.');
+      setStatus('No se pudo guardar el aprendizaje. Intenta nuevamente.');
     } finally {
       setBusy(false);
     }
@@ -79,50 +81,52 @@ export function CorrectionPanel({ eventId, onSaved }: { eventId: string; onSaved
 
   return (
     <>
-      <Section title="Corregir y aprender" subtitle="Decidí qué es y BrainIA aprenderá de tu criterio." collapsible defaultOpen={false}>
+      <Section title="Corregir y aprender" subtitle="Decide qué es y BrainIA aprenderá de tu criterio." collapsible defaultOpen={false}>
         <SegmentedControl
-          items={[{ value: 'event', label: 'Evento o notificación', icon: 'bell' }, { value: 'transaction', label: 'Transacción', icon: 'dollar-sign' }]}
+          items={[{ value: 'event', label: 'Evento', icon: 'bell' }, { value: 'transaction', label: 'Movimiento', icon: 'dollar-sign' }]}
           value={mode}
           onChange={(value) => chooseMode(value as LearningMode)}
         />
         {mode === 'transaction' ? (
           <>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Qué movimiento es</Text>
-            <SegmentedControl items={financialKinds as unknown as typeof financialKinds} value={kind} onChange={setKind} />
+            <SegmentedControl items={financialKinds as unknown as typeof financialKinds} value={kind} onChange={(next) => { setKind(next); setFinancialCategory(''); }} />
             {kind !== 'transfer' ? <Chip label={financialCategory || 'Elegir categoría financiera'} icon="tag" onPress={() => setCategorySheetOpen(true)} /> : null}
           </>
         ) : (
           <>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Qué tipo de evento es</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {eventKinds.map((item) => <Chip key={item.value} label={item.label} selected={kind === item.value} onPress={() => setKind(item.value)} />)}
+            <View accessibilityRole="radiogroup" accessibilityLabel="Tipo de evento" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              {eventKinds.map((item) => <ChoiceChip key={item.value} label={item.label} selected={kind === item.value} onPress={() => setKind(item.value)} />)}
             </View>
             <Field label="Categoría del evento" value={eventCategory} onChangeText={setEventCategory} placeholder="Ej. Automatización del hogar" />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {eventCategorySuggestions.map((item) => <Chip key={item} label={item} selected={eventCategory === item} onPress={() => setEventCategory(item)} />)}
+            <View accessibilityRole="radiogroup" accessibilityLabel="Sugerencias de categoría" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              {eventCategorySuggestions.map((item) => <ChoiceChip key={item} label={item} selected={eventCategory === item} onPress={() => setEventCategory(item)} />)}
             </View>
           </>
         )}
-        <Field label="Contale a BrainIA de qué se trata (opcional)" value={explanation} onChangeText={setExplanation} multiline placeholder="Ej. Aviso de movimiento detectado por el sensor del living." style={{ minHeight: 88, textAlignVertical: 'top' }} />
-        {voiceModule ? (
-          <GlassPressable accessibilityRole="button" accessibilityLabel={recording ? 'Detener dictado' : 'Dictar explicación'} onPress={() => { void toggleVoice(); }} hitSlop={8} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
-            <Feather name={recording ? 'square' : 'mic'} size={19} color={recording ? theme.colors.danger : theme.colors.accentStrong} />
-          </GlassPressable>
-        ) : null}
-        {recording ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Escuchando… tocá el micrófono para terminar.</Text> : null}
+        <Field label="Cuéntale a BrainIA de qué se trata (opcional)" value={explanation} onChangeText={setExplanation} multiline placeholder="Ej. Aviso de movimiento detectado por el sensor de la sala." style={{ minHeight: theme.layout.minTarget * 2, textAlignVertical: 'top' }} trailing={voiceModule ? (
+          <Button iconOnly size="sm" variant={recording ? 'danger' : 'secondary'} accessibilityLabel={recording ? 'Detener dictado' : 'Dictar explicación'} icon={<Feather name={recording ? 'square' : 'mic'} size={19} color={recording ? theme.colors.onAccent : theme.colors.accentStrong} />} onPress={() => { void toggleVoice().catch(() => setStatus('No se pudo iniciar el dictado. Intenta nuevamente.')); }} />
+        ) : undefined} />
+        {recording ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.accentStrong }]}>Escuchando… toca el micrófono para terminar.</Text> : null}
         <Button label={busy ? 'Guardando aprendizaje…' : 'Guardar y enseñar a BrainIA'} onPress={() => void teach()} loading={busy} disabled={busy} />
-        {status ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: status.startsWith('No se pudo') ? theme.colors.danger : theme.colors.success }]}>{status}</Text> : null}
+        {status ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.danger }]}>{status}</Text> : null}
       </Section>
       <BottomSheet visible={categorySheetOpen} title="Categoría financiera" onClose={() => setCategorySheetOpen(false)}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {categoryOptions.map((option) => <Chip key={option} label={option} selected={financialCategory === option} onPress={() => { setFinancialCategory(option); setCategorySheetOpen(false); }} />)}
+        <View accessibilityRole="radiogroup" accessibilityLabel="Categoría financiera" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          {!categoryOptions.length ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Todavía no hay categorías. Escribe una nueva.</Text> : null}
+          {categoryOptions.map((option) => <ChoiceChip key={option} label={option} selected={financialCategory === option} onPress={() => { setFinancialCategory(option); setCategorySheetOpen(false); }} />)}
         </View>
+        {status ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.danger }]}>{status}</Text> : null}
         <Field label="Nueva categoría" placeholder="Comida / Viandas" onSubmitEditing={(event) => {
           const value = event.nativeEvent.text.trim();
           if (!value) return;
-          setFinancialCategory(value);
-          setCategorySheetOpen(false);
-          void client.createFinancialCategory({ kind: kind === 'income' ? 'income' : 'expense', name: value });
+          setStatus('');
+          void client.createFinancialCategory({ kind: kind === 'income' ? 'income' : 'expense', name: value }).then(() => {
+            setFinancialCategory(value);
+            setCategories((current) => { const categoryKind = kind === 'income' ? 'income' : 'expense'; return { ...current, [categoryKind]: [...current[categoryKind], value] }; });
+            setCategorySheetOpen(false);
+          }).catch(() => { setStatus('No se pudo crear la categoría.'); });
         }} />
       </BottomSheet>
     </>

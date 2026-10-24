@@ -145,7 +145,7 @@ export default function GraphForceCanvas({
     graph.d3Force('charge')?.strength(-92);
     graph.d3Force('link')?.distance((link: ForceLink) => isHierarchyLink(link) ? 48 : 95).strength((link: ForceLink) => isHierarchyLink(link) ? 0.86 : 0.12);
     graph.d3ReheatSimulation();
-    const timer = window.setTimeout(() => graph.zoomToFit(450, 68), 650);
+    const timer = window.setTimeout(() => graph.zoomToFit(450, 28), 650);
     return () => window.clearTimeout(timer);
   }, [dataKey]);
 
@@ -176,7 +176,7 @@ export default function GraphForceCanvas({
       onEngineStop={() => {
         if (didFinalFitRef.current) return;
         didFinalFitRef.current = true;
-        graphRef.current?.zoomToFit(520, 72);
+        graphRef.current?.zoomToFit(520, 28);
       }}
       linkColor={(link) => selectedLinks.has(link.id) ? '#D9D4FF' : isHierarchyLink(link) ? '#536887' : '#34425E'}
       linkWidth={(link) => selectedLinks.has(link.id) ? 2 : isHierarchyLink(link) ? Math.max(0.8, link.confidence) : 0.55}

@@ -1,22 +1,24 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Chip, Tag } from '@/components/controls';
-import { Amount, IconTile, TransactionRow } from '@/components/data/Row';
+import { Amount, IconTile, TransactionRow, transactionRoute } from '@/components/data/Row';
 import { SignalCarousel } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { StatGrid, StatTile } from '@/components/data/StatTile';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { TodaySkeleton } from '@/components/skeletons/TodaySkeleton';
 import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatCategoryInsight, formatCurrency, formatDate, isUncategorizedLabel } from '@/lib/format';
 import { summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { groupTransactionsByField } from '@/lib/grouping';
+import { refreshReviewQueueSize, useReviewQueueSize } from '@/lib/review-queue';
 
 const quickActions = [
   { id: 'expense', label: 'Gasto', icon: 'arrow-up-right' as const, href: { pathname: '/capture', params: { mode: 'expense' } } },
@@ -32,12 +34,11 @@ export default function HomeScreen() {
     [client, settings.financialPeriodStartDay],
   );
   const { data, loading, error, refresh } = useAsyncResource(loader, [financialDataRevision, loader]);
-  const reviewLoader = useMemo(() => () => client.listReviews('pending'), [client]);
-  const { data: pendingReviews, refresh: refreshReviews } = useAsyncResource(reviewLoader, [reviewLoader]);
   useFocusEffect(useCallback(() => {
     void refresh();
-    void refreshReviews();
-  }, [refresh, refreshReviews]));
+    // Coming back from a review session must update the shared count shown here and on the dock.
+    void refreshReviewQueueSize(client);
+  }, [client, refresh]));
 
   const transactions = data?.transactions ?? [];
   const reportTransactions = transactions.filter((transaction) => !transaction.excludedFromReports);
@@ -49,7 +50,8 @@ export default function HomeScreen() {
   const primaryInsight = insights[0];
   const primaryDigest = digests[0];
   const net = financialSummary.income - financialSummary.expenses;
-  const pendingCount = pendingReviews?.length ?? 0;
+  const queueSize = useReviewQueueSize();
+  const pendingCount = queueSize ?? 0;
 
   const startReview = () => {
     router.push('/review-session' as never);
@@ -61,7 +63,7 @@ export default function HomeScreen() {
       title: `${pendingCount} ${pendingCount === 1 ? 'decisión te espera' : 'decisiones te esperan'}`,
       summary: 'Una respuesta por tarjeta. Menos de un minuto para dejar tus datos en orden.',
       origin: 'pending' as const,
-      meta: 'Review',
+      meta: 'Revisión',
       onActionPress: startReview,
     } : undefined,
     ...(primaryInsight?.cards?.length ? primaryInsight.cards.map((card, index) => ({
@@ -120,8 +122,10 @@ export default function HomeScreen() {
       onRefresh={refresh}
       actions={
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'} tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'} live={Boolean(data?.live)} />
-          <GlassPressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
+          <View style={{ alignSelf: 'center' }}>
+            <Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : data?.live ? 'En vivo' : 'Vista guardada'} tone={error ? 'warning' : data?.live ? 'positive' : 'neutral'} live={Boolean(data?.live)} />
+          </View>
+          <GlassPressable accessibilityRole="button" accessibilityLabel="Abrir ajustes" onPress={() => router.push('/settings')} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}>
             <Feather name="settings" size={18} color={theme.colors.textPrimary} />
           </GlassPressable>
         </View>
@@ -131,27 +135,27 @@ export default function HomeScreen() {
         <StateView kind="error" title="Datos en vivo no disponibles" description={error} actionLabel="Reintentar" onAction={refresh} secondaryActionLabel="Ajustes" onSecondaryAction={() => router.push('/settings')} />
       ) : null}
 
-      {loading && !data ? <StateView kind="loading" title="Loading" skeleton="detail" skeletonCount={3} /> : null}
+      {loading && !data ? <TodaySkeleton /> : null}
 
       {data ? (
         <>
           <GlassSurface level="strong" tone="finance" padding="lg" contentStyle={{ gap: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <View style={{ gap: 2 }}>
-                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>This cycle</Text>
-                <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>Net movement</Text>
+                <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Este ciclo</Text>
+                <Text style={[theme.typography.headline, { color: theme.colors.textSecondary, fontSize: 14 }]}>Movimiento neto</Text>
               </View>
-              <Tag label={net >= 0 ? 'Positive' : 'Overspent'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
+              <Tag label={net >= 0 ? 'Positivo' : 'Gasto excedido'} tone={net >= 0 ? 'positive' : 'danger'} icon={net >= 0 ? 'trending-up' : 'trending-down'} />
             </View>
-            <Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed />
+            <View style={{ alignItems: 'flex-start' }}><Amount value={net} currency="UYU" tone={net >= 0 ? 'positive' : 'expense'} size="hero" signed /></View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.income }} />
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Income {formatCurrency(financialSummary.income, 'UYU')}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Ingresos {formatCurrency(financialSummary.income, 'UYU')}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.status.expense }} />
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Spent {formatCurrency(financialSummary.expenses, 'UYU')}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Gastado {formatCurrency(financialSummary.expenses, 'UYU')}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -163,10 +167,23 @@ export default function HomeScreen() {
                   haptic="selection"
                   scaleTo={0.94}
                   onPress={() => router.push(action.href as never)}
-                  style={{ flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider }}
+                  style={{ flex: 1 }}
                 >
-                  <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
-                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 10 }]}>{action.label}</Text>
+                  <View
+                    style={{
+                      minHeight: 58,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      borderRadius: theme.radius.md,
+                      backgroundColor: theme.glass.inner,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: theme.glass.divider,
+                    }}
+                  >
+                    <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 12 }]}>{action.label}</Text>
+                  </View>
                 </GlassPressable>
               ))}
             </View>
@@ -196,7 +213,7 @@ export default function HomeScreen() {
           <Section title="Actividad reciente" subtitle="Tus últimos movimientos, con acceso directo a su evidencia." actionLabel="Buscar todo" onActionPress={() => router.push('/search')}>
             {transactions.length ? (
               transactions.slice(0, 3).map((transaction) => (
-                <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(transactionRoute(transaction))} />
               ))
             ) : (
               <StateView title="Sin actividad reciente" description="Aquí aparecerán tus notas, notificaciones, correos y movimientos." />
@@ -208,10 +225,10 @@ export default function HomeScreen() {
               <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <IconTile icon="pie-chart" color={theme.colors.model} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{topCategory.label}</Text>
+                  <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Principal área de gasto</Text>
                   <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{formatCategoryInsight(topCategory.label, formatCurrency(topCategory.total, 'UYU'))}</Text>
                 </View>
-                <Chip label={`${topCategory.count}`} static />
+                <Chip label={`${topCategory.count} ${topCategory.count === 1 ? 'movimiento' : 'movimientos'}`} static />
               </GlassSurface>
             </Section>
           ) : null}

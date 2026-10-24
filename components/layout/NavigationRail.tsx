@@ -58,7 +58,7 @@ export function NavigationRail() {
         })}
       </View>
       <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: theme.glass.divider, paddingTop: 20 }}>
-        <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Your space</Text>
+        <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>Tu espacio</Text>
         <Button label="Knowledge" variant="ghost" onPress={() => router.push('/intelligence')} full />
         <Button label="Learning" variant="ghost" onPress={() => router.push('/learning')} full />
         <Button label="Settings" variant="ghost" onPress={() => router.push('/settings')} full />

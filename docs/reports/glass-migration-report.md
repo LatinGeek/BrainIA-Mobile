@@ -69,18 +69,16 @@ review surface.
   The pre-existing Spanish copy is preserved in the flows covered by smoke tests.
 - No PR was opened; the branch is local and unpushed.
 
-## Native follow-up (device)
+## Native rendering notes
 
-- expo-blur 55+ requires a `BlurTargetView` on Android; the earlier
-  `experimentalBlurMethod` without `blurTarget` fell back to a plain translucent
-  view. Screens now expose separate ambient (cards) and content (chrome) targets,
-  so cards blur the backdrop without blurring themselves. Verified on the
-  connected Android device: the compact header and settings card show real
-  frosted blur.
-- `formatCurrency` now rejects empty or malformed currency codes instead of
-  letting Hermes throw `Malformed currency code` during render.
-- Enabling blur on cards increases the number of live BlurViews on long lists.
-  Nested surfaces are still skipped; watch performance on lower-end Android
-  devices if lists grow.
-
-
+- Android cards do not use expo-blur. Each card draws a pre-rendered copy of the
+  ambient field instead: `GlassBackdrop` renders the scene once per blur sigma
+  and caches it, and `GlassSurface` positions the cached image against the card
+  with the scroll offset, then lays a white veil on top. This removes the
+  `BlurTargetView` requirement and keeps the number of live blurs flat on long
+  lists, at the cost of one cached bitmap per blur level.
+- iOS and web keep the native `BlurView` for non-nested, non-thin surfaces.
+- `formatCurrency` rejects empty or malformed currency codes instead of letting
+  Hermes throw `Malformed currency code` during render. Records without a
+  usable code show an explicit "moneda sin definir" label rather than guessing a
+  currency.

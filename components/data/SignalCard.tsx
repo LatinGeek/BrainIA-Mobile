@@ -1,20 +1,38 @@
 import { Feather } from '@expo/vector-icons';
-import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ReactNode, useContext, useMemo } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { Extrapolation, SharedValue, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { GlassPressable } from '@/components/glass/GlassPressable';
+import { GlassScrollContext } from '@/components/glass/GlassScroll';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { ConfidenceMeter, Tag } from '@/components/controls';
 import { useTheme } from '@/lib/app-state';
 import { ProvenanceOrigin } from '@/lib/domain';
 import { cleanDisplayText } from '@/lib/format';
+import { screenGutter } from '@/lib/screen-metrics';
 
 const originCopy: Record<ProvenanceOrigin, { label: string; tone: 'info' | 'neutral' | 'positive' | 'warning' }> = {
   model: { label: 'BrainIA', tone: 'info' },
-  captured: { label: 'Captured', tone: 'neutral' },
+  captured: { label: 'Capturado', tone: 'neutral' },
   user: { label: 'You', tone: 'positive' },
-  pending: { label: 'Pending', tone: 'warning' },
+  pending: { label: 'Pendiente', tone: 'warning' },
 };
+
+/** Height floor of a brief card; its loading skeleton uses the same one. */
+export const SIGNAL_BRIEF_MIN_HEIGHT = 132;
+
+/** How much of the next card stays on screen, past the screen's own inset. */
+export const SIGNAL_CARD_PEEK = 36;
+
+/**
+ * Width of a card on the highlights rail. The rail bleeds out of the screen's inset to the screen
+ * edge, so the peek is measured from that edge: a card sized to the content width alone leaves the
+ * peek cut off inside the content's margin, short of the edge.
+ */
+export function signalCardWidth(windowWidth: number, gap = 8) {
+  return Math.max(264, Math.min(352, windowWidth - screenGutter(windowWidth) - gap - SIGNAL_CARD_PEEK));
+}
 
 export function SignalCard({
   variant = 'card',
@@ -50,7 +68,7 @@ export function SignalCard({
       level="regular"
       tone={origin === 'pending' ? 'review' : 'model'}
       padding={dense ? 'md' : 'lg'}
-      style={{ flex: 1, minHeight: dense ? 132 : undefined }}
+      style={{ flex: 1, minHeight: dense ? SIGNAL_BRIEF_MIN_HEIGHT : undefined }}
       contentStyle={{ gap: dense ? 8 : 12 }}
     >
       <View style={styles.header}>
@@ -105,6 +123,18 @@ export function SignalCard({
   );
 }
 
+/** A rail slot: the card that is not in focus recedes, so the peeking edge reads as intended. */
+function CarouselSlot({ index, step, width, scrollX, children }: { index: number; step: number; width: number; scrollX: SharedValue<number>; children: ReactNode }) {
+  const style = useAnimatedStyle(() => {
+    const away = Math.abs(scrollX.value - index * step) / step;
+    return {
+      opacity: interpolate(away, [0, 1], [1, 0.42], Extrapolation.CLAMP),
+      transform: [{ scale: interpolate(away, [0, 1], [1, 0.97], Extrapolation.CLAMP) }],
+    };
+  });
+  return <Animated.View style={[{ width }, style]}>{children}</Animated.View>;
+}
+
 /** Horizontal highlight rail. The first card can start the review session. */
 export function SignalCarousel({
   items,
@@ -123,21 +153,34 @@ export function SignalCarousel({
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const cardWidth = Math.min(352, Math.max(264, width - 64));
+  const gutter = screenGutter(width);
+  // A lone card has nothing to peek: it takes the content width, like the cards above it.
+  const cardWidth = items.length > 1 ? signalCardWidth(width, theme.spacing.sm) : width - gutter * 2;
+  // The rail's horizontal offset moves each card's glass backdrop with the card.
+  const parentScroll = useContext(GlassScrollContext);
+  const scrollX = useSharedValue(0);
+  const glassScroll = useMemo(() => ({ y: parentScroll?.y ?? null, x: scrollX, settled: parentScroll?.settled }), [parentScroll, scrollX]);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollX.set(event.contentOffset.x);
+  });
 
   return (
-    <ScrollView
+    <GlassScrollContext.Provider value={glassScroll}>
+    <Animated.ScrollView
       horizontal
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       directionalLockEnabled
       decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
+      style={{ marginHorizontal: -gutter }}
       snapToInterval={cardWidth + theme.spacing.sm}
       snapToAlignment="start"
       accessibilityLabel={accessibilityLabel}
-      contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
+      contentContainerStyle={{ gap: theme.spacing.sm, paddingLeft: gutter, paddingRight: gutter }}
     >
-      {items.slice(0, 8).map((item) => (
-        <View key={item.id} style={{ width: cardWidth }}>
+      {items.slice(0, 8).map((item, index) => (
+        <CarouselSlot key={item.id} index={index} step={cardWidth + theme.spacing.sm} width={cardWidth} scrollX={scrollX}>
           <SignalCard
             variant="brief"
             origin={item.origin}
@@ -147,9 +190,10 @@ export function SignalCarousel({
             meta={item.meta}
             onPress={item.onPress}
           />
-        </View>
+        </CarouselSlot>
       ))}
-    </ScrollView>
+    </Animated.ScrollView>
+    </GlassScrollContext.Provider>
   );
 }
 
