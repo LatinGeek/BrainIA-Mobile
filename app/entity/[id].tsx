@@ -12,6 +12,7 @@ import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useToast } from '@/components/layout/Toast';
 import { Screen, Section } from '@/components/layout/Screen';
+import { EntityDetailSkeleton, EntityEvidenceSkeleton, EntityMatchesSkeleton } from '@/components/skeletons/EntityDetailSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadEntityBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -92,9 +93,9 @@ export default function EntityDetailScreen() {
   }
 
   return (
-    <Screen title={entity?.title ?? 'Elemento'} overline={entity ? entityTypeLabel(entity.type) : 'Conocimiento'} subtitle={entity ? `Lo que Brain IA sabe sobre este elemento (${entityTypeLabel(entity.type).toLowerCase()}).` : 'Detalle del conocimiento'} back refreshing={loading && Boolean(entity)} onRefresh={refresh}>
+    <Screen title={entity?.title ?? 'Elemento'} overline={entity ? entityTypeLabel(entity.type) : 'Conocimiento'} subtitle={entity ? `Lo que Brain IA sabe sobre este elemento (${entityTypeLabel(entity.type).toLowerCase()}).` : 'Lo que Brain IA sabe sobre este elemento y cómo se conecta.'} back refreshing={loading && Boolean(entity)} onRefresh={refresh}>
       {error ? <StateView kind="error" title="No se pudo cargar el elemento" description={friendlyError(error)} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !entity ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !entity ? <EntityDetailSkeleton /> : null}
 
       {entity ? (
         <>
@@ -127,7 +128,7 @@ export default function EntityDetailScreen() {
           </Section>
 
           <Section title="Evidencia" subtitle="Actividad que creó o respalda este elemento.">
-            {eventsError ? <StateView kind="error" title="No se pudo cargar la evidencia" description={friendlyError(eventsError)} actionLabel="Reintentar" onAction={refreshEvents} /> : eventsLoading && !events ? <StateView kind="loading" title="Cargando" skeleton="list" skeletonCount={2} /> : originEvents.length ? (
+            {eventsError ? <StateView kind="error" title="No se pudo cargar la evidencia" description={friendlyError(eventsError)} actionLabel="Reintentar" onAction={refreshEvents} /> : eventsLoading && !events ? <EntityEvidenceSkeleton /> : originEvents.length ? (
               <GlassSurface level="thin" padding="none" contentStyle={{ paddingHorizontal: theme.spacing.md }}>
               <Timeline items={originEvents.map((event) => ({
                 id: event.id,
@@ -163,7 +164,7 @@ export default function EntityDetailScreen() {
         <Field label="Buscar un elemento existente" value={equivalentQuery} onChangeText={(value) => { setEquivalentQuery(value); setEquivalentId(null); setConfirming(false); }} placeholder="Buscar por nombre" />
         {equivalentQuery.trim().length >= 2 ? (
           matchesError ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.danger }]}>No se pudieron buscar coincidencias. Intenta de nuevo.</Text>
-            : matchesLoading || matchResult?.query !== equivalentQuery.trim() ? <StateView kind="loading" title="Cargando coincidencias" skeleton="list" skeletonCount={1} />
+            : matchesLoading || matchResult?.query !== equivalentQuery.trim() ? <EntityMatchesSkeleton />
             : equivalentMatches.length ? <GlassSurface level="thin" padding="none">{equivalentMatches.map((match, index) => (
               <Row key={match.id} title={match.name} subtitle={entityTypeLabel(match.type)} selected={equivalentId === match.id} style={index === equivalentMatches.length - 1 ? { borderBottomWidth: 0 } : undefined} trailing={<Tag label={equivalentId === match.id ? 'Elegido' : 'Usar'} tone={equivalentId === match.id ? 'positive' : 'neutral'} />} onPress={() => { setEquivalentId(match.id); setConfirming(false); }} />
             ))}</GlassSurface> : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Sin coincidencias para «{equivalentQuery.trim()}».</Text>

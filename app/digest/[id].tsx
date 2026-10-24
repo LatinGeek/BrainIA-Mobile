@@ -8,6 +8,7 @@ import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { DigestDetailSkeleton } from '@/components/skeletons/DigestDetailSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadDigestBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -21,9 +22,9 @@ export default function DigestDetailScreen() {
   const digest = data?.digest;
 
   return (
-    <Screen title={digest?.title ?? 'Resumen'} overline="Resumen" subtitle={digest?.windowLabel ?? 'Resumen del período y próximo contexto útil.'} back refreshing={loading && Boolean(digest)} onRefresh={refresh}>
+    <Screen title={digest?.title ?? 'Resumen'} overline="Resumen" subtitle={digest?.windowLabel ?? 'Resumen del período'} back refreshing={loading && Boolean(digest)} onRefresh={refresh}>
       {error ? <StateView kind="error" title="No se pudo cargar el resumen" description={friendlyError(error)} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !digest ? <StateView kind="loading" title="Cargando resumen" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !digest ? <DigestDetailSkeleton /> : null}
 
       {digest ? (
         <>

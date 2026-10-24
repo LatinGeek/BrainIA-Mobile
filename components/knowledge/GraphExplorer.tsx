@@ -10,6 +10,9 @@ import { useTheme } from '@/lib/app-state';
 import { translateKnownLabel } from '@/lib/format';
 import { useReduceMotion } from '@/lib/hooks';
 
+/** Height of the map canvas; its loading skeleton reserves the same. */
+export const GRAPH_MAP_HEIGHT = 332;
+
 export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
   graph: ExploreGraph;
   focusedEntityId?: string;
@@ -111,7 +114,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
       </Text>
 
       {/* The map handles its own drag gestures, so two transparent strips over its edges hand a swipe to the page. */}
-      <View style={{ height: 332, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.glass.divider, backgroundColor: theme.ambient.base }}>
+      <View style={{ height: GRAPH_MAP_HEIGHT, overflow: 'hidden', borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.glass.divider, backgroundColor: theme.ambient.base }}>
         {mapReady ? (
           <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(320)} style={{ flex: 1 }}>
             <GraphForceCanvas
@@ -120,7 +123,7 @@ export function GraphExplorer({ graph, focusedEntityId, onFocus, onOpen }: {
               communities={visualGraph.communities}
               focusedEntityId={focusedEntityId}
               onFocus={focusById}
-              dom={{ scrollEnabled: false, containerStyle: { height: 332, backgroundColor: theme.ambient.base } }}
+              dom={{ scrollEnabled: false, containerStyle: { height: GRAPH_MAP_HEIGHT, backgroundColor: theme.ambient.base } }}
               background={theme.ambient.base}
             />
           </Animated.View>

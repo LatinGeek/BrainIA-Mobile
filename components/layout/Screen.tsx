@@ -37,6 +37,7 @@ import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
 import { dockScroll } from '@/lib/dock-scroll';
 import { useReduceMotion } from '@/lib/hooks';
+import { DESKTOP_BREAKPOINT, screenGutter } from '@/lib/screen-metrics';
 
 const ScreenEnteringContext = createContext(false);
 
@@ -158,7 +159,8 @@ export function Screen({
   const dockTarget = useSharedValue(0);
   const wasCompact = useSharedValue(false);
   const { width, fontScale } = useWindowDimensions();
-  const desktop = width >= 1024;
+  const desktop = width >= DESKTOP_BREAKPOINT;
+  const gutter = screenGutter(width);
   const scrollY = useSharedValue(0);
   const [settledKey, setSettledKey] = useState(0);
   const glassScroll = useMemo(() => ({ y: scrollY, x: null, settled: settledKey }), [scrollY, settledKey]);
@@ -261,7 +263,7 @@ export function Screen({
                   {
                     paddingTop: contentPaddingTop,
                     paddingBottom: bottomPadding,
-                    paddingHorizontal: desktop ? 40 : 20,
+                    paddingHorizontal: gutter,
                     width: '100%',
                     maxWidth: 1440,
                     alignSelf: 'center',
@@ -279,7 +281,7 @@ export function Screen({
                 {staggeredChildren}
               </Animated.ScrollView>
             ) : (
-              <View style={[styles.flex, { paddingTop: contentPaddingTop, paddingBottom: bottomPadding, paddingHorizontal: desktop ? 40 : 20, width: '100%', maxWidth: 1440, alignSelf: 'center' }]}>
+              <View style={[styles.flex, { paddingTop: contentPaddingTop, paddingBottom: bottomPadding, paddingHorizontal: gutter, width: '100%', maxWidth: 1440, alignSelf: 'center' }]}>
                 {staggeredHeader}
                 <Animated.ScrollView onScroll={handleScroll} scrollEventThrottle={16} contentContainerStyle={{ gap: 22, paddingTop: 18 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   {staggeredChildren}

@@ -10,6 +10,7 @@ import { Timeline } from '@/components/data/Timeline';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
+import { TransactionDetailSkeleton } from '@/components/skeletons/TransactionDetailSkeleton';
 import { useToast } from '@/components/layout/Toast';
 import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
@@ -223,7 +224,7 @@ export default function TransactionDetailScreen() {
       actions={<GlassPressable accessibilityRole="button" accessibilityLabel="Editar título del movimiento" onPress={openTitleEditor} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}><Feather name="edit-2" size={18} color={theme.colors.textPrimary} /></GlassPressable>}
     >
       {error ? <StateView kind="error" title="No se pudo cargar el movimiento" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !transaction ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !transaction ? <TransactionDetailSkeleton /> : null}
 
       {transaction ? (
         <>

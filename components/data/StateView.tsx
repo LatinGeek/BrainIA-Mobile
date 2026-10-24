@@ -1,13 +1,13 @@
 import { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeOut } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Button } from '@/components/controls';
+import { SkeletonChartCard, SkeletonHeroAmount, SkeletonRow, SkeletonSignalCard } from '@/components/skeletons/parts';
 import { IconTile } from './Row';
+import { SkeletonBlock, SkeletonGroup, SkeletonLine } from './Skeleton';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
-import { useReduceMotion } from '@/lib/hooks';
 
 export type StateKind = 'empty' | 'error' | 'success' | 'loading';
 
@@ -39,19 +39,12 @@ export function StateView({
   children?: ReactNode;
 }) {
   const theme = useTheme();
-  const reduceMotion = useReduceMotion();
 
   if (kind === 'loading') {
-    const height = skeleton === 'chart' ? 160 : skeleton === 'hero' ? 120 : skeleton === 'detail' ? 88 : 60;
     return (
-      // Fades out instead of vanishing, so the content rising in behind it never meets an empty screen.
-      <Animated.View exiting={reduceMotion ? undefined : FadeOut.duration(220)} accessibilityRole="progressbar" accessibilityLabel={'Cargando contenido'} style={{ gap: theme.spacing.sm }}>
-        {Array.from({ length: skeletonCount }).map((_, index) => (
-          <GlassSurface key={index} level="thin" padding="none" style={{ height }} contentStyle={{ height }}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.glass.inner }]} />
-          </GlassSurface>
-        ))}
-      </Animated.View>
+      <SkeletonGroup label={title === 'Cargando' ? undefined : title} style={{ gap: theme.spacing.sm }}>
+        {Array.from({ length: skeletonCount }).map((_, index) => <GenericSkeleton key={index} variant={skeleton} />)}
+      </SkeletonGroup>
     );
   }
 
@@ -73,6 +66,37 @@ export function StateView({
       ) : null}
     </GlassSurface>
   );
+}
+
+/** One placeholder of a generic loading variant; the per-view skeletons mirror their own screens instead. */
+function GenericSkeleton({ variant }: { variant: 'list' | 'hero' | 'chart' | 'detail' | 'card' }) {
+  switch (variant) {
+    case 'chart':
+      return <SkeletonChartCard legend={false} />;
+    case 'card':
+      return <SkeletonSignalCard variant="card" />;
+    case 'hero':
+      return (
+        <GlassSurface level="strong" padding="lg" contentStyle={{ gap: 12 }}>
+          <SkeletonLine width="38%" lineHeight={14} />
+          <SkeletonHeroAmount />
+          <SkeletonLine width="64%" lineHeight={16} />
+        </GlassSurface>
+      );
+    case 'detail':
+      return (
+        <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <SkeletonBlock width={48} height={48} radius={15} />
+          <View style={{ flex: 1 }}>
+            <SkeletonLine width="56%" lineHeight={21} />
+            <SkeletonLine lineHeight={16} />
+            <SkeletonLine width="70%" lineHeight={16} />
+          </View>
+        </GlassSurface>
+      );
+    default:
+      return <SkeletonRow trailing />;
+  }
 }
 
 const styles = StyleSheet.create({

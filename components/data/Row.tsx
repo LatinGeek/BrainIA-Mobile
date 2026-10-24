@@ -201,7 +201,7 @@ export function Amount({
         ? theme.status.transfer
         : theme.colors.textPrimary;
   const largeText = fontScale >= 1.3;
-  const heroSize = (width < 360 ? 28 : 36) * (largeText ? 0.85 : 1);
+  const heroSize = heroAmountSize(width, largeText);
   const shown = animated ? display : target;
   const known = !!currency && hasKnownCurrency(currency);
   const plain = (v: number) => new Intl.NumberFormat('es-UY', { minimumFractionDigits: currency ? 2 : 0, maximumFractionDigits: currency ? 2 : 0 }).format(v);
@@ -212,10 +212,9 @@ export function Amount({
   // value's length against a half-width tile's inner width. The currency code
   // wraps under the value when they do not fit on one line.
   const finalLength = sign.length + money(Math.abs(target)).length;
-  const tileWidth = largeText ? width - 72 : (Math.min(width, 520) - 48) / 2 - 28;
-  const tileSize = Math.max(14, Math.min(24, tileWidth / (finalLength * 0.62)));
+  const tileSize = tileAmountSize(width, largeText, finalLength);
   const fontSize = size === 'hero' ? heroSize : size === 'tile' ? tileSize : 15;
-  const lineHeight = size === 'hero' ? Math.round(heroSize * 1.17) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
+  const lineHeight = size === 'hero' ? heroAmountLineHeight(width, largeText) : size === 'tile' ? Math.round(tileSize * 1.25) : 20;
   return (
     <View style={[styles.amountRow, size === 'tile' ? { flexWrap: 'wrap' } : null, size === 'row' ? { flexDirection: 'column', alignItems: 'flex-end', gap: 0 } : null]} accessibilityLabel={`${sign}${money(Math.abs(target))}${currency && !known ? ', moneda sin definir' : ''}`}>
       <Text
@@ -235,6 +234,21 @@ export function Amount({
         : <Text style={[theme.typography.mono, { color: theme.colors.textMuted, fontSize: 10 }]}>{known ? currency.toUpperCase() : 'SIN MONEDA'}</Text>) : null}
     </View>
   );
+}
+
+function heroAmountSize(width: number, largeText: boolean) {
+  return (width < 360 ? 28 : 36) * (largeText ? 0.85 : 1);
+}
+
+/** Line height of a hero amount, for the skeleton that stands in for it. */
+/** Font size of a tile numeral of `finalLength` characters; its line height is 1.25 times this, rounded. */
+export function tileAmountSize(width: number, largeText: boolean, finalLength: number) {
+  const tileWidth = largeText ? width - 72 : (Math.min(width, 520) - 48) / 2 - 28;
+  return Math.max(14, Math.min(24, tileWidth / (finalLength * 0.62)));
+}
+
+export function heroAmountLineHeight(width: number, largeText: boolean) {
+  return Math.round(heroAmountSize(width, largeText) * 1.17);
 }
 
 function hasKnownCurrency(code: string | null | undefined) {
@@ -285,19 +299,22 @@ export function TransactionRow({
   );
 }
 
+/** A row's box, shared with its loading skeleton so the two never drift apart. */
+export const ROW_METRICS = { minHeight: 52, contentMinHeight: 44, paddingVertical: 10, paddingHorizontal: 12, radius: 14 } as const;
+
 const styles = StyleSheet.create({
   shell: {
-    minHeight: 52,
+    minHeight: ROW_METRICS.minHeight,
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: ROW_METRICS.paddingVertical,
+    paddingHorizontal: ROW_METRICS.paddingHorizontal,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
+    borderRadius: ROW_METRICS.radius,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
+    minHeight: ROW_METRICS.contentMinHeight,
   },
   amountRow: {
     flexDirection: 'row',

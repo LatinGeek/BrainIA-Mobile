@@ -10,6 +10,7 @@ import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { SearchClustersSkeleton, SearchMapSkeleton, SearchRecentSkeleton, SearchTopMatchSkeleton } from '@/components/skeletons/SearchSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadSearchBundle } from '@/lib/api';
 import { DigestSummary, ExploreGraph, InsightSummary, TransactionSummary } from '@/lib/domain';
@@ -113,7 +114,7 @@ export default function SearchScreen() {
   return (
     <Screen
       title="Descubrir"
-      overline={`${displayGraph?.stats.nodesCount ?? entities?.length ?? 0} nodos`}
+      overline={displayGraph || entities ? `${displayGraph?.stats.nodesCount ?? entities?.length ?? 0} nodos` : 'Mapa de conocimiento'}
       subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
       refreshing={activeRefreshing}
       onRefresh={activeRefresh}
@@ -153,7 +154,7 @@ export default function SearchScreen() {
           </GlassSurface>
           <Section title="Tus conexiones" subtitle="Cómo se relacionan tus actividades, comercios y personas.">
             {entitiesError || graphError ? <StateView kind="error" title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} actionLabel="Reintentar" onAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
-            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
+            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <SearchMapSkeleton /> : null}
             {displayGraph?.nodes.length ? (
               <GlassSurface level="regular" tone="accent" padding="md" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -194,7 +195,7 @@ export default function SearchScreen() {
 
           <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
             {recentError ? <StateView kind="error" title="Actividad reciente no disponible" description={recentError} actionLabel="Reintentar" onAction={refreshRecent} /> : null}
-            {recentLoading && !recentData ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={3} /> : null}
+            {recentLoading && !recentData ? <SearchRecentSkeleton /> : null}
             {!recentLoading && recentData ? (
               <View style={{ gap: 10 }}>
                 {recentData.insights.slice(0, 2).map((insight: InsightSummary) => (
@@ -215,7 +216,7 @@ export default function SearchScreen() {
       {hasQuery ? (
         <>
           <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado para esta búsqueda.'}>
-            {loading ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={1} /> : null}
+            {loading ? <SearchTopMatchSkeleton /> : null}
             {!loading && topMatch ? (
               <GlassSurface level="regular" tone="accent" padding="lg" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -233,6 +234,7 @@ export default function SearchScreen() {
           </Section>
 
           <Section title="Resultados agrupados" subtitle="Grupos fáciles de revisar con acciones directas." count={results.length}>
+            {loading && !data ? <SearchClustersSkeleton /> : null}
             {clusters.map((cluster) => (
               <GlassSurface key={cluster.id} level="thin" padding="md" contentStyle={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>

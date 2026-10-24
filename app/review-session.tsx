@@ -24,6 +24,7 @@ import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { DecisionCard } from '@/components/review/DecisionCard';
 import { useToast } from '@/components/layout/Toast';
+import { ReviewSessionSkeleton } from '@/components/skeletons/ReviewSessionSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { buildReviewQueue, commitDecision, PendingCommitDescriptor, persistReviewSessionState, readReviewSessionState, ReviewAnswer, ReviewDecision } from '@/lib/review-session';
 import { formatCurrency } from '@/lib/format';
@@ -354,7 +355,7 @@ export default function ReviewSessionScreen() {
         </View>
 
         {loading || !current ? (
-          error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <StateView kind="loading" title="Cargando" skeleton="hero" skeletonCount={1} />
+          error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <View style={styles.cardStage}><View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax * Math.max(1, PixelRatio.getFontScale()) }]}><ReviewSessionSkeleton /></View></View>
         ) : (
           <View style={styles.cardStage}>
           <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax * Math.max(1, PixelRatio.getFontScale()) }]}>

@@ -12,6 +12,7 @@ import { StateView } from '@/components/data/StateView';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { ReviewSkeleton } from '@/components/skeletons/ReviewSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadReviewBundle } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
@@ -73,10 +74,10 @@ export default function ReviewHomeScreen() {
       subtitle="Una decisión por tarjeta. Menos de un minuto para dejar tus datos en orden."
       refreshing={loading}
       onRefresh={refresh}
-      actions={<Tag label={pendingCount ? `${pendingCount} ${pendingCount === 1 ? 'pendiente' : 'pendientes'}` : 'Todo al día'} tone={pendingCount ? 'warning' : 'positive'} />}
+      actions={<Tag label={loading && !data ? 'Cargando' : pendingCount ? `${pendingCount} ${pendingCount === 1 ? 'pendiente' : 'pendientes'}` : 'Todo al día'} tone={loading && !data ? 'neutral' : pendingCount ? 'warning' : 'positive'} />}
     >
       {error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={2} /> : null}
+      {loading && !data ? <ReviewSkeleton /> : null}
 
       {data ? (
         <>

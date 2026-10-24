@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Chip, Tag } from '@/components/controls';
 import { Amount, IconTile, TransactionRow, transactionRoute } from '@/components/data/Row';
@@ -11,6 +11,7 @@ import { StatGrid, StatTile } from '@/components/data/StatTile';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { TodaySkeleton } from '@/components/skeletons/TodaySkeleton';
 import { useAppState } from '@/lib/app-state';
 import { loadDashboardBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -134,7 +135,7 @@ export default function HomeScreen() {
         <StateView kind="error" title="Datos en vivo no disponibles" description={error} actionLabel="Reintentar" onAction={refresh} secondaryActionLabel="Ajustes" onSecondaryAction={() => router.push('/settings')} />
       ) : null}
 
-      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={3} /> : null}
+      {loading && !data ? <TodaySkeleton /> : null}
 
       {data ? (
         <>
@@ -168,10 +169,21 @@ export default function HomeScreen() {
                   onPress={() => router.push(action.href as never)}
                   style={{ flex: 1 }}
                 >
-                  <GlassSurface level="thin" padding="none" radius="md" contentStyle={{ minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <View
+                    style={{
+                      minHeight: 58,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      borderRadius: theme.radius.md,
+                      backgroundColor: theme.glass.inner,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: theme.glass.divider,
+                    }}
+                  >
                     <Feather name={action.icon} size={17} color={action.id === 'expense' ? theme.status.expense : action.id === 'income' ? theme.status.income : theme.colors.textPrimary} />
                     <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 12 }]}>{action.label}</Text>
-                  </GlassSurface>
+                  </View>
                 </GlassPressable>
               ))}
             </View>

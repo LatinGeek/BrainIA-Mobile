@@ -16,6 +16,7 @@ import { GlassSurface } from '@/components/glass/GlassSurface';
 import { KeepAliveViews } from '@/components/layout/KeepAliveViews';
 import { withoutAssumptions } from '@/lib/rules';
 import { Screen, Section } from '@/components/layout/Screen';
+import { FinancialsSkeleton } from '@/components/skeletons/FinancialsSkeleton';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { useAppState, useTheme } from '@/lib/app-state';
 import { currentFinancialPeriodRange, loadFinancialBundle } from '@/lib/api';
@@ -531,7 +532,7 @@ export default function FinancialsScreen() {
       actions={<Tag label={loading ? 'Actualizando' : error ? 'Sin conexión' : 'Actual'} tone={error ? 'warning' : 'positive'} />}
     >
       {error ? <StateView kind="error" title="No se pudo cargar Dinero" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !data ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
+      {loading && !data ? <FinancialsSkeleton /> : null}
 
       {data ? (
         <>

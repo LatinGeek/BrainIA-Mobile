@@ -84,6 +84,22 @@ export type ThemeTokens = {
     onSelected: string;
     solid: Record<GlassLevel, string>;
     divider: string;
+    /**
+     * The light baked into a glass sheet (the rim, its bevel and the specular streaks). Kept apart
+     * from `edge`, which is a plain hairline for flat surfaces and handles.
+     */
+    light: {
+      /** Outer rim, lit from the top-left corner round to the bottom-right. */
+      edge: readonly [string, string, string];
+      /** The bright streak along the top edge, and the soft light that spills off it. */
+      specular: string;
+      /** Light bouncing back off the bottom edge. */
+      bounce: string;
+      /** Haze that pools where the light enters at the top. */
+      bloom: string;
+      /** Shade inside the bottom edge, where the pane is thickest. */
+      shade: string;
+    };
   };
   motion: {
     /** Legacy aliases kept until the glass cleanup phase. */
@@ -167,11 +183,11 @@ export const brainiaTheme: ThemeTokens = {
     hairline: 'rgba(255,255,255,0.12)',
   },
   glass: {
-    blur: { thin: 12, regular: 22, strong: 36 },
+    blur: { thin: 8, regular: 14, strong: 22 },
     fill: {
-      thin: ['rgba(255,255,255,0.065)', 'rgba(255,255,255,0.03)'],
-      regular: ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.035)'],
-      strong: ['rgba(255,255,255,0.17)', 'rgba(255,255,255,0.06)'],
+      thin: ['rgba(255,255,255,0.045)', 'rgba(255,255,255,0.012)'],
+      regular: ['rgba(255,255,255,0.072)', 'rgba(255,255,255,0.02)'],
+      strong: ['rgba(255,255,255,0.105)', 'rgba(255,255,255,0.032)'],
     },
     edge: ['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.05)'],
     inner: 'rgba(255,255,255,0.06)',
@@ -183,6 +199,13 @@ export const brainiaTheme: ThemeTokens = {
     onSelected: '#0B1113',
     solid: { thin: '#142124', regular: '#1A2B2F', strong: '#22363B' },
     divider: 'rgba(255,255,255,0.08)',
+    light: {
+      edge: ['rgba(232,250,248,0.72)', 'rgba(232,250,248,0.26)', 'rgba(232,250,248,0.38)'],
+      specular: 'rgba(245,255,254,0.62)',
+      bounce: 'rgba(232,250,248,0.38)',
+      bloom: 'rgba(232,250,248,0.038)',
+      shade: 'rgba(3,10,12,0.24)',
+    },
   },
   motion: {
     fast: 140,

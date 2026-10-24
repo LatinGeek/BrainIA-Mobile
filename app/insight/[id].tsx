@@ -12,6 +12,7 @@ import { Timeline } from '@/components/data/Timeline';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useToast } from '@/components/layout/Toast';
 import { Screen, Section } from '@/components/layout/Screen';
+import { InsightDetailSkeleton } from '@/components/skeletons/InsightDetailSkeleton';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadInsightBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
@@ -46,7 +47,7 @@ export default function InsightDetailScreen() {
   return (
     <Screen title={insight?.title ?? 'Perspectiva'} overline="Perspectiva" subtitle={insight?.timestamp ? `Generada ${insight.timestamp}` : 'Conclusión clara con contexto de respaldo.'} back refreshing={loading && Boolean(insight)} onRefresh={refresh}>
       {error ? <StateView kind="error" title="No se pudo cargar la perspectiva" description={friendlyError(error)} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !insight ? <StateView kind="loading" title="Cargando perspectiva" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !insight ? <InsightDetailSkeleton /> : null}
 
       {insight ? (
         <>

@@ -10,6 +10,7 @@ import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useToast } from '@/components/layout/Toast';
 import { Screen, Section } from '@/components/layout/Screen';
+import { EventDetailSkeleton } from '@/components/skeletons/EventDetailSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatDate } from '@/lib/format';
@@ -50,7 +51,7 @@ export default function EventDetailScreen() {
 
   return (
     <Screen title={event?.title ?? ''} overline={event ? kindLabel(event.kind) : 'Actividad'} subtitle="La actividad capturada y cómo la entiende Brain IA." back refreshing={loading && Boolean(event)} onRefresh={refresh}>
-      {loading && !event ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !event ? <EventDetailSkeleton /> : null}
       {error ? <StateView kind="error" title="No se pudo cargar la fuente" description={friendlyError(error)} actionLabel="Reintentar" onAction={refresh} /> : null}
       {!loading && !error && !event ? <StateView title="Fuente no disponible" description="La actividad puede haberse eliminado o no estar disponible en esta vista." /> : null}
 

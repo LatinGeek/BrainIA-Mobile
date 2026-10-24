@@ -10,6 +10,7 @@ import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Screen, Section } from '@/components/layout/Screen';
 import { useToast } from '@/components/layout/Toast';
+import { SettingsAppsSkeleton, SettingsBridgeSkeleton, SettingsHealthSkeleton } from '@/components/skeletons/SettingsSkeleton';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { clearAllJsonCache } from '@/lib/cache';
 import { clearDiagnostics, readDiagnostics } from '@/lib/diagnostics';
@@ -326,16 +327,16 @@ export default function SettingsScreen() {
 
       {Platform.OS === 'android' ? (
         <Section title="Captura de notificaciones" subtitle="Lee notificaciones de apps seleccionadas y las envía a Brain IA.">
-          <GlassSurface level="thin" padding="md" contentStyle={{ gap: theme.spacing.sm }}>
+          {notificationBridgeInitialLoading ? <SettingsBridgeSkeleton /> : <GlassSurface level="thin" padding="md" contentStyle={{ gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
               <IconTile icon="bell" color={listenerConnected ? theme.colors.accent : theme.status.warning} />
               <View style={{ flex: 1, gap: theme.spacing.xs }}>
                 <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Acceso a notificaciones</Text>
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                  {notificationBridgeInitialLoading ? 'Comprobando el acceso a notificaciones…' : listenerConnected ? (lastForwardedAt ? `Escucha conectada. Último envío: ${new Date(lastForwardedAt).toLocaleString('es-UY')}` : 'Escucha conectada y lista.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Acceso activado; la escucha se está reconectando.' : 'Acceso activado. Conectando el servicio de escucha.') : 'El acceso a notificaciones está desactivado.'}
+                  {listenerConnected ? (lastForwardedAt ? `Escucha conectada. Último envío: ${new Date(lastForwardedAt).toLocaleString('es-UY')}` : 'Escucha conectada y lista.') : notificationBridgeStatus?.accessEnabled ? (listenerNeedsAttention ? 'Acceso activado; la escucha se está reconectando.' : 'Acceso activado. Conectando el servicio de escucha.') : 'El acceso a notificaciones está desactivado.'}
                 </Text>
               </View>
-              <Tag label={notificationBridgeInitialLoading ? 'Comprobando' : listenerConnected ? 'Activo' : listenerNeedsAttention ? 'Requiere atención' : notificationBridgeStatus?.accessEnabled ? 'Reconectando' : 'Desactivado'} tone={listenerConnected ? 'positive' : 'warning'} />
+              <Tag label={listenerConnected ? 'Activo' : listenerNeedsAttention ? 'Requiere atención' : notificationBridgeStatus?.accessEnabled ? 'Reconectando' : 'Desactivado'} tone={listenerConnected ? 'positive' : 'warning'} />
             </View>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{notificationBridgeStatus?.captureConsent === 'unconfigured' ? 'Elige qué aplicaciones pueden compartir notificaciones.' : notificationBridgeStatus?.captureConsent === 'empty' ? 'Captura pausada: no seleccionaste ninguna aplicación.' : 'Solo se capturan notificaciones de las aplicaciones que seleccionaste.'}</Text>
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{lastReceivedAt ? `Última notificación leída: ${new Date(lastReceivedAt).toLocaleString('es-UY')}` : 'Todavía no se leyó ninguna notificación compatible.'}</Text>
@@ -347,7 +348,7 @@ export default function SettingsScreen() {
               <Button label="Comprobar activas" loading={checkingActiveNotifications} variant="secondary" size="sm" onPress={() => { void refreshNotificationBridgeStatus(); }} disabled={checkingActiveNotifications} />
               <Button label="Enviar diagnóstico" loading={sendingListenerDiagnostics} variant="secondary" size="sm" onPress={() => { void sendListenerDiagnostics(); }} disabled={sendingListenerDiagnostics} />
             </View>
-          </GlassSurface>
+          </GlassSurface>}
         </Section>
       ) : null}
 
@@ -362,7 +363,7 @@ export default function SettingsScreen() {
             <Field label="URL base" value={baseUrlDraft ?? settings.baseUrl} onChangeText={setBaseUrlDraft} onEndEditing={() => { if (baseUrlDraft !== null && baseUrlDraft.trim() !== settings.baseUrl) setBaseUrl(baseUrlDraft.trim()); setBaseUrlDraft(null); }} keyboardType="url" returnKeyType="done" autoCapitalize="none" autoCorrect={false} />
             <Field label="ID de cliente" value={clientIdDraft ?? settings.clientId} onChangeText={(value) => { allowCredentialRecovery('clientId'); setClientIdDraft(value); }} onEndEditing={() => { if (clientIdDraft !== null && clientIdDraft.trim() !== settings.clientId) setClientId(clientIdDraft.trim()); setClientIdDraft(null); }} autoCapitalize="none" autoCorrect={false} placeholder="opcional" />
             <Field label="Clave de API" value={apiKeyDraft ?? settings.apiKey} onChangeText={(value) => { allowCredentialRecovery('apiKey'); setApiKeyDraft(value); }} onEndEditing={() => { if (apiKeyDraft !== null && apiKeyDraft !== settings.apiKey) setApiKey(apiKeyDraft); setApiKeyDraft(null); }} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="opcional" />
-            <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{loading ? 'Comprobando conexión…' : error ? 'No se pudo conectar con el servicio.' : data?.ok ? 'Servicio disponible.' : 'El servicio no responde en este momento.'}</Text>
+            {loading ? <SettingsHealthSkeleton /> : <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{error ? 'No se pudo conectar con el servicio.' : data?.ok ? 'Servicio disponible.' : 'El servicio no responde en este momento.'}</Text>}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
               <Button label="Comprobar servicio" loading={loading} disabled={loading || maintenance !== null} variant="secondary" size="sm" onPress={() => { void runMaintenance('health', async () => { const result = await reloadHealth(); if (!result.ok) throw new Error('unavailable'); }, 'Servicio disponible'); }} />
               <Button label="Recuperar valores" loading={maintenance === 'settings'} disabled={maintenance !== null} variant="ghost" size="sm" onPress={() => { void runMaintenance('settings', refreshSettings, 'Valores recuperados'); }} />
@@ -400,7 +401,7 @@ export default function SettingsScreen() {
       <BottomSheet visible={appSelectionOpen} title="Aplicaciones de origen" onClose={() => setAppSelectionOpen(false)}>
         <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Elige las aplicaciones instaladas cuyas notificaciones puede capturar Brain IA.</Text>
         <Button label="Pausar toda la captura" loading={appSelectionSaving} disabled={appSelectionLoading || appSelectionSaving} onPress={() => { void saveCaptureSelection(captureApps.map((app) => ({ ...app, selected: false }))); }} variant="secondary" />
-        {appSelectionLoading ? <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Buscando aplicaciones instaladas…</Text> : null}
+        {appSelectionLoading && !captureApps.length ? <SettingsAppsSkeleton /> : null}
         {!appSelectionLoading && !captureApps.length ? <StateView title="No se encontraron aplicaciones" description="Actualiza la lista después de instalar una aplicación." actionLabel="Reintentar" onAction={() => { void refreshCaptureApps(); }} /> : null}
         {captureApps.map((app) => <Row style={{ borderRadius: 0 }} key={app.packageName} title={app.name} subtitle={app.packageName} accessory="switch" disabled={appSelectionSaving} switchValue={app.selected} onSwitchChange={() => toggleCaptureApp(app.packageName)} />)}
       </BottomSheet>

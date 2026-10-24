@@ -15,7 +15,7 @@ try {
   const browser = await chromium.launch({ headless: true });
 
   const loadingPage = await openReview(browser, 'loading');
-  await loadingPage.getByLabel('card loading state').first().waitFor({ timeout: 120000 });
+  await loadingPage.getByLabel('Cargando').first().waitFor({ timeout: 120000 });
   await loadingPage.close();
   console.log('REVIEW_LOADING_OK');
 

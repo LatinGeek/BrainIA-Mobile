@@ -13,6 +13,7 @@ import { Screen, Section } from '@/components/layout/Screen';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useToast } from '@/components/layout/Toast';
 import { ChoiceChip, statusLabels } from '@/components/intelligence';
+import { IntelligenceDetailSkeleton } from '@/components/skeletons/IntelligenceSkeleton';
 import { useTheme } from '@/lib/app-state';
 import { useIntelligenceClient, type Artifact } from '@/lib/intelligence';
 import { recordInteraction } from '@/lib/interaction-telemetry';
@@ -91,9 +92,9 @@ export default function KnowledgeDetail() {
   };
 
   return (
-    <Screen title={artifact?.content?.title ?? (artifact ? 'Construyendo una perspectiva' : 'Conocimiento')} overline="Conocimiento" subtitle={artifact ? statusLabels[artifact.status] : undefined} back refreshing={refreshing} onRefresh={pull}>
+    <Screen title={artifact?.content?.title ?? (artifact ? 'Construyendo una perspectiva' : 'Conocimiento')} overline="Conocimiento" subtitle={artifact ? statusLabels[artifact.status] : error ? undefined : 'Cargando la perspectiva…'} back refreshing={refreshing} onRefresh={pull}>
       {error ? <StateView kind="error" title="No se pudo cargar" description={error} actionLabel="Reintentar" onAction={() => void load()} /> : null}
-      {!artifact && !error ? <StateView kind="loading" skeleton="detail" skeletonCount={3} title="Cargando" /> : null}
+      {!artifact && !error ? <IntelligenceDetailSkeleton /> : null}
 
       {artifact && ['queued', 'running'].includes(artifact.status) ? (
         <GlassSurface level="regular" padding="lg" contentStyle={{ gap: theme.spacing.md, alignItems: 'center' }}>

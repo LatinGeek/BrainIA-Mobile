@@ -7,6 +7,7 @@ import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
 import { ArtifactCard } from '@/components/intelligence';
+import { IntelligenceLibrarySkeleton } from '@/components/skeletons/IntelligenceSkeleton';
 import { useTheme } from '@/lib/app-state';
 import { useIntelligenceClient, type Artifact } from '@/lib/intelligence';
 import { recordInteraction } from '@/lib/interaction-telemetry';
@@ -70,7 +71,7 @@ export default function IntelligenceScreen() {
         </Section>
       ) : null}
       <Section title="Tu biblioteca" subtitle="Respuestas, páginas y perspectivas que puedes volver a consultar.">
-        {!loaded ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={2} /> : null}
+        {!loaded ? <IntelligenceLibrarySkeleton /> : null}
         {items.filter((artifact) => !active.some((activeArtifact) => activeArtifact.id === artifact.id)).map((artifact) => <ArtifactCard key={artifact.id} artifact={artifact} />)}
         {loaded && !listError && !items.length ? <StateView title="Tu primera pregunta es el comienzo" description="Conecta lo que sabes y explora preguntas, cambios y decisiones con tus propias fuentes." actionLabel="Preguntar" onAction={() => setQuestion('¿Qué merece mi atención hoy?')} /> : null}
       </Section>

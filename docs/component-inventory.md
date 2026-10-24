@@ -16,6 +16,7 @@ predictable.
 | 1 | `Screen` | `layout/Screen` | `AppScreen`, `AppShell`, `TopBar`, `ScreenHeader` |
 | 2 | `Section` | `layout/Screen` | `Section`, `SectionHeader`, `SectionTitle`, `DetailBlock`, `DisclosureSection` |
 | 3 | `GlassSurface` | `glass/GlassSurface` | `Surface`, `Panel`, `CommandPanel`, `ChartCard`, snapshot/overview cards |
+| 3b | `GlassPaint` | `glass/GlassPaint` | the rim, bevel and specular layers of every surface |
 | 4 | `Pressable` | `glass/GlassPressable` | `AnimatedPressable` |
 | 5 | `Button` | `controls` | `Button`, `ActionButton`, `IconButton`, `ActionRow` (`ButtonGroup`) |
 | 6 | `SegmentedControl` | `controls` | `SegmentedControl`, `CompactFinanceSwitch`, `CompactCurrencySwitch`, `CompactPeriodSwitch` |
@@ -49,4 +50,7 @@ screen-level component.
   signal.
 - `StateView` covers empty, error, success and loading; screens do not import a
   second error component.
+- A rail that peeks its next card cancels the screen inset (`screenGutter`) and
+  sizes its cards from the screen edge, so the peek runs off the screen instead
+  of stopping at the content's margin.
 - All colours, radii and durations come from `lib/themes.ts`.

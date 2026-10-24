@@ -7,6 +7,7 @@ import { IconTile } from '@/components/data/Row';
 import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { EmailDetailSkeleton } from '@/components/skeletons/EmailDetailSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { cleanDisplayText, formatDate } from '@/lib/format';
 import { useAsyncResource } from '@/lib/hooks';
@@ -23,7 +24,7 @@ export default function EmailDetailScreen() {
 
   return (
     <Screen title={email?.title ?? ''} overline="Correo" subtitle="El correo original completo." back refreshing={loading && Boolean(email)} onRefresh={refresh}>
-      {loading && !email ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !email ? <EmailDetailSkeleton /> : null}
       {error ? <StateView kind="error" title="No se pudo cargar el correo" description={friendlyError(error)} actionLabel="Reintentar" onAction={refresh} /> : null}
       {!loading && !error && !email ? <StateView title="Correo no disponible" description="Esta actividad ya no está disponible como registro de correo." actionLabel="Ver actividad" onAction={() => router.replace({ pathname: '/event/[id]', params: { id } })} secondaryActionLabel="Volver" onSecondaryAction={() => router.back()} /> : null}
 

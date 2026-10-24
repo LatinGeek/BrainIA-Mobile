@@ -8,6 +8,7 @@ import { GlassPressable } from '@/components/glass/GlassPressable';
 import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { LearningSkeleton } from '@/components/skeletons/LearningSkeleton';
 import { useIntelligenceClient } from '@/lib/intelligence';
 import { useTheme } from '@/lib/app-state';
 import { useToast } from '@/components/layout/Toast';
@@ -135,7 +136,7 @@ export default function LearningScreen() {
 
   return (
     <Screen title="Lo que Brain IA aprendió" overline="Aprendizaje" subtitle="Tus correcciones guían eventos futuros. Tú decides cuándo actualizar el pasado." back refreshing={loading} onRefresh={enabled ? () => void load() : undefined}>
-      {loading ? <StateView kind="loading" skeleton="card" skeletonCount={3} title="Cargando" /> : loadError ? <StateView kind="error" title="No se pudo cargar" description="No se pudieron cargar las correcciones. Revisa la conexión e intenta de nuevo." actionLabel="Reintentar" onAction={() => { setLoading(true); setLoadError(false); void initialize(); }} /> : enabled === false ? <StateView title="Aprendizaje no habilitado" description="El aprendizaje confirmado todavía no está habilitado en este servicio." /> : null}
+      {loading ? <LearningSkeleton /> : loadError ? <StateView kind="error" title="No se pudo cargar" description="No se pudieron cargar las correcciones. Revisa la conexión e intenta de nuevo." actionLabel="Reintentar" onAction={() => { setLoading(true); setLoadError(false); void initialize(); }} /> : enabled === false ? <StateView title="Aprendizaje no habilitado" description="El aprendizaje confirmado todavía no está habilitado en este servicio." /> : null}
       {status ? <Text accessibilityLiveRegion="polite" style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{status}</Text> : null}
       {applied ? <Animated.View entering={FadeIn.duration(reduceMotion ? theme.motion.duration.reduced : theme.motion.duration.quick).reduceMotion(ReduceMotion.Never)} exiting={FadeOut.duration(reduceMotion ? theme.motion.duration.reduced : theme.motion.duration.press).reduceMotion(ReduceMotion.Never)} layout={reduceMotion ? undefined : listLayout}><Button label="Deshacer actualización" variant="secondary" disabled={busy} loading={pending === `undo:${applied}`} onPress={() => void undo(applied, true)} /></Animated.View> : null}
 

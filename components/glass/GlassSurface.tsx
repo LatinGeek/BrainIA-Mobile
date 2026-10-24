@@ -1,10 +1,10 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
-import { Platform, StyleProp, StyleSheet, Text, View, ViewStyle, useWindowDimensions } from 'react-native';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { LayoutChangeEvent, Platform, StyleProp, StyleSheet, Text, View, ViewStyle, useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useAmbientBackdrop } from '@/components/glass/GlassBackdrop';
+import { GlassPaint } from '@/components/glass/GlassPaint';
 import { GlassScrollContext } from '@/components/glass/GlassScroll';
 import { useTheme } from '@/lib/app-state';
 import { useReduceMotion, useReduceTransparency } from '@/lib/hooks';
@@ -12,28 +12,22 @@ import { GlassLevel } from '@/lib/themes';
 
 export type GlassTone = 'neutral' | 'finance' | 'review' | 'model' | 'danger' | 'accent';
 
+/** The flat wash a tone lays over the pane. */
 const toneTint: Record<GlassTone, (theme: ReturnType<typeof useTheme>) => string | null> = {
   neutral: () => null,
   accent: (theme) => `${theme.colors.accent}0A`,
   finance: (theme) => `${theme.status.income}0A`,
-  review: (theme) => `${theme.status.review}0C`,
+  review: (theme) => `${theme.status.review}0A`,
   model: (theme) => `${theme.colors.model}0A`,
-  danger: (theme) => `${theme.colors.danger}0C`,
+  danger: (theme) => `${theme.colors.danger}0A`,
 };
 
-function svgStop(value: string) {
-  const match = value.match(/^rgba?\(([^)]+)\)$/i);
-  if (!match) return { color: value, opacity: 1 };
-  const [r, g, b, a] = match[1].split(',').map((part) => Number(part.trim()));
-  return { color: `rgb(${r},${g},${b})`, opacity: Number.isFinite(a) ? a : 1 };
-}
-
-/** A rim colour from a theme edge colour, with its alpha scaled (clamped to opaque). */
-function rimColor(value: string, scale: number) {
-  const { color, opacity } = svgStop(value);
-  const match = color.match(/^rgb\((\d+),(\d+),(\d+)\)$/);
-  if (!match) return value;
-  return `rgba(${match[1]},${match[2]},${match[3]},${Math.min(1, opacity * scale)})`;
+/** The same colour with its alpha replaced, for a rim that is drawn under a brighter one. */
+function withAlpha(color: string, alpha: number) {
+  const match = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (!match) return color;
+  const [r, g, b] = match[1].split(',').map((part) => Number(part.trim()));
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 /**
@@ -45,9 +39,13 @@ function rimColor(value: string, scale: number) {
 const ParentGlass = createContext<{ veil: number; chrome: boolean } | null>(null);
 
 // Android backdrop: blur sigma (dp) and white veil strength per level. Every surface
-// follows the same layers; the level only changes how strong they are.
-const backdropBlur: Record<GlassLevel, number> = { thin: 8, regular: 12, strong: 18 };
-const backdropVeil: Record<GlassLevel, number> = { thin: 0.035, regular: 0.06, strong: 0.08 };
+// follows the same layers; the level only changes how strong they are. Keep the sigmas in step
+// with AMBIENT_BLURS in GlassBackdrop, which pre-renders them before the first screen.
+const backdropBlur: Record<GlassLevel, number> = { thin: 1.5, regular: 2, strong: 3.5 };
+
+// The backdrop sits this many px left of where it truly lies behind the card, faking glass refraction.
+const REFRACTION_OFFSET = 4;
+const backdropVeil: Record<GlassLevel, number> = { thin: 0.014, regular: 0.024, strong: 0.036 };
 
 export function GlassSurface({
   children,
@@ -81,12 +79,23 @@ export function GlassSurface({
   const reduceMotion = useReduceMotion();
   const parent = useContext(ParentGlass);
   const nested = parent !== null;
-  const gradientId = `glass-edge-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const paddingValue = padding === 'none' ? 0 : padding === 'sm' ? theme.spacing.sm : padding === 'lg' ? theme.spacing.lg : theme.spacing.md;
   const borderRadius = theme.radius[radius];
   const fill = theme.glass.fill[level];
   const tint = toneTint[tone](theme);
   const android = Platform.OS === 'android';
+  // The card's own box, which is what the glass paint is drawn to.
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  // A caller can override the radius or the border from its own style (a sheet, an error field);
+  // the paint has to follow, or its rim sits away from the card's edge.
+  const override = StyleSheet.flatten(style) as ViewStyle | undefined;
+  const paintRadius = typeof override?.borderRadius === 'number' ? override.borderRadius : borderRadius;
+  const keepsBorder = override?.borderColor !== undefined;
+  // With the paint on, the SVG paths draw their own rim; Android needs the view's border as the
+  // continuous hairline that its gradient layers light up.
+  const painted = !reduceTransparency && box !== null;
+  const borderAsRim = painted && android;
+  const paintBorder = bordered && !(painted && !android && !keepsBorder);
 
   // Android: every glass surface (any level, nested or not) shows a blurred copy of the
   // ambient light, slid against the card with the scroll offset so it always matches what
@@ -105,7 +114,7 @@ export function GlassSurface({
   const spotX = useSharedValue(0);
   const spotY = useSharedValue(0);
   const hasSpot = useRef(false);
-  const onLayout = useCallback(() => {
+  const measureSpot = useCallback(() => {
     if (!wantsBackdrop) return;
     viewRef.current?.measureInWindow((x, y, w, h) => {
       if (w <= 0 || h <= 0) return;
@@ -122,18 +131,29 @@ export function GlassSurface({
       setSpot((prev) => (prev && Math.abs(prev.contentX - contentX) < 1 && Math.abs(prev.contentY - contentY) < 1 ? prev : { contentX, contentY }));
     });
   }, [wantsBackdrop, scrollX, scrollY, spotX, spotY]);
+  // The sheet is drawn to the card's own box, on every platform.
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+      if (width > 0 && height > 0) {
+        setBox((prev) => (prev && Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1 ? prev : { width, height }));
+      }
+      measureSpot();
+    },
+    [measureSpot],
+  );
   const settled = glassScroll?.settled;
   useEffect(() => {
-    if (settled) onLayout();
-  }, [settled, onLayout]);
+    if (settled) measureSpot();
+  }, [settled, measureSpot]);
   // A card that mounts while its screen rises into place (a tab, or a segment switch inside a screen that replays
   // the rise) is measured mid-rise; measure it again when the longest entrance has finished.
   const entranceMs = theme.motion.duration.enter + theme.motion.staggerMax * theme.motion.stagger + 40;
   useEffect(() => {
     if (!wantsBackdrop) return;
-    const timer = setTimeout(onLayout, entranceMs);
+    const timer = setTimeout(measureSpot, entranceMs);
     return () => clearTimeout(timer);
-  }, [wantsBackdrop, onLayout, entranceMs]);
+  }, [wantsBackdrop, measureSpot, entranceMs]);
   const backdropUri = useAmbientBackdrop(wantsBackdrop ? backdropBlur[level] : 0, theme.ambient, screenWidth, screenHeight);
   const childGlass = { veil: wantsBackdrop ? veilAlpha : parent?.veil ?? 0, chrome: chrome || (parent?.chrome ?? false) };
   const glass = backdropUri !== null && spot !== null;
@@ -154,7 +174,7 @@ export function GlassSurface({
   const backdropStyle = useAnimatedStyle(
     () => ({
       transform: [
-        { translateX: (scrollX ? scrollX.value : 0) - spotX.value },
+        { translateX: (scrollX ? scrollX.value : 0) - spotX.value - REFRACTION_OFFSET },
         { translateY: (scrollY ? scrollY.value : 0) - spotY.value },
       ],
     }),
@@ -163,8 +183,6 @@ export function GlassSurface({
 
   // iOS and web keep the native blur view.
   const nativeBlur = !android && !reduceTransparency && !nested && level !== 'thin';
-  // Flat Android glass (no blur): fill, top light, rim and a specular line.
-  const crisp = android && !reduceTransparency;
   const waitingForGlass = wantsBackdrop && !glass && !giveUp;
   const backgroundColor = glass || waitingForGlass
     ? 'transparent'
@@ -174,7 +192,8 @@ export function GlassSurface({
         // Without a blur, scrolled content would ghost through the plate, so
         // Android chrome uses the denser plate.
         ? android ? theme.glass.chromeOpaque : theme.glass.chrome
-        : fill[0];
+        // The paint layer carries the body; this is only what shows before it arrives.
+        : fill[1];
 
   return (
     <View
@@ -185,8 +204,10 @@ export function GlassSurface({
         {
           backgroundColor,
           borderRadius,
-          borderWidth: bordered ? StyleSheet.hairlineWidth : 0,
-          borderColor: reduceTransparency ? theme.glass.divider : theme.glass.edge[0],
+          // On the SVG paths the rim is drawn by the paint layer, so a border here would read as a
+          // second outline. Android keeps it, and so does a caller that brought its own colour.
+          borderWidth: paintBorder ? StyleSheet.hairlineWidth : 0,
+          borderColor: reduceTransparency ? theme.glass.divider : borderAsRim ? withAlpha(theme.glass.edge[1], 0.4) : withAlpha(theme.glass.edge[0], 0.5),
           overflow: 'hidden',
           // Android elevation shadows cannot be clipped under a translucent surface, so they
           // show through as a dark ring with a lighter square in the middle. Skip them there.
@@ -209,54 +230,23 @@ export function GlassSurface({
           <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(255,255,255,${veilAlpha})` }]} />
         </Animated.View>
       ) : null}
-      {crisp ? (
-        // Soft top-lit sheen: brightest at the top edge, gone by the middle. A native gradient
-        // style, so a screen full of cards does not record one SVG scene per card on the UI thread.
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { experimental_backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 45%, rgba(255,255,255,0) 100%)' }]}
+      {/*
+        The material itself: body haze, rim, bevel, specular streaks and colour split. Chrome
+        plates keep their own dense body and only take the rim.
+      */}
+      {!reduceTransparency && box ? (
+        <GlassPaint
+          width={box.width}
+          height={box.height}
+          radius={paintRadius}
+          level={level}
+          rimOnly={chrome || Boolean(parent?.chrome)}
+          edges={bordered}
+          fill={fill}
+          light={theme.glass.light}
         />
-      ) : !reduceTransparency ? (
-        <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={svgStop(fill[0]).color} stopOpacity={svgStop(fill[0]).opacity} />
-              <Stop offset="1" stopColor={svgStop(fill[1]).color} stopOpacity={svgStop(fill[1]).opacity} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0.5" y="0.5" width="99.7%" height="99.7%" rx={borderRadius} fill={`url(#${gradientId})`} />
-        </Svg>
       ) : null}
       {tint ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} /> : null}
-      {crisp ? (
-        <>
-          {/* Rim: one uniform colour. Per-side border colours leave a visible notch at rounded corners; the top light comes from the specular line below. */}
-          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius, borderWidth: 1, borderColor: rimColor(theme.glass.edge[0], 0.45) }]} />
-          {/* Specular line along the top edge, fading out at both ends. */}
-          <View
-            pointerEvents="none"
-            style={{ position: 'absolute', top: 0, left: '10%', width: '80%', height: 1, experimental_backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%)' }}
-          />
-        </>
-      ) : !reduceTransparency ? (
-        <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id={`${gradientId}-stroke`} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={svgStop(theme.glass.edge[0]).color} stopOpacity={Math.min(1, svgStop(theme.glass.edge[0]).opacity * (crisp ? 1.6 : 1))} />
-              <Stop offset="0.55" stopColor={svgStop(theme.glass.edge[1]).color} stopOpacity={svgStop(theme.glass.edge[1]).opacity} />
-              <Stop offset="1" stopColor={svgStop(theme.glass.edge[1]).color} stopOpacity={svgStop(theme.glass.edge[1]).opacity} />
-            </LinearGradient>
-            {/* Specular line along the top edge, fading out at both ends. */}
-            <LinearGradient id={`${gradientId}-hi`} x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0} />
-              <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0.55} />
-              <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0.5" y="0.5" width="99.7%" height="99.7%" rx={borderRadius} fill="none" stroke={`url(#${gradientId}-stroke)`} strokeWidth={1} />
-          {crisp ? <Rect x="10%" y="0.5" width="80%" height="1" fill={`url(#${gradientId}-hi)`} /> : null}
-        </Svg>
-      ) : null}
 
       <ParentGlass.Provider value={childGlass}>
       <View style={[{ padding: paddingValue, gap: theme.spacing.md }, contentStyle]}>

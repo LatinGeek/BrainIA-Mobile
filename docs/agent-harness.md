@@ -27,3 +27,27 @@ For the broader all-screen smoke suite, run:
 ```powershell
 npm run agent:harness -- --full
 ```
+
+## Packaging the release APK
+
+Build in place, from `android/`:
+
+```powershell
+cd android
+cmd /c "gradlew.bat assembleRelease --console=plain"
+adb -s <serial> install -r app/build/outputs/apk/release/app-release.apk
+```
+
+`npm run share:apk` builds through a junction under `D:\b\…` to keep native
+paths short, and that no longer works for this project: a cross-drive junction
+(the package on `C:`, the junction on `D:`) fails
+`createBundleReleaseJsAndAssets` with "this and base files have different
+roots", and a same-drive junction gets past the Android bundle and fails the
+same task on the `'use dom'` component (`components/knowledge/GraphForceCanvas`),
+whose DOM bundle is resolved through a relative path that climbs to the drive
+root. Building in place works: CMake warns that the object directory reaches 185
+of 250 characters for `react-native-screens`, and the build completes anyway.
+
+The release keystore is read from `BRAINIA_RELEASE_*` in
+`~/.gradle/gradle.properties` (or the environment), so `install -r` upgrades the
+installed app without losing its data.

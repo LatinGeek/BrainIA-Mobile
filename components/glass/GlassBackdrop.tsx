@@ -1,7 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { Blur, Circle, Fill, Group, ImageFormat, Paint, RadialGradient, drawAsImage, rect, vec } from '@shopify/react-native-skia';
+import { Blur, Circle, ColorMatrix, Fill, Group, ImageFormat, Paint, RadialGradient, drawAsImage, rect, vec } from '@shopify/react-native-skia';
 
 /**
  * Android glass backdrop. The native blur view adds per-pixel static (about 7/255), and a
@@ -70,7 +70,10 @@ function AmbientBlurred({ blur, colors, width, height, scale }: { blur: number; 
   return (
     <Group transform={[{ scale }]}>
       <Group layer={<Paint><Blur blur={blur} mode="clamp" /></Paint>}>
-        <AmbientShapes colors={colors} width={width} height={height} />
+        {/* Light seen through glass comes out richer than it went in: this copy is only ever used inside a pane. */}
+        <Group layer={<Paint><ColorMatrix matrix={GLASS_SATURATION} /></Paint>}>
+          <AmbientShapes colors={colors} width={width} height={height} />
+        </Group>
       </Group>
     </Group>
   );
@@ -80,7 +83,15 @@ function AmbientBlurred({ blur, colors, width, height, scale }: { blur: number; 
  * Bump this whenever the drawing changes (AmbientShapes, the blur mode, the scale): the images are kept as files
  * and reused across launches and app updates, so an old file would otherwise be served for the new drawing.
  */
-const BACKDROP_VERSION = 2;
+const BACKDROP_VERSION = 7;
+
+// Saturation of the light seen through glass (1 = untouched). Skia's 4x5 matrix, Rec. 709 luma.
+export const GLASS_SATURATION = [
+  1.2205, -0.2003, -0.0202, 0, 0,
+  -0.0595, 1.0797, -0.0202, 0, 0,
+  -0.0595, -0.2003, 1.2598, 0, 0,
+  0, 0, 0, 1, 0,
+];
 
 function keyOf(blur: number, colors: AmbientColors, width: number, height: number) {
   return [BACKDROP_VERSION, blur, blur <= 0 ? FIELD_SCALE : SCALE, Math.round(width), Math.round(height), colors.base, colors.orbs.join(','), colors.ring].join('|');
@@ -89,7 +100,7 @@ const BACKDROP_VERSION = 2;
 const cache = new Map<string, string>();
 
 /** The blur levels glass surfaces use (thin, regular, strong), plus 0 for the unblurred field. */
-export const AMBIENT_BLURS = [8, 12, 18] as const;
+export const AMBIENT_BLURS = [1.5, 2, 3.5] as const;
 
 function hashKey(value: string) {
   let h = 5381;

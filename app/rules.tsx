@@ -8,6 +8,7 @@ import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Screen, Section } from '@/components/layout/Screen';
 import { useToast } from '@/components/layout/Toast';
+import { RulesAccountsSkeleton, RulesListSkeleton } from '@/components/skeletons/RulesSkeleton';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { DEFAULT_FINANCIAL_CATEGORIES, FinancialAccount } from '@/lib/domain';
 import { translateKnownLabel } from '@/lib/format';
@@ -156,7 +157,9 @@ export default function RulesScreen() {
       actions={ready ? <Tag label={rules.length ? `${active} ${active === 1 ? 'activa' : 'activas'}` : 'Sin reglas'} tone={active ? 'positive' : 'neutral'} /> : null}
     >
       <Section title="Tus reglas" subtitle="La más específica gana cuando varias aplican." actionLabel="Nueva regla" onActionPress={() => open({ ...blankEditor })}>
-        {ready && !rules.length ? (
+        {!ready ? (
+          <RulesListSkeleton />
+        ) : !rules.length ? (
           <StateView icon="sliders" title="Todavía no tienes reglas" description="Crea una regla o parte de uno de los ejemplos de abajo." actionLabel="Crear una regla" onAction={() => open({ ...blankEditor })} />
         ) : (
           <GlassSurface level="thin" padding="sm" contentStyle={{ gap: theme.spacing.xs }}>
@@ -249,7 +252,7 @@ export default function RulesScreen() {
                   emptyLabel="Sin cuentas"
                 />
               ) : (
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cargando tus cuentas…</Text>
+                <RulesAccountsSkeleton />
               )
             ) : null}
             {error ? <Text accessibilityLiveRegion="polite" style={[theme.typography.caption, { color: theme.colors.danger }]}>{error}</Text> : null}
