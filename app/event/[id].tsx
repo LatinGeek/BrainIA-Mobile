@@ -14,6 +14,7 @@ import { EventDetailSkeleton } from '@/components/skeletons/EventDetailSkeleton'
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatDate } from '@/lib/format';
+import { PROGRESS_STAGE_ORDER, progressHeadline, stageDetail, stageLabel } from '@/lib/event-progress';
 import { CorrectionPanel } from '@/components/intelligence/CorrectionPanel';
 
 export default function EventDetailScreen() {
@@ -84,6 +85,17 @@ export default function EventDetailScreen() {
               <CorrectionPanel eventId={id} onSaved={refresh} />
             </Animated.View>
           </Section>
+
+          {event.progress ? (
+            <Section title="Procesamiento">
+              <GlassSurface level="thin" padding="none">
+                <Text accessibilityRole="header" style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, padding: theme.spacing.md, paddingBottom: theme.spacing.xs }]}>{progressHeadline(event.progress, event.inferredKind)}</Text>
+                {PROGRESS_STAGE_ORDER.map((key, index) => (
+                  <Row key={key} title={stageLabel[key]} subtitle={stageDetail(event.progress!.stages[key])} accessory="none" style={index === PROGRESS_STAGE_ORDER.length - 1 ? { borderBottomWidth: 0 } : undefined} />
+                ))}
+              </GlassSurface>
+            </Section>
+          ) : null}
 
           <Section title="Contenido original">
             <GlassSurface level="thin" padding="md" contentStyle={{ gap: theme.spacing.sm }}>

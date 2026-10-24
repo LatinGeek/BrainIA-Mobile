@@ -152,6 +152,20 @@ export type SearchResultItem = {
   hint?: string;
 };
 
+export type ProgressStageKey = 'classification' | 'semanticInterpretation' | 'financialProjection' | 'searchIndexing';
+export type ProgressStatus = 'pending' | 'running' | 'completed' | 'awaiting_review' | 'recoverable_failure' | 'terminal_failure' | 'not_applicable';
+
+/** Backend contract: docs/api.md "Event processing progress". Only present on event detail and capture responses. */
+export type EventProgress = {
+  summary: { status: ProgressStatus; partial: boolean; message: string };
+  stages: Record<ProgressStageKey, {
+    status: ProgressStatus;
+    code: string;
+    message: string;
+    job: { status: string; attempt: number; maxAttempts: number; nextAttemptAt: string | null } | null;
+  }>;
+};
+
 export type EventSummary = {
   id: string;
   source: string;
@@ -170,6 +184,7 @@ export type EventSummary = {
   primaryCategoryKey?: string;
   secondaryCategoryKeys?: string[];
   facets?: { type: string; value: string; confidence: number }[];
+  progress?: EventProgress;
 };
 
 export type ReviewItem = {

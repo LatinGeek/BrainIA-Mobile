@@ -1,4 +1,5 @@
 import { cleanDisplayText } from './format';
+import { parseEventProgress } from './event-progress';
 import { createV2Transport, type V2Transport } from '../contracts/brain-ai/2.0.0/mobile/transport.cjs';
 import {
   BriefCard,
@@ -868,6 +869,7 @@ function normalizeEvent(input: unknown, index: number): EventSummary {
       const facet = (isRecord(item) ? item : {}) as Record<string, any>;
       return { type: asString(facet.type), value: asString(facet.value), confidence: asNumber(facet.confidence, 0) };
     }).filter((facet) => facet.type && facet.value),
+    progress: parseEventProgress(event.progress),
   };
 }
 
