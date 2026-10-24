@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "app/event/[id].tsx": {
-    "mtime": 1792874977.0349839,
-    "ast_hash": "d903d1b87c5b1b5c75e70677b3e7cfd4",
+    "mtime": 1792885774.8207943,
+    "ast_hash": "d4318d0c8929e2eb5c320cf3d0aa9042",
     "semantic_hash": ""
   },
   "app/email/[id].tsx": {
@@ -2155,8 +2155,8 @@
     "semantic_hash": ""
   },
   "components/layout/Screen.tsx": {
-    "mtime": 1792808955.790722,
-    "ast_hash": "2b62014bc091de751052b1521607f07f",
+    "mtime": 1792885704.2907033,
+    "ast_hash": "de6f667cd8f4ce014b82007102ccbb1e",
     "semantic_hash": ""
   },
   "components/layout/Toast.tsx": {
@@ -2255,8 +2255,8 @@
     "semantic_hash": ""
   },
   "lib/event-progress.ts": {
-    "mtime": 1792884629.8598273,
-    "ast_hash": "0a1f070e3dc1b12d3d17cf4eed22325a",
+    "mtime": 1792885774.819268,
+    "ast_hash": "c876692a705eb284de60d9d023c84b01",
     "semantic_hash": ""
   },
   "lib/motion.ts": {
@@ -2432,6 +2432,11 @@
   "docs/reports/v2/device-evidence/post-launch-60s-2026-10-18.png": {
     "mtime": 1792371445.2423158,
     "ast_hash": "8c3499b103ed0e8fc9540030bb9aa7bc",
+    "semantic_hash": ""
+  },
+  "components/data/ProcessingProgress.tsx": {
+    "mtime": 1792885771.0207293,
+    "ast_hash": "e2d77a98b5881ccd929ffe196f6300f7",
     "semantic_hash": ""
   }
 }
