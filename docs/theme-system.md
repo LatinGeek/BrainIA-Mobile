@@ -28,17 +28,18 @@ complete, so screens that still read `theme.colors.surface` continue to work.
 
 Rules:
 
-- Real blur is reserved for `strong`/chrome on Android; other levels use the
-  translucent fill.
-- Android needs a real blur target: expo-blur 55+ renders only a translucent
-  view unless the `BlurView` receives `blurTarget`. Screens expose two targets:
-  the ambient backdrop for card surfaces and the scrolling content for floating
-  chrome (dock, compact header, action bar). A view never blurs a target it is
-  inside, which avoids recursive blur and native stack overflows.
-- Nested surfaces keep the fill instead of a second BlurView. On Android, real
-  blur uses `dimezisBlurViewSdk31Plus`; older devices fall back to the fill.
+- iOS and web use the native `BlurView` (expo-blur) for non-nested, non-thin
+  surfaces; thin surfaces rely on the fill alone.
+- Android cards do not use expo-blur. Each card draws a pre-rendered copy of the
+  ambient field: `GlassBackdrop` renders the scene once per blur sigma
+  (1.5 / 2 / 3.5 dp) and caches it, and `GlassSurface` positions that image
+  against the card with the scroll offset and lays a white veil on top. This
+  avoids the `BlurTargetView` requirement and keeps the number of live blurs
+  flat on long lists.
+- Chrome plates, surfaces nested inside them, and Reduce Transparency use the
+  solid fill with no blur. Nested surfaces inherit the parent's veil instead of
+  stacking a second blur.
 - With Reduce Transparency on, every level uses `glass.solid` and no blur.
-- No nested `BlurView` and no more than ~6 live blurs per screen.
 - The specular edge is a one-pixel SVG stroke, not a second border.
 
 ## Motion tokens

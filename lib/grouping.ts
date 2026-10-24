@@ -50,7 +50,7 @@ export function clusterSearchResults(results: SearchResultItem[]): SearchCluster
   const typeMeta: Record<SearchResultItem['type'], { title: string; subtitle: string; tone: SearchCluster['tone']; priority: number }> = {
     entity: { title: 'Elementos', subtitle: 'Personas, comercios, lugares y temas.', tone: 'positive', priority: 0 },
     insight: { title: 'Perspectivas', subtitle: 'Conclusiones claras y puntos relevantes.', tone: 'positive', priority: 1 },
-    transaction: { title: 'Movimientos', subtitle: 'Movimientos de dinero con contexto de comercio y categoría.', tone: 'warning', priority: 2 },
+    transaction: { title: 'Movimientos', subtitle: 'Movimientos de dinero con comercio y categoría.', tone: 'warning', priority: 2 },
     event: { title: 'Actividad', subtitle: 'Notas, notificaciones, correos y registros capturados.', tone: 'warning', priority: 3 },
     relation: { title: 'Conexiones', subtitle: 'Vínculos legibles entre elementos.', tone: 'neutral', priority: 4 },
   };

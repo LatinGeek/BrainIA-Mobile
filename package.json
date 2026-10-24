@@ -8,6 +8,7 @@
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/ui": "~57.0.4",
     "@expo/vector-icons": "^15.0.2",
+    "@shopify/react-native-skia": "2.6.2",
     "d3-force-3d": "^3.0.6",
     "expo": "~57.0.4",
     "expo-blur": "~57.0.3",

@@ -78,10 +78,28 @@ export type ThemeTokens = {
     chrome: string;
     /** Denser chrome for the pinned action bar so fields never show through. */
     chromeStrong: string;
+    /** Near-opaque chrome for floating plates when no native blur hides what scrolls beneath. */
+    chromeOpaque: string;
     selected: string;
     onSelected: string;
     solid: Record<GlassLevel, string>;
     divider: string;
+    /**
+     * The light baked into a glass sheet (the rim, its bevel and the specular streaks). Kept apart
+     * from `edge`, which is a plain hairline for flat surfaces and handles.
+     */
+    light: {
+      /** Outer rim, lit from the top-left corner round to the bottom-right. */
+      edge: readonly [string, string, string];
+      /** The bright streak along the top edge, and the soft light that spills off it. */
+      specular: string;
+      /** Light bouncing back off the bottom edge. */
+      bounce: string;
+      /** Haze that pools where the light enters at the top. */
+      bloom: string;
+      /** Shade inside the bottom edge, where the pane is thickest. */
+      shade: string;
+    };
   };
   motion: {
     /** Legacy aliases kept until the glass cleanup phase. */
@@ -95,8 +113,10 @@ export type ThemeTokens = {
       thumb: { damping: number; stiffness: number; mass: number };
       press: { damping: number; stiffness: number; mass: number };
     };
-    duration: { press: number; quick: number; enter: number; count: number };
+    duration: { press: number; quick: number; enter: number; count: number; reduced: number };
     stagger: number;
+    staggerMax: number;
+    distance: { rise: number; push: number; headerCollapse: number };
     easing: { out: MotionEasing; in: MotionEasing; soft: MotionEasing };
   };
   ambient: { base: string; base2: string; orbs: readonly [string, string, string]; ring: string };
@@ -163,21 +183,29 @@ export const brainiaTheme: ThemeTokens = {
     hairline: 'rgba(255,255,255,0.12)',
   },
   glass: {
-    blur: { thin: 12, regular: 22, strong: 36 },
+    blur: { thin: 8, regular: 14, strong: 22 },
     fill: {
-      thin: ['rgba(255,255,255,0.065)', 'rgba(255,255,255,0.03)'],
-      regular: ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.035)'],
-      strong: ['rgba(255,255,255,0.17)', 'rgba(255,255,255,0.06)'],
+      thin: ['rgba(255,255,255,0.045)', 'rgba(255,255,255,0.012)'],
+      regular: ['rgba(255,255,255,0.072)', 'rgba(255,255,255,0.02)'],
+      strong: ['rgba(255,255,255,0.105)', 'rgba(255,255,255,0.032)'],
     },
     edge: ['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.05)'],
     inner: 'rgba(255,255,255,0.06)',
     chromeBase: 0.74,
     chrome: hexToRgba('#091315', 0.74),
     chromeStrong: hexToRgba('#091315', 0.86),
+    chromeOpaque: hexToRgba('#091315', 1),
     selected: 'rgba(246,249,248,0.95)',
     onSelected: '#0B1113',
     solid: { thin: '#142124', regular: '#1A2B2F', strong: '#22363B' },
     divider: 'rgba(255,255,255,0.08)',
+    light: {
+      edge: ['rgba(232,250,248,0.72)', 'rgba(232,250,248,0.26)', 'rgba(232,250,248,0.38)'],
+      specular: 'rgba(245,255,254,0.62)',
+      bounce: 'rgba(232,250,248,0.38)',
+      bloom: 'rgba(232,250,248,0.038)',
+      shade: 'rgba(3,10,12,0.24)',
+    },
   },
   motion: {
     fast: 140,
@@ -188,8 +216,10 @@ export const brainiaTheme: ThemeTokens = {
       thumb: { damping: 16, stiffness: 220, mass: 0.9 },
       press: springPress,
     },
-    duration: { press: 140, quick: 240, enter: 420, count: 800 },
+    duration: { press: 140, quick: 240, enter: 420, count: 800, reduced: 120 },
     stagger: 45,
+    staggerMax: 9,
+    distance: { rise: 14, push: 34, headerCollapse: 64 },
     easing: { out: [0.2, 0.8, 0.2, 1], in: [0.4, 0, 1, 1], soft: [0.25, 1.1, 0.4, 1] },
   },
   ambient: {
@@ -208,7 +238,7 @@ export const brainiaTheme: ThemeTokens = {
     numeral: { fontFamily: 'Inter_700Bold', fontSize: 34, lineHeight: 40, letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
     overline: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
   },
-  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86, reviewCardMax: 540 },
+  layout: { minTarget: 44, answerTarget: 52, dockHeight: 68, dockMinScale: 0.86, reviewCardMax: 470 },
   spacing,
   radius,
   shadow: {

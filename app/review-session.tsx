@@ -4,9 +4,10 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, PixelRatio, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -18,18 +19,18 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Tag } from '@/components/controls';
 import { StateView } from '@/components/data/StateView';
-import { BlurTargetView } from 'expo-blur';
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
-import { useBlurTarget } from '@/lib/blur-target';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { DecisionCard } from '@/components/review/DecisionCard';
 import { useToast } from '@/components/layout/Toast';
-import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
+import { ReviewSessionSkeleton } from '@/components/skeletons/ReviewSessionSkeleton';
+import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { buildReviewQueue, commitDecision, PendingCommitDescriptor, persistReviewSessionState, readReviewSessionState, ReviewAnswer, ReviewDecision } from '@/lib/review-session';
 import { formatCurrency } from '@/lib/format';
 import { loadReviewBundle } from '@/lib/api';
-import { useAsyncResource } from '@/lib/hooks';
+import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
+import { reducedFade } from '@/lib/motion';
 
 type PendingEntry = {
   descriptor: PendingCommitDescriptor;
@@ -39,10 +40,12 @@ type PendingEntry = {
 
 export default function ReviewSessionScreen() {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  const answering = useRef(false);
+  const cardOpacity = useSharedValue(1);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const client = useBrainIAClient();
-  const { invalidateReviews } = useAppState();
   const toast = useToast();
   const { topic } = useLocalSearchParams<{ topic?: string }>();
   const [index, setIndex] = useState(0);
@@ -52,12 +55,6 @@ export default function ReviewSessionScreen() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [startingAt] = useState(() => Date.now());
   const pending = useRef(new Map<string, PendingEntry>());
-  const ambientRef = useRef<View | null>(null);
-  const blurTargets = useBlurTarget();
-
-  useEffect(() => {
-    if (ambientRef.current) blurTargets?.setCardTarget(ambientRef.current);
-  }, [blurTargets]);
   const x = useSharedValue(0);
   const y = useSharedValue(0);
 
@@ -74,7 +71,6 @@ export default function ReviewSessionScreen() {
 
   const decisions = useMemo(() => (data ?? []).filter((decision) => !topic || decision.topic === topic), [data, topic]);
   const current = decisions[index];
-  const next = decisions[index + 1];
 
   useEffect(() => {
     if (!decisions.length) return;
@@ -128,7 +124,7 @@ export default function ReviewSessionScreen() {
     void persistReviewSessionState({ order: [], index: 0, answers: [], skipped: [], pending: [], startedAt: startingAt });
   }, [flush, startingAt]);
 
-  const answer = useCallback(async (decision: ReviewDecision, choice: ReviewAnswer['choice'], value?: string, rule?: boolean) => {
+  const commitAnswer = useCallback(async (decision: ReviewDecision, choice: ReviewAnswer['choice'], value?: string, rule?: boolean) => {
     if (choice === 'accept') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     else void Haptics.selectionAsync();
 
@@ -164,7 +160,7 @@ export default function ReviewSessionScreen() {
       };
       pending.current.set(id, entry);
 
-      toast.show('Guardado · Deshacer durante 5 segundos', {
+      toast.show('Guardado · puedes deshacer durante 5 segundos', {
         tone: 'positive',
         action: {
           label: 'Deshacer',
@@ -197,6 +193,34 @@ export default function ReviewSessionScreen() {
     persist(nextIndex, nextAnswers, nextSkipped);
   }, [answers, client, decisions.length, finish, index, persist, skipped, toast, x, y]);
 
+  const answer = useCallback(async (decision: ReviewDecision, choice: ReviewAnswer['choice'], value?: string, rule?: boolean) => {
+    if (!decision || answering.current) return;
+    answering.current = true;
+    try {
+      await new Promise<void>((resolve) => {
+        const done = () => resolve();
+        if (reduceMotion) {
+          x.value = 0;
+          y.value = 0;
+          cardOpacity.value = withTiming(0, reducedFade, () => { runOnJS(done)(); });
+        } else {
+          x.value = withTiming((choice === 'skip' ? -1 : 1) * width * 1.2, {
+            duration: theme.motion.duration.quick,
+            easing: Easing.bezier(...theme.motion.easing.in),
+          }, () => { runOnJS(done)(); });
+        }
+      });
+      await commitAnswer(decision, choice, value, rule);
+    } finally {
+      answering.current = false;
+    }
+  }, [cardOpacity, commitAnswer, reduceMotion, theme.motion.duration.quick, theme.motion.easing.in, width, x, y]);
+
+  useEffect(() => {
+    cardOpacity.set(reduceMotion ? 0 : 1);
+    if (reduceMotion) cardOpacity.set(withTiming(1, reducedFade));
+  }, [index, cardOpacity, reduceMotion]);
+
   const undoLast = useCallback(() => {
     const last = answers[answers.length - 1];
     if (!last) return;
@@ -215,10 +239,9 @@ export default function ReviewSessionScreen() {
 
   const close = useCallback(async () => {
     await flush();
-    invalidateReviews();
     if (router.canGoBack()) router.back();
     else router.replace('/review');
-  }, [flush, invalidateReviews]);
+  }, [flush]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -246,7 +269,6 @@ export default function ReviewSessionScreen() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [answer, close, current, undoLast]);
 
-  const exitDuration = theme.motion.duration.quick;
   const settleSpring = theme.motion.spring.thumb;
   const pan = Gesture.Pan()
     .activeOffsetX([-16, 16])
@@ -257,18 +279,17 @@ export default function ReviewSessionScreen() {
     .onEnd((event) => {
       const threshold = width * 0.3;
       if (x.value > threshold || event.velocityX > 800) {
-        x.set(withTiming(width * 1.2, { duration: exitDuration }));
         runOnJS(answer)(current, 'accept');
       } else if (x.value < -threshold || event.velocityX < -800) {
-        x.set(withTiming(-width * 1.2, { duration: exitDuration }));
         runOnJS(answer)(current, 'skip');
       } else {
-        x.set(withSpring(0, settleSpring));
-        y.set(withSpring(0, settleSpring));
+        x.set(reduceMotion ? 0 : withSpring(0, settleSpring));
+        y.set(reduceMotion ? 0 : withSpring(0, settleSpring));
       }
     });
 
   const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
     transform: [
       { translateX: x.value },
       { translateY: y.value },
@@ -288,17 +309,15 @@ export default function ReviewSessionScreen() {
   if (finished) {
     return (
       <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-        <BlurTargetView ref={ambientRef} style={StyleSheet.absoluteFill}>
-          <AmbientBackground />
-        </BlurTargetView>
+        <AmbientBackground />
         <View style={[styles.summaryWrap, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 }]}>
           <StateView
             kind="success"
-            title={skipped.length ? 'Nice work' : 'All clear'}
-            description={`${answers.filter((entry) => entry.choice === 'accept').length} respondidas · ${skipped.length} guardadas para después${tidyCount ? ` · ${tidyCount} movimientos ordenados` : ''}${rules ? ` · ${rules} ${rules === 1 ? 'regla creada' : 'reglas creadas'}` : ''}.`}
+            title={skipped.length ? 'Buen trabajo' : 'Todo al día'}
+            description={`${answers.filter((entry) => entry.choice === 'accept').length} respondidas · ${skipped.length} para después${tidyCount ? ` · ${tidyCount} movimientos ordenados` : ''}${rules ? ` · ${rules} ${rules === 1 ? 'regla creada' : 'reglas creadas'}` : ''}.`}
             actionLabel="Listo"
             onAction={() => void close()}
-            secondaryActionLabel={skipped.length ? 'Revisar omitidas' : undefined}
+            secondaryActionLabel={skipped.length ? 'Revisar las omitidas' : undefined}
             onSecondaryAction={skipped.length ? () => {
               const firstSkipped = decisions.findIndex((decision) => skipped.includes(decision.id));
               setFinished(false);
@@ -306,7 +325,7 @@ export default function ReviewSessionScreen() {
             } : undefined}
           />
           <GlassSurface level="thin" padding="md" contentStyle={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{`${skipped.length} skipped · progress saved`}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{`${skipped.length} omitidas · progreso guardado`}</Text>
             <Tag label="Sin diálogos de confirmación" tone="positive" icon="check" />
           </GlassSurface>
         </View>
@@ -316,12 +335,10 @@ export default function ReviewSessionScreen() {
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <BlurTargetView ref={ambientRef} style={StyleSheet.absoluteFill}>
-        <AmbientBackground />
-      </BlurTargetView>
+      <AmbientBackground />
       <View style={{ flex: 1, paddingTop: insets.top ? 6 : 0 }}>
         <View style={styles.header}>
-          <GlassPressable accessibilityRole="button" accessibilityLabel={`Cerrar revisión, quedan ${Math.max(0, decisions.length - index)}`} onPress={() => { void close(); }} hitSlop={10} scaleTo={0.9} style={styles.iconButton}>
+          <GlassPressable accessibilityRole="button" accessibilityLabel={`Cerrar revisión, ${Math.max(0, decisions.length - index)} restantes`} onPress={() => { void close(); }} hitSlop={10} scaleTo={0.9} style={styles.iconButton}>
             <Feather name="x" size={19} color={theme.colors.textPrimary} />
           </GlassPressable>
           <View style={{ flex: 1, gap: 6 }}>
@@ -338,22 +355,18 @@ export default function ReviewSessionScreen() {
         </View>
 
         {loading || !current ? (
-          error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <StateView kind="loading" title="Cargando" skeleton="hero" skeletonCount={1} />
+          error ? <StateView kind="error" title="No se pudo cargar la revisión" description={error} actionLabel="Reintentar" onAction={refresh} /> : <View style={styles.cardStage}><View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax * Math.max(1, PixelRatio.getFontScale()) }]}><ReviewSessionSkeleton /></View></View>
         ) : (
           <View style={styles.cardStage}>
-          <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax }]}>
-            {next ? (
-              <View pointerEvents="none" style={[styles.cardLayer, { transform: [{ scale: 0.96 }, { translateY: 10 }], opacity: 0.5 }]}>
-                <DecisionCard decision={next} variant="compact" />
-              </View>
-            ) : null}
+          <View style={[styles.cardArea, { maxHeight: theme.layout.reviewCardMax * Math.max(1, PixelRatio.getFontScale()) }]}>
+            {/* The next card is not drawn behind the translucent front card: its text showed through. */}
             <GestureDetector gesture={pan}>
               <Animated.View style={[styles.cardLayer, cardStyle]}>
                 <Animated.View pointerEvents="none" style={[styles.stamp, styles.acceptStamp, { borderColor: `${theme.colors.accent}B3` }, acceptStamp]}>
-                  <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACCEPT</Text>
+                  <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACEPTAR</Text>
                 </Animated.View>
                 <Animated.View pointerEvents="none" style={[styles.stamp, styles.skipStamp, { borderColor: `${theme.colors.danger}B3` }, skipStamp]}>
-                  <Text style={[theme.typography.headline, { color: theme.colors.danger }]}>SKIP</Text>
+                  <Text style={[theme.typography.headline, { color: theme.colors.danger }]}>OMITIR</Text>
                 </Animated.View>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
                   <DecisionCard
@@ -371,8 +384,8 @@ export default function ReviewSessionScreen() {
         )}
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Desliza a la derecha para aceptar · a la izquierda para omitir · cada gesto tiene botón</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>{`Unos ${formatCurrency(decisions.slice(index).reduce((sum, decision) => sum + decision.impact.amount, 0), 'UYU')} en movimientos por ordenar`}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>Desliza a la derecha para aceptar · a la izquierda para omitir · cada gesto tiene un botón</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textMuted, textAlign: 'center' }]}>{`Cerca de ${formatCurrency(decisions.slice(index).reduce((sum, decision) => sum + decision.impact.amount, 0), 'UYU')} en movimientos por ordenar`}</Text>
         </View>
       </View>
     </SafeAreaView>

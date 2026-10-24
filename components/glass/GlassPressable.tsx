@@ -1,10 +1,11 @@
 import { ReactNode } from 'react';
 import { Pressable as NativePressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useTheme } from '@/lib/app-state';
 import { useReduceMotion } from '@/lib/hooks';
+import { reducedFade, springOrFade } from '@/lib/motion';
 
 const AnimatedNativePressable = Animated.createAnimatedComponent(NativePressable);
 
@@ -41,11 +42,11 @@ export function GlassPressable({
       disabled={disabled}
       accessibilityState={{ disabled: Boolean(disabled), ...props.accessibilityState }}
       onPressIn={(event) => {
-        pressed.value = withTiming(1, { duration: theme.motion.duration.press });
+        pressed.value = withTiming(1, reduceMotion ? reducedFade : { duration: theme.motion.duration.press });
         onPressIn?.(event);
       }}
       onPressOut={(event) => {
-        pressed.value = withSpring(0, theme.motion.spring.press);
+        pressed.value = springOrFade(reduceMotion, 0, theme.motion.spring.press);
         onPressOut?.(event);
       }}
       onPress={(event) => {

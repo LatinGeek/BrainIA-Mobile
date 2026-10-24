@@ -8,19 +8,19 @@ export function getVisibilityCopy(visibility: DataVisibility) {
   if (visibility === 'essential') {
     return {
       label: 'Esencial',
-      description: 'Muestra resúmenes y decisiones. Oculta identificadores técnicos, motivos y datos de cuenta.',
+      description: 'Muestra resúmenes y decisiones. Oculta identificadores, motivos técnicos y datos de cuentas.',
     };
   }
 
   if (visibility === 'detailed') {
     return {
-      label: 'Detallada',
-      description: 'Muestra evidencia, diagnósticos y contexto operativo para auditoría.',
+      label: 'Detallado',
+      description: 'Muestra evidencias, diagnósticos y contexto operativo para auditar.',
     };
   }
 
   return {
-    label: 'Equilibrada',
+    label: 'Equilibrado',
     description: 'Muestra contexto útil y oculta identificadores y detalles técnicos de poco valor.',
   };
 }
@@ -31,7 +31,7 @@ export function getSourcePresentation(source?: BundleSource | string) {
   }
 
   if (source === 'cache') {
-    return { label: 'Datos guardados', tone: 'warning' as const };
+    return { label: 'Datos en caché', tone: 'warning' as const };
   }
 
   if (source === 'empty') {
@@ -81,7 +81,7 @@ export function maskAccount(value?: string, visibility: DataVisibility = 'balanc
 export function presentTransactionSubtitle(transaction: TransactionSummary, visibility: DataVisibility) {
   if (transaction.excludedFromReports) {
     const account = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.account, visibility) : undefined;
-    return joinDisplayParts(['Ajuste de saldo', 'Excluido de informes', account]);
+    return joinDisplayParts(['Ajuste de saldo', 'Excluido de los informes', account]);
   }
   if (transaction.kind === 'transfer') {
     const destination = shouldShowEvidenceDetail(visibility) ? maskAccount(transaction.destinationAccount, visibility) : undefined;
@@ -102,7 +102,7 @@ export function presentEvidenceReason(reason: string | undefined, visibility: Da
   }
 
   if (visibility === 'balanced') {
-    return 'Evidencia vinculada por monto, fuente y contexto del comercio.';
+    return 'Evidence matched by amount, source and merchant context.';
   }
 
   return undefined;

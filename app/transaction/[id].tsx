@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { Button, Chip, Field, SegmentedControl, Tag } from '@/components/controls';
 import { Amount, IconTile, Row } from '@/components/data/Row';
@@ -10,18 +10,21 @@ import { Timeline } from '@/components/data/Timeline';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { BottomSheet } from '@/components/layout/BottomSheet';
+import { TransactionDetailSkeleton } from '@/components/skeletons/TransactionDetailSkeleton';
+import { useToast } from '@/components/layout/Toast';
 import { Screen, Section } from '@/components/layout/Screen';
 import { useAppState, useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadTransactionBundle } from '@/lib/api';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatCategoryLabel, formatCurrency, parseCurrency } from '@/lib/format';
+import { describeAssumed } from '@/lib/rules';
+import { accountTypeLabel, formatCategoryLabel, formatCurrency, formatDate, formatEventKind, parseCurrency } from '@/lib/format';
 import { maskAccount, shouldShowEvidenceDetail } from '@/lib/presentation';
-import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCategories } from '@/lib/domain';
+import { DEFAULT_FINANCIAL_CATEGORIES, type FinancialAccount, type FinancialCategories, type TransactionSummary } from '@/lib/domain';
 
 type EditableTransactionKind = 'expense' | 'income' | 'transfer';
 
 export default function TransactionDetailScreen() {
-  const { id, edit } = useLocalSearchParams<{ id: string; edit?: 'category' }>();
+  const { id, edit, label } = useLocalSearchParams<{ id: string; edit?: 'category'; label?: string }>();
   const client = useBrainIAClient();
   const { invalidateFinancialData, settings } = useAppState();
   const theme = useTheme();
@@ -38,6 +41,7 @@ export default function TransactionDetailScreen() {
   const [fromAccountName, setFromAccountName] = useState('');
   const [toAccountName, setToAccountName] = useState('');
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [badgeExplanationOpen, setBadgeExplanationOpen] = useState(false);
@@ -48,6 +52,7 @@ export default function TransactionDetailScreen() {
   const { data, loading, error, refresh, reload } = useAsyncResource(loader, [loader]);
 
   const transaction = data?.transaction;
+  const assumed = (transaction as TransactionSummary | undefined)?.assumed;
   const evidenceItems = transaction?.evidence.length
     ? transaction.evidence
     : transaction?.primarySource
@@ -55,7 +60,9 @@ export default function TransactionDetailScreen() {
       : [];
   const originEventId = evidenceItems.find((item) => item.rawEventId)?.rawEventId;
   const originLoader = useMemo(() => async () => originEventId ? client.getEvent(originEventId) : undefined, [client, originEventId]);
-  const { data: originEvent } = useAsyncResource(originLoader, [originLoader]);
+  const { data: originEvent, error: originError } = useAsyncResource(originLoader, [originLoader]);
+  // The captured event arrives after the page; hold one neutral loading state instead of showing fallback copy that then changes.
+  const originPending = Boolean(originEventId) && !originEvent && !originError;
   const originSource = originEvent?.source ?? evidenceItems[0]?.source ?? transaction?.primarySource;
   const displayMerchantLabel = transaction?.displayMerchantLabel ?? transaction?.merchantLabel;
   const [title, setTitle] = useState('');
@@ -101,7 +108,7 @@ export default function TransactionDetailScreen() {
       return;
     }
     if (transactionKind === 'transfer' && !accountId && !fromAccountName.trim()) {
-      setSaveError('Elige o crea la cuenta de la que sale la transferencia.');
+      setSaveError('Elige o crea la cuenta de origen de la transferencia.');
       return;
     }
     if (transactionKind === 'transfer' && !destinationAccountId && !toAccountName.trim()) {
@@ -109,7 +116,7 @@ export default function TransactionDetailScreen() {
       return;
     }
     if (transactionKind === 'transfer' && (!Number.isFinite(parsedDestinationAmount) || parsedDestinationAmount <= 0)) {
-      setSaveError('Indica el monto que recibe la cuenta de destino.');
+      setSaveError('Añade el monto recibido por la cuenta de destino.');
       return;
     }
     setSaving(true);
@@ -126,7 +133,7 @@ export default function TransactionDetailScreen() {
         selectedDestinationAccountId = created.id;
       }
       if (transactionKind === 'transfer' && selectedAccountId === selectedDestinationAccountId) {
-        setSaveError('Una transferencia debe usar dos cuentas distintas.');
+        setSaveError('Una transferencia necesita dos cuentas distintas.');
         return;
       }
       await client.updateTransactionContext(transaction.id, {
@@ -142,8 +149,9 @@ export default function TransactionDetailScreen() {
       setEditorOpen(false);
       invalidateFinancialData();
       await reload();
+      toast.show('Movimiento guardado', { tone: 'positive' });
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'No se pudo guardar el movimiento.');
+      setSaveError(error instanceof Error ? error.message : 'No se pudieron guardar los datos del movimiento.');
     } finally {
       setSaving(false);
     }
@@ -155,12 +163,12 @@ export default function TransactionDetailScreen() {
     setTitleMessage(null);
     try {
       await client.updateTransactionContext(transaction.id, { title: title.trim() });
-      setTitleMessage('Título guardado.');
+      setTitleMessage('Título del movimiento guardado.');
       invalidateFinancialData();
       await reload();
       setTitleEditorOpen(false);
     } catch (error) {
-      setTitleMessage(error instanceof Error ? error.message : 'No se pudo guardar este título.');
+      setTitleMessage(error instanceof Error ? error.message : 'No se pudo guardar el título del movimiento.');
     } finally {
       setTitleSaving(false);
     }
@@ -204,22 +212,19 @@ export default function TransactionDetailScreen() {
   }
 
   const evidenceCount = transaction?.evidenceCount ?? evidenceItems.length;
-  // Long merchant names are clamped to two lines in the title; the full name moves to the subtitle.
-  const isLongTitle = (displayMerchantLabel ?? '').length > 26;
 
   return (
     <Screen
-      title={displayMerchantLabel ?? 'Transacción'}
-      titleLines={2}
+      title={displayMerchantLabel ?? (label || 'Transacción')}
       overline="Movimiento"
-      subtitle={isLongTitle ? `${displayMerchantLabel} · Movimiento de dinero con su contexto de origen.` : 'Movimiento de dinero con el contexto de origen detrás del resumen.'}
+      subtitle="Movimiento de dinero con el contexto de origen detrás del resumen."
       back
       refreshing={loading}
       onRefresh={refresh}
       actions={<GlassPressable accessibilityRole="button" accessibilityLabel="Editar título del movimiento" onPress={openTitleEditor} scaleTo={0.9} style={{ width: theme.layout.minTarget, height: theme.layout.minTarget, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.inner }}><Feather name="edit-2" size={18} color={theme.colors.textPrimary} /></GlassPressable>}
     >
       {error ? <StateView kind="error" title="No se pudo cargar el movimiento" description={error} actionLabel="Reintentar" onAction={refresh} /> : null}
-      {loading && !transaction ? <StateView kind="loading" title="Cargando" skeleton="detail" skeletonCount={2} /> : null}
+      {loading && !transaction ? <TransactionDetailSkeleton /> : null}
 
       {transaction ? (
         <>
@@ -230,21 +235,29 @@ export default function TransactionDetailScreen() {
                 <Feather name="info" size={15} color={theme.colors.textMuted} />
               </GlassPressable>
             </View>
-            <Amount value={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} size="hero" />
+            <View style={{ alignItems: 'flex-start' }}><Amount value={transaction.amount} currency={transaction.currency} tone={transaction.kind === 'income' ? 'income' : 'expense'} size="hero" /></View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <Fact label="Categoría" value={transaction.excludedFromReports ? 'Ajuste de saldo' : formatCategoryLabel(transaction.category)} />
               <Fact label="Cuenta" value={maskAccount(transaction.account, settings.dataVisibility)} />
-              <Fact label="Fecha" value={transaction.observedAt ?? 'Desconocida'} />
+              <Fact label="Fecha" value={transaction.observedAt ? formatDate(transaction.observedAt) : 'Desconocida'} />
               <Fact label="Fuentes" value={`${evidenceCount} ${evidenceCount === 1 ? 'fuente' : 'fuentes'}`} />
             </View>
+            {assumed?.length ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver tus reglas" onPress={() => router.push('/rules' as Href)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="sliders" size={13} color={theme.colors.model} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flex: 1 }]}>
+                  {`Asumido por tus reglas: ${describeAssumed(assumed)}.`}
+                </Text>
+              </Pressable>
+            ) : null}
           </GlassSurface>
 
-          <Section title="Origen" subtitle={transaction.excludedFromReports ? 'Creado manualmente para conciliar el saldo de una cuenta.' : 'El registro capturado que originó este movimiento.'}>
+          <Section title="Origen" subtitle={transaction.excludedFromReports ? 'Creado manualmente para conciliar el saldo de una cuenta.' : 'El registro capturado que creó este movimiento.'}>
             <GlassSurface level="thin" padding="md" contentStyle={{ gap: 8 }}>
               <Row
-                title={originEvent?.title ?? (transaction.excludedFromReports ? 'Ajuste manual de saldo' : formatSourceLabel(originSource))}
-                subtitle={originEvent ? `${formatSourceLabel(originEvent.source)} · ${originEvent.kind}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
-                description={originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Abre el evento original para revisar su contenido.' : transaction.excludedFromReports ? 'Este registro cambia el saldo de la cuenta pero no cuenta como ingreso ni gasto.' : 'Todavía no hay un evento capturado vinculado.'}
+                title={originPending ? 'Evento capturado' : originEvent?.title ?? (transaction.excludedFromReports ? 'Ajuste manual de saldo' : formatSourceLabel(originSource))}
+                subtitle={originPending ? 'Cargando…' : originEvent ? `${formatSourceLabel(originEvent.source)} · ${formatEventKind(originEvent.kind)}` : originSource ? `Capturada mediante ${formatSourceLabel(originSource)}` : 'La fuente todavía se está vinculando'}
+                description={originPending ? 'Abriendo el contenido original…' : originEvent?.body ? originEvent.body.slice(0, 150) : originEventId ? 'Abre el evento capturado original para ver su contenido.' : transaction.excludedFromReports ? 'Este registro cambia el saldo de la cuenta, pero no cuenta como ingreso ni gasto.' : 'Todavía no hay un evento capturado vinculado.'}
                 leading={<IconTile icon={transaction.excludedFromReports ? 'user' : 'inbox'} color={transaction.excludedFromReports ? theme.colors.user : theme.colors.captured} />}
                 trailing={originEventId ? <Tag label="Abrir" tone="info" /> : undefined}
                 onPress={originEventId ? () => router.push({ pathname: '/event/[id]', params: { id: originEventId } }) : undefined}
@@ -261,14 +274,14 @@ export default function TransactionDetailScreen() {
             </Section>
           ) : null}
 
-          <Section title="Contexto" subtitle="Categoriza este movimiento y asócialo con una cuenta de tu portafolio.">
+          <Section title="Contexto" subtitle="Categoriza este movimiento y asócialo a una cuenta de tu cartera.">
             <Button label="Editar categoría y cuenta" variant="secondary" onPress={openEditor} icon={<Feather name="edit-2" size={14} color={theme.colors.textPrimary} />} />
           </Section>
 
           <Section title="Explicación">
             <GlassSurface level="thin" padding="md" contentStyle={{ gap: 6 }}>
               <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Construido a partir de {evidenceCount} {evidenceCount === 1 ? 'fuente' : 'fuentes'}</Text>
-              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Las fuentes aparecen debajo en las vistas Balanced y Detailed.</Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Las fuentes aparecen debajo en los niveles de detalle Equilibrado y Detallado.</Text>
               {transaction.status ? <Text style={[theme.typography.mono, { color: theme.colors.textMuted }]}>Estado: {transaction.status}</Text> : null}
             </GlassSurface>
           </Section>
@@ -280,26 +293,45 @@ export default function TransactionDetailScreen() {
                   id: item.id,
                   icon: item.source.toLowerCase().includes('mail') || item.source.toLowerCase().includes('gmail') ? 'mail' : item.source.toLowerCase().includes('wallet') ? 'credit-card' : 'bell',
                   title: item.source,
-                  subtitle: item.kind,
-                  amount: item.amount ? `${item.amount} ${item.currency ?? ''}`.trim() : undefined,
-                  time: item.observedAt,
-                  reason: item.matchReason,
+                  subtitle: evidenceKindLabel(item.kind),
+                  amount: item.amount ? (item.currency && item.currency.toUpperCase() !== 'UNKNOWN' ? `${item.amount} ${item.currency}` : String(item.amount)) : undefined,
+                  time: formatDate(item.observedAt),
+                  reason: item.matchReason && !/\s/.test(item.matchReason) ? evidenceKindLabel(item.matchReason) : item.matchReason,
                   onPress: item.rawEventId ? () => router.push({ pathname: '/event/[id]', params: { id: item.rawEventId! } }) : undefined,
                 }))} />
               ) : <StateView title="Todavía no hay fuentes vinculadas" description="Esta transacción aún no está vinculada con un correo, notificación, recibo o registro de billetera capturado." />}
             </Section>
-          ) : <StateView title="Evidencia oculta" description="Cambia Fuentes de datos a Balanced o Detailed en Ajustes para inspeccionar las observaciones vinculadas." />}
+          ) : <StateView title="Evidencia oculta" description="Cambia el detalle de las fuentes a Equilibrado o Detallado en Ajustes para inspeccionar las observaciones vinculadas." />}
 
-          <Section title="¿Hay un error?" subtitle="Podés quitar este registro de Dinero o indicar que la notificación era una promoción.">
+          <Section title="¿Hay un error?" subtitle="Puedes quitar este registro de Dinero o indicar que la notificación era una promoción.">
             {!transaction.excludedFromReports ? <Button label="Marcar como promoción" variant="secondary" onPress={() => confirmRemoveTransaction('promotion')} disabled={removingTransaction} /> : null}
             <Button label="Eliminar movimiento" variant="danger" onPress={() => confirmRemoveTransaction('delete')} disabled={removingTransaction} />
           </Section>
         </>
-      ) : (
+      ) : !loading && !error ? (
+        // Not while loading (the skeleton above stands in) or after an error (it has its own message).
         <StateView title="Movimiento no disponible" description="Todavía no hay detalles de este movimiento." />
-      )}
+      ) : null}
 
-      <BottomSheet visible={editorOpen} title="Contexto del movimiento" onClose={() => setEditorOpen(false)}>
+      <BottomSheet
+        visible={editorOpen}
+        title="Contexto del movimiento"
+        onClose={() => setEditorOpen(false)}
+        footer={(
+          <View style={{ gap: 8 }}>
+            {saveError ? <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>{saveError}</Text> : null}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button label="Cancelar" onPress={() => setEditorOpen(false)} variant="secondary" disabled={saving} full /></View>
+              <View style={{ flex: 1 }}><Button label="Guardar" onPress={saveContext} loading={saving} full /></View>
+            </View>
+          </View>
+        )}
+      >
+        {assumed?.length ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.model }]}>
+            {`Tus reglas pusieron ${describeAssumed(assumed, true)}. Al guardar, esos valores quedan confirmados.`}
+          </Text>
+        ) : null}
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Tipo de movimiento</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(['expense', 'income', 'transfer'] as const).map((kind) => (
@@ -311,16 +343,16 @@ export default function TransactionDetailScreen() {
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Categoría</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {Array.from(new Set([category, ...categories[transactionKind]])).filter(Boolean).map((option) => (
-                <Chip key={option} label={option} selected={category === option} onPress={() => setCategory(option)} />
+                <Chip key={option} label={formatCategoryLabel(option)} selected={category === option} onPress={() => setCategory(option)} />
               ))}
             </View>
           </>
         )}
         <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transactionKind === 'transfer' ? 'Moneda de origen' : 'Moneda del movimiento'}</Text>
         <SegmentedControl items={[{ value: 'UYU', label: 'UYU' }, { value: 'USD', label: 'USD' }]} value={currency} onChange={(value) => { setCurrency(value as 'UYU' | 'USD'); setAccountId(null); setFromAccountName(''); }} />
-        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transactionKind === 'transfer' ? 'Cuenta de origen' : 'Cuenta del portafolio'}</Text>
+        <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{transactionKind === 'transfer' ? 'Cuenta de origen' : 'Cuenta de la cartera'}</Text>
         {accounts.filter((account) => account.currency === currency).map((account) => (
-          <Row key={account.id} title={account.name} subtitle={`${account.type} · ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Elegida' : 'Usar'}</Text>} onPress={() => { setAccountId(account.id); if (destinationAccountId === account.id) setDestinationAccountId(null); setFromAccountName(''); }} />
+          <Row key={account.id} title={account.name} subtitle={`${accountTypeLabel(account.type)} · ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: accountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{accountId === account.id ? 'Elegida' : 'Usar'}</Text>} onPress={() => { setAccountId(account.id); if (destinationAccountId === account.id) setDestinationAccountId(null); setFromAccountName(''); }} />
         ))}
         <Field label={transactionKind === 'transfer' ? 'Nueva cuenta de origen' : 'Nombre de la nueva cuenta'} value={fromAccountName} onChangeText={(value) => { setFromAccountName(value); setAccountId(null); }} placeholder="Cuenta bancaria principal" />
         <Field label={transactionKind === 'transfer' ? `Monto enviado (${currency})` : `Monto (${currency})`} accessibilityLabel="Monto de origen editado" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" variant="amount" />
@@ -330,21 +362,16 @@ export default function TransactionDetailScreen() {
             <SegmentedControl items={[{ value: 'UYU', label: 'UYU' }, { value: 'USD', label: 'USD' }]} value={destinationCurrency} onChange={(value) => { setDestinationCurrency(value as 'UYU' | 'USD'); setDestinationAccountId(null); setToAccountName(''); }} />
             <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>Cuenta de destino</Text>
             {accounts.filter((account) => account.currency === destinationCurrency && account.id !== accountId).map((account) => (
-              <Row key={`destination_${account.id}`} title={account.name} subtitle={`${account.type} / ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: destinationAccountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{destinationAccountId === account.id ? 'Elegida' : 'Usar'}</Text>} onPress={() => { setDestinationAccountId(account.id); setToAccountName(''); }} />
+              <Row key={`destination_${account.id}`} title={account.name} subtitle={`${accountTypeLabel(account.type)} / ${account.currency}`} leading={<IconTile icon="credit-card" color={account.color} />} trailing={<Text style={{ color: destinationAccountId === account.id ? theme.colors.success : theme.colors.textMuted }}>{destinationAccountId === account.id ? 'Elegida' : 'Usar'}</Text>} onPress={() => { setDestinationAccountId(account.id); setToAccountName(''); }} />
             ))}
             <Field label="Nombre de la cuenta de destino" value={toAccountName} onChangeText={(value) => { setToAccountName(value); setDestinationAccountId(null); }} placeholder="Cuenta bancaria de destino" />
             <Field label={`Monto recibido (${destinationCurrency})`} accessibilityLabel="Monto de destino editado" value={destinationAmount} onChangeText={setDestinationAmount} placeholder="0.00" keyboardType="decimal-pad" variant="amount" />
           </>
         ) : null}
-        {saveError ? <Text style={{ color: theme.colors.danger }}>{saveError}</Text> : null}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button label="Guardar" onPress={saveContext} loading={saving} />
-          <Button label="Cancelar" onPress={() => setEditorOpen(false)} variant="secondary" disabled={saving} />
-        </View>
       </BottomSheet>
 
       <BottomSheet visible={titleEditorOpen} title="Editar título del movimiento" onClose={() => !titleSaving && setTitleEditorOpen(false)}>
-        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Usa un nombre claro que reconozcas. Solo cambia este movimiento y deja intacto el registro capturado.</Text>
+        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>Use a clear name you will recognize. This changes only this transaction and keeps the original captured record unchanged.</Text>
         <Field label="Título" value={title} onChangeText={setTitle} placeholder={transaction?.merchantLabel ?? 'Título del movimiento'} autoFocus />
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button label="Guardar título" onPress={saveTitle} disabled={!title.trim() || titleSaving} loading={titleSaving} />
@@ -365,10 +392,10 @@ export default function TransactionDetailScreen() {
 function Fact({ label, value }: { label: string; value: string }) {
   const theme = useTheme();
   return (
-    <View style={{ width: '48%', flexGrow: 1, padding: 10, borderRadius: theme.radius.md, backgroundColor: theme.glass.inner, borderWidth: 1, borderColor: theme.glass.divider, gap: 2 }}>
+    <GlassSurface level="thin" padding="sm" radius="md" style={{ width: '48%', flexGrow: 1 }} contentStyle={{ gap: 2 }}>
       <Text style={[theme.typography.overline, { color: theme.colors.textMuted }]}>{label}</Text>
       <Text numberOfLines={2} style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>{value}</Text>
-    </View>
+    </GlassSurface>
   );
 }
 
@@ -381,4 +408,8 @@ function formatSourceLabel(source?: string) {
     notification: 'Notificación del dispositivo',
   };
   return labels[source.toLowerCase()] ?? source.replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function evidenceKindLabel(kind?: string) {
+  return formatEventKind(kind);
 }

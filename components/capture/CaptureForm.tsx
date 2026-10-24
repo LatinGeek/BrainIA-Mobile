@@ -226,10 +226,10 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       : voiceState === 'recording'
         ? 'Listening… release to transcribe'
         : voiceState === 'transcribing'
-          ? 'Transcribiendo tu nota de voz…'
+          ? 'Transcribing your voice note…'
           : voiceState === 'error'
-            ? 'Mantén para intentar de nuevo'
-            : 'Mantén para grabar una nota de voz';
+            ? 'Hold to try again'
+            : 'Hold to record a voice note';
 
   function changeCaptureKind(nextKind: CaptureKind) {
     if (nextKind !== 'note') {
@@ -277,7 +277,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
     } catch (error) {
       voiceSessionActiveRef.current = false;
       setVoiceState('error');
-      setVoiceError(error instanceof Error ? error.message : 'No se pudo iniciar el reconocimiento de voz.');
+      setVoiceError(error instanceof Error ? error.message : 'Unable to start voice recognition.');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   }
@@ -290,7 +290,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
     void voiceModule?.stop().catch((error) => {
       voiceSessionActiveRef.current = false;
       setVoiceState('error');
-      setVoiceError(error instanceof Error ? error.message : 'No se pudo terminar la grabación.');
+      setVoiceError(error instanceof Error ? error.message : 'Unable to finish the recording.');
     });
   }
 
@@ -298,15 +298,15 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
     const parsedSourceAmount = Number(amount.replace(',', '.'));
     const parsedDestinationAmount = Number(destinationAmount.replace(',', '.'));
     if (kind === 'wallet' && (!Number.isFinite(parsedSourceAmount) || parsedSourceAmount <= 0)) {
-      setResult({ ok: false, message: 'Ingresá un monto antes de guardar el movimiento.' });
+      setResult({ ok: false, message: 'Ingresa un monto antes de guardar el movimiento.' });
       return;
     }
     if (kind === 'wallet' && transactionType === 'transfer' && !accountId) {
-      setResult({ ok: false, message: 'Elegí la cuenta desde la que sale la transferencia.' });
+      setResult({ ok: false, message: 'Elige la cuenta desde la que sale la transferencia.' });
       return;
     }
     if (kind === 'wallet' && transactionType === 'transfer' && !destinationAccountId) {
-      setResult({ ok: false, message: 'Elegí la cuenta que recibe la transferencia.' });
+      setResult({ ok: false, message: 'Elige la cuenta que recibe la transferencia.' });
       return;
     }
     if (kind === 'wallet' && transactionType === 'transfer' && accountId === destinationAccountId) {
@@ -314,7 +314,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       return;
     }
     if (kind === 'wallet' && transactionType === 'transfer' && (!Number.isFinite(parsedDestinationAmount) || parsedDestinationAmount <= 0)) {
-      setResult({ ok: false, message: 'Ingresá el monto que recibe la cuenta de destino.' });
+      setResult({ ok: false, message: 'Ingresa el monto que recibe la cuenta de destino.' });
       return;
     }
     if (kind === 'wallet' && isPending && !isCalendarDate(estimatedExecutionDate)) {
@@ -322,7 +322,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       return;
     }
     if (kind === 'note' && !body.trim()) {
-      setResult({ ok: false, message: 'Escribí una nota antes de capturar.' });
+      setResult({ ok: false, message: 'Escribe una nota antes de capturar.' });
       return;
     }
 
@@ -379,7 +379,7 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
       onSaved?.();
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setResult({ ok: false, message: error instanceof Error ? error.message : 'No se pudo guardar ahora. Revisá tu conexión e intentá de nuevo.' });
+      setResult({ ok: false, message: error instanceof Error ? error.message : 'No se pudo guardar ahora. Revisa tu conexión e intenta de nuevo.' });
     } finally {
       setBusy(false);
     }
@@ -474,11 +474,11 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
               ) : null}
             </>
           ) : (
-            <Section title="Agregar contexto" subtitle="Categoría, comercio y notas son opcionales." collapsible defaultOpen={false}>
+            <Section title="Añadir contexto" subtitle="Categoría, comercio y notas son opcionales." collapsible defaultOpen={false}>
               <Row
                 title={category || `Elegir categoría de ${transactionType === 'income' ? 'ingreso' : 'gasto'}`}
                 subtitle="Categoría"
-                description="Podés crear una nueva sin salir de este movimiento."
+                description="Puedes crear una nueva sin salir de este movimiento."
                 leading={<IconTile icon="tag" color={theme.colors.accent} />}
                 onPress={() => setCategorySelectorOpen(true)}
               />
@@ -497,13 +497,13 @@ export const CaptureForm = forwardRef<CaptureFormHandle, {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[theme.typography.overline, { color: theme.status.income }]}>Nota rápida</Text>
                 <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Captura una idea</Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Guardá una idea, recordatorio o detalle útil antes de que se pierda.</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Guarda una idea, recordatorio o detalle útil antes de que se pierda.</Text>
               </View>
             </View>
             <Field value={body} onChangeText={setBody} placeholder="¿Qué quieres recordar?" multiline accessibilityLabel="Texto para capturar" style={{ minHeight: 168, textAlignVertical: 'top' }} />
             <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
               <View style={{ flex: 1, justifyContent: 'center' }}>
-                <Text style={[theme.typography.caption, { color: voiceBusy ? theme.colors.warning : theme.colors.textMuted }]}>{voiceBusy ? 'Procesando voz…' : 'Usá Guardar abajo, o dictá la nota con el micrófono.'}</Text>
+                <Text style={[theme.typography.caption, { color: voiceBusy ? theme.colors.warning : theme.colors.textMuted }]}>{voiceBusy ? 'Procesando voz…' : 'Usa Guardar abajo, o dictá la nota con el micrófono.'}</Text>
               </View>
               <VoiceRecordButton state={voiceState} label={voiceStatus} onPressIn={() => { void startVoiceNote(); }} onPressOut={stopVoiceNote} />
             </View>

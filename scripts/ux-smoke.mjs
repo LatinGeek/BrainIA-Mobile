@@ -67,7 +67,7 @@ async function checkPreviewStates(page) {
   console.log('EMPTY_REVIEW_OK');
 
   await page.goto(`${baseUrl}/review?ux=loading`, { waitUntil: 'commit', timeout: 120000 });
-  await page.getByLabel('card loading state').first().waitFor({ timeout: 120000 });
+  await page.getByLabel('Cargando').first().waitFor({ timeout: 120000 });
   console.log('LOADING_REVIEW_OK');
 
   await page.goto(`${baseUrl}/financials?ux=edge`, { waitUntil: 'commit', timeout: 120000 });

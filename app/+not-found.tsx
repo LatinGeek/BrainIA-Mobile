@@ -1,28 +1,14 @@
-import { Link, Stack } from 'expo-router';
-import { View, Text } from 'react-native';
-
-import { useTheme } from '@/lib/app-state';
+import { router, Stack } from 'expo-router';
+import { Screen } from '@/components/layout/Screen';
+import { StateView } from '@/components/data/StateView';
 
 export default function NotFoundScreen() {
-  const theme = useTheme();
-
   return (
     <>
-      <Stack.Screen options={{ title: 'No encontrado' }} />
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 24,
-          backgroundColor: theme.colors.background,
-        }}
-      >
-        <Text style={[theme.typography.headline, { color: theme.colors.textPrimary }]}>Esta pantalla no existe.</Text>
-        <Link href="/" style={{ marginTop: 16 }}>
-          <Text style={[theme.typography.body, { color: theme.colors.accentStrong }]}>Volver al inicio</Text>
-        </Link>
-      </View>
+      <Stack.Screen options={{ title: 'No encontrada' }} />
+      <Screen title="Pantalla no encontrada" back backLabel="Volver" stagger={false}>
+        <StateView icon="compass" title="Esta pantalla no existe" description="El enlace puede estar desactualizado." actionLabel="Volver al inicio" onAction={() => router.replace('/')} />
+      </Screen>
     </>
   );
 }

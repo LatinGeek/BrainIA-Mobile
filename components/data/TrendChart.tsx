@@ -5,6 +5,7 @@ import Animated, { Easing, FadeInUp, useAnimatedProps, useSharedValue, withTimin
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { useTheme } from '@/lib/app-state';
 import { cleanDisplayText } from '@/lib/format';
+import { useReduceMotion } from '@/lib/hooks';
 
 export type TrendSeries = {
   label: string;
@@ -36,6 +37,7 @@ export function TrendChart({
   height?: number;
 }) {
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   const [width, setWidth] = useState(0);
   const [internalIndex, setInternalIndex] = useState<number | null>(null);
   const activeIndex = selectedIndex ?? internalIndex ?? Math.max(0, labels.length - 1);
@@ -46,12 +48,12 @@ export function TrendChart({
   const plotHeight = Math.max(0, height - padding.top - padding.bottom);
   const x = (index: number) => padding.left + (index / Math.max(1, labels.length - 1)) * plotWidth;
   const y = (value: number) => padding.top + (1 - Math.abs(value) / maximum) * plotHeight;
-  const draw = useSharedValue(0);
+  const draw = useSharedValue(reduceMotion ? 1 : 0);
 
   useEffect(() => {
-    draw.value = 0;
-    draw.value = withTiming(1, { duration: theme.motion.duration.count, easing: Easing.out(Easing.cubic) });
-  }, [draw, mode, theme.motion.duration.count]);
+    draw.value = reduceMotion ? 1 : 0;
+    if (!reduceMotion) draw.value = withTiming(1, { duration: theme.motion.duration.count, easing: Easing.bezier(...theme.motion.easing.out) });
+  }, [reduceMotion, theme.motion.easing.out, draw, mode, theme.motion.duration.count]);
 
   const totalLength = Math.max(1, plotWidth * 1.6);
   const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
@@ -109,7 +111,7 @@ export function TrendChart({
                   {series.map((item, seriesIndex) => (
                     <Animated.View
                       key={item.label}
-                      entering={FadeInUp.delay(Math.min(index, 9) * theme.motion.stagger).duration(theme.motion.duration.enter)}
+                      entering={reduceMotion ? undefined : FadeInUp.delay(Math.min(index, theme.motion.staggerMax) * theme.motion.stagger).duration(theme.motion.duration.enter)}
                       style={{
                         width: series.length > 1 ? '38%' : '58%',
                         maxWidth: 18,

@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { Button, Chip, ChipGroup, Field, Tag } from '@/components/controls';
-import { IconTile, Row, TransactionRow } from '@/components/data/Row';
+import { IconTile, Row, TransactionRow, transactionRoute } from '@/components/data/Row';
 import { Graph } from '@/components/data/Graph';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { Screen, Section } from '@/components/layout/Screen';
+import { SearchClustersSkeleton, SearchMapSkeleton, SearchRecentSkeleton, SearchTopMatchSkeleton } from '@/components/skeletons/SearchSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { loadSearchBundle } from '@/lib/api';
 import { DigestSummary, ExploreGraph, InsightSummary, TransactionSummary } from '@/lib/domain';
@@ -70,7 +71,7 @@ export default function SearchScreen() {
   const recentPrompts = useMemo(() => {
     const values = [
       'Spotify',
-      'supermercado',
+      'compras',
       'la semana pasada',
       'recibos',
       ...(recentData?.insights.map((item) => item.title) ?? []),
@@ -92,7 +93,7 @@ export default function SearchScreen() {
       const relations = neighborhood.relations
         .filter((relation) => relation.sourceEntityId && relation.targetEntityId)
         .map((relation) => ({ id: relation.id, sourceEntityId: relation.sourceEntityId!, targetEntityId: relation.targetEntityId!, relationType: relation.relationType ?? 'related_to', label: relation.label, description: relation.description, confidence: 1, importanceScore: relation.importanceScore ?? 1 }));
-      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `Red de ${nodes[0]?.name ?? 'selección'}`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
+      setExpandedGraph({ communities: [{ id: focusedEntityId, label: `Red de ${nodes[0]?.name ?? 'la selección'}`, nodeCount: nodes.length, leaderEntityId: focusedEntityId }], nodes, relations, stats: { nodesCount: nodes.length, relationsCount: relations.length, truncated: false } });
     }).catch(() => setExpandedGraph(undefined));
     return () => { cancelled = true; };
   }, [client, focusedEntityId, graph?.nodes]);
@@ -113,9 +114,8 @@ export default function SearchScreen() {
   return (
     <Screen
       title="Descubrir"
-      overline={`${entities?.length ?? 0} nodos`}
+      overline={displayGraph || entities ? `${displayGraph?.stats.nodesCount ?? entities?.length ?? 0} nodos` : 'Mapa de conocimiento'}
       subtitle="Explora conexiones o busca una persona, comercio, tema o actividad."
-      contentContainerStyle={{ gap: 14 }}
       refreshing={activeRefreshing}
       onRefresh={activeRefresh}
       actions={<Tag label={loading ? 'Buscando' : hasQuery ? `${results.length} resultados` : 'Mapa en vivo'} tone={loading ? 'warning' : 'neutral'} live={!loading} />}
@@ -125,7 +125,7 @@ export default function SearchScreen() {
           variant="search"
           value={query}
           onChangeText={setQuery}
-          placeholder="Spotify, compras, un contacto…"
+          placeholder="Spotify, compras, un contacto, un tema…"
           accessibilityLabel="Busca en tu mapa de conocimiento"
           leading={<Feather name="search" size={16} color={theme.colors.textMuted} />}
           autoCapitalize="none"
@@ -139,9 +139,9 @@ export default function SearchScreen() {
         {hasQuery ? (
           <ChipGroup items={sourceFilters} selected={sourceFilter} onChange={(value) => setSourceFilter(value as typeof sourceFilter)} />
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {recentPrompts.map((item) => <Chip key={item} label={item} onPress={() => setQuery(item)} />)}
-          </View>
+          </ScrollView>
         )}
       </View>
 
@@ -149,15 +149,18 @@ export default function SearchScreen() {
 
       {!hasQuery ? (
         <>
-          <Section title="Mapa de conocimiento" subtitle="Explora las conexiones entre tus actividades.">
+          <GlassSurface level="thin" padding="none">
+            <Row title="Conocimiento" subtitle="Pregunta, descubre y conserva lo que importa" leading={<IconTile icon="zap" />} onPress={() => router.push('/intelligence')} />
+          </GlassSurface>
+          <Section title="Tus conexiones" subtitle="Cómo se relacionan tus actividades, comercios y personas.">
             {entitiesError || graphError ? <StateView kind="error" title="Mapa no disponible" description={entitiesError ?? graphError ?? 'No se pudo cargar el mapa.'} actionLabel="Reintentar" onAction={() => { void refreshEntities(); void refreshGraph(); }} /> : null}
-            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <StateView kind="loading" title="Cargando" skeleton="chart" skeletonCount={2} /> : null}
+            {(entitiesLoading && !entities) || (graphLoading && !graph) ? <SearchMapSkeleton /> : null}
             {displayGraph?.nodes.length ? (
               <GlassSurface level="regular" tone="accent" padding="md" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa de conocimiento interactivo</Text>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca un nodo para enfocarlo; abre el elemento para ver todo lo que BrainIA sabe.</Text>
+                    <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>Mapa interactivo</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Toca un nodo para enfocarlo; abre el elemento para ver todo lo que BrainIA sabe de él.</Text>
                   </View>
                   <Tag label={`${displayGraph.stats.nodesCount} nodos`} tone="info" />
                 </View>
@@ -167,7 +170,7 @@ export default function SearchScreen() {
                 </View>
                 {!showEvidenceNodes && !showIdentityNodes && taxonomyStack.length ? (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    <Chip label="Todos los dominios" onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
+                    <Chip label="Todas las áreas" onPress={() => { setTaxonomyStack([]); setFocusedEntityId(undefined); }} />
                     {taxonomyStack.map((item, index) => <Chip key={item.key} label={item.label} selected={index === taxonomyStack.length - 1} onPress={() => { setTaxonomyStack((current) => current.slice(0, index + 1)); setFocusedEntityId(undefined); }} />)}
                   </View>
                 ) : null}
@@ -192,7 +195,7 @@ export default function SearchScreen() {
 
           <Section title="Actividad reciente" subtitle="Retoma donde lo dejaste.">
             {recentError ? <StateView kind="error" title="Actividad reciente no disponible" description={recentError} actionLabel="Reintentar" onAction={refreshRecent} /> : null}
-            {recentLoading && !recentData ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={3} /> : null}
+            {recentLoading && !recentData ? <SearchRecentSkeleton /> : null}
             {!recentLoading && recentData ? (
               <View style={{ gap: 10 }}>
                 {recentData.insights.slice(0, 2).map((insight: InsightSummary) => (
@@ -202,7 +205,7 @@ export default function SearchScreen() {
                   <SignalCard key={digest.id} variant="brief" origin="model" meta={digest.windowLabel} title={digest.title} summary={digest.summary} onPress={() => router.push(`/digest/${digest.id}`)} />
                 ))}
                 {recentData.transactions.slice(0, 3).map((transaction: TransactionSummary) => (
-                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(`/transaction/${transaction.id}`)} />
+                  <TransactionRow key={transaction.id} transaction={transaction} onPress={() => router.push(transactionRoute(transaction))} />
                 ))}
               </View>
             ) : null}
@@ -213,7 +216,7 @@ export default function SearchScreen() {
       {hasQuery ? (
         <>
           <Section title="Mejor coincidencia" subtitle={topMatch?.hint ?? topMatch?.description ?? 'Mejor resultado para esta búsqueda.'}>
-            {loading ? <StateView kind="loading" title="Cargando" skeleton="card" skeletonCount={1} /> : null}
+            {loading ? <SearchTopMatchSkeleton /> : null}
             {!loading && topMatch ? (
               <GlassSurface level="regular" tone="accent" padding="lg" contentStyle={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -223,7 +226,7 @@ export default function SearchScreen() {
                   </View>
                   <Tag label={resultTypeLabel(topMatch.type)} tone="info" />
                 </View>
-                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{topMatch.hint ?? `Coincide con contenido de ${topMatch.subtitle ?? topMatch.type}.`}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textMuted }]}>{topMatch.hint ?? `Coincide con contenido de tipo ${topMatch.subtitle ?? topMatch.type}.`}</Text>
                 <Button label="Abrir resultado" variant="secondary" onPress={() => { recordInteraction('explore', 'search', 'success'); router.push(topMatch.route as never); }} />
               </GlassSurface>
             ) : null}
@@ -231,6 +234,7 @@ export default function SearchScreen() {
           </Section>
 
           <Section title="Resultados agrupados" subtitle="Grupos fáciles de revisar con acciones directas." count={results.length}>
+            {loading && !data ? <SearchClustersSkeleton /> : null}
             {clusters.map((cluster) => (
               <GlassSurface key={cluster.id} level="thin" padding="md" contentStyle={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
