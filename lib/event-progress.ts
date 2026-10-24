@@ -58,11 +58,17 @@ export function progressHeadline(progress: EventProgress, inferredKind?: string)
     if (!entries.some((entry) => entry.status === 'completed')) return 'No hay nada que procesar para esta actividad.';
     return recorded ? `${recorded}; procesamiento completo.` : 'Procesamiento completo.';
   }
-  const phrase = `${stageLabel[lead.key].toLowerCase()} ${phraseByStatus[lead.status]}`;
+  const phrase = `${stageLabel[lead.key].toLowerCase()} ${lead.status === 'recoverable_failure' && !retryScheduled(lead) ? 'sin resolver; puedes reintentar' : phraseByStatus[lead.status]}`;
   return recorded && lead.key !== 'financialProjection' ? `${recorded}; ${phrase}.` : `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}.`;
 }
 
-export function stageDetail(stage: EventProgress['stages'][ProgressStageKey]): string {
+type Stage = EventProgress['stages'][ProgressStageKey];
+
+/** A recoverable failure only promises an automatic retry while a retry is actually scheduled. */
+const retryScheduled = (stage: Stage) => stage.job?.status === 'retry_scheduled';
+
+export function stageDetail(stage: Stage): string {
+  if (stage.status === 'recoverable_failure' && !retryScheduled(stage)) return 'No se pudo resolver · puedes reintentar';
   const base = statusLabel[stage.status];
   const job = stage.job;
   if ((stage.status === 'recoverable_failure' || stage.status === 'terminal_failure') && job && job.maxAttempts > 0) {
