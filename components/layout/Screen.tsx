@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect, useIsFocused } from 'expo-router';
-import { Children, Fragment, ReactNode, createContext, cloneElement, isValidElement, useCallback, useContext, useEffect, useId, useMemo, useState } from 'react';
+import { Children, Fragment, ReactNode, createContext, cloneElement, isValidElement, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -164,6 +164,17 @@ export function Screen({
   const scrollY = useSharedValue(0);
   const [settledKey, setSettledKey] = useState(0);
   const glassScroll = useMemo(() => ({ y: scrollY, x: null, settled: settledKey }), [scrollY, settledKey]);
+  // Content that changes height after the cards below it were measured (a panel that loads, a section that
+  // appears) moves those cards without a layout event of their own. Re-measuring on a content-size change keeps
+  // each card's backdrop in step; the debounce coalesces a burst of changes into one pass.
+  const remeasureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleContentSizeChange = useCallback(() => {
+    if (remeasureTimer.current) clearTimeout(remeasureTimer.current);
+    remeasureTimer.current = setTimeout(() => setSettledKey((key) => key + 1), 80);
+  }, []);
+  useEffect(() => () => {
+    if (remeasureTimer.current) clearTimeout(remeasureTimer.current);
+  }, []);
   const [compactVisible, setCompactVisible] = useState(false);
   // A pinned action bar sits above the dock; toasts must clear it too.
   const [barHeight, setBarHeight] = useState(0);
@@ -258,6 +269,7 @@ export function Screen({
               <Animated.ScrollView
                 style={[styles.flex, contentStyle]}
                 onScroll={handleScroll}
+                onContentSizeChange={handleContentSizeChange}
                 scrollEventThrottle={16}
                 contentContainerStyle={[
                   {
@@ -283,7 +295,7 @@ export function Screen({
             ) : (
               <View style={[styles.flex, { paddingTop: contentPaddingTop, paddingBottom: bottomPadding, paddingHorizontal: gutter, width: '100%', maxWidth: 1440, alignSelf: 'center' }]}>
                 {staggeredHeader}
-                <Animated.ScrollView onScroll={handleScroll} scrollEventThrottle={16} contentContainerStyle={{ gap: 22, paddingTop: 18 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Animated.ScrollView onScroll={handleScroll} onContentSizeChange={handleContentSizeChange} scrollEventThrottle={16} contentContainerStyle={{ gap: 22, paddingTop: 18 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   {staggeredChildren}
                 </Animated.ScrollView>
               </View>

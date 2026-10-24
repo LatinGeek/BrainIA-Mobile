@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
 import { Button, Tag } from '@/components/controls';
+import { ProcessingProgress } from '@/components/data/ProcessingProgress';
 import { Row } from '@/components/data/Row';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
@@ -14,7 +15,6 @@ import { EventDetailSkeleton } from '@/components/skeletons/EventDetailSkeleton'
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatDate } from '@/lib/format';
-import { PROGRESS_STAGE_ORDER, progressHeadline, stageDetail, stageLabel } from '@/lib/event-progress';
 import { CorrectionPanel } from '@/components/intelligence/CorrectionPanel';
 
 export default function EventDetailScreen() {
@@ -88,12 +88,7 @@ export default function EventDetailScreen() {
 
           {event.progress ? (
             <Section title="Procesamiento">
-              <GlassSurface level="thin" padding="none">
-                <Text accessibilityRole="header" style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, padding: theme.spacing.md, paddingBottom: theme.spacing.xs }]}>{progressHeadline(event.progress, event.inferredKind)}</Text>
-                {PROGRESS_STAGE_ORDER.map((key, index) => (
-                  <Row key={key} title={stageLabel[key]} subtitle={stageDetail(event.progress!.stages[key])} accessory="none" style={index === PROGRESS_STAGE_ORDER.length - 1 ? { borderBottomWidth: 0 } : undefined} />
-                ))}
-              </GlassSurface>
+              <ProcessingProgress progress={event.progress} inferredKind={event.inferredKind} />
             </Section>
           ) : null}
 

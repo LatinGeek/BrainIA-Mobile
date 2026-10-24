@@ -10,6 +10,14 @@ export const stageLabel: Record<ProgressStageKey, string> = {
   searchIndexing: 'Búsqueda',
 };
 
+/** Four equal columns under the progress bar: short enough to fit a phone width. */
+export const stageShortLabel: Record<ProgressStageKey, string> = {
+  classification: 'Clasificación',
+  semanticInterpretation: 'Interpretación',
+  financialProjection: 'Registro',
+  searchIndexing: 'Búsqueda',
+};
+
 export const statusLabel: Record<ProgressStatus, string> = {
   pending: 'Pendiente',
   running: 'En curso',
