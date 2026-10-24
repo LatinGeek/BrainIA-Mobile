@@ -853,8 +853,9 @@ function normalizeEvent(input: unknown, index: number): EventSummary {
     title: asString(event.displayTitle, rawTitle),
     rawTitle,
     description: asString(event.displayDescription) || undefined,
-    body: asString(event.body) || undefined,
-    receivedAt: asString(event.rawEventCreatedAt, asString(event.timestamp)) || undefined,
+    // List entries from the paginated history carry `bodyPreview`/`ingestedAt`; detail and legacy records carry `body`/`rawEventCreatedAt`.
+    body: asString(event.body, asString(event.bodyPreview)) || undefined,
+    receivedAt: asString(event.rawEventCreatedAt, asString(event.ingestedAt, asString(event.timestamp))) || undefined,
     inferredKind: asString(event.inferredKind) || undefined,
     confidence: asNumber(event.confidence, 0) || undefined,
     interpretationStatus: asString(event.interpretationStatus) || undefined,
@@ -1020,7 +1021,10 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
       }
     },
     async listEvents(limit = 50) {
-      const json = await requestWithFallback(baseUrl, '/api/v1/events', [], { headers });
+      // Paginated history (summaries, newest ingested first). Older backends ignore the
+      // query and return the legacy full array, which the code below also accepts.
+      const pageSize = Math.max(1, Math.min(limit, 100));
+      const json = await requestWithFallback(baseUrl, `/api/v1/events?limit=${pageSize}&order=desc&dateField=ingestedAt`, [], { headers });
       const events = asArray<unknown>(isRecord(json) ? json.events ?? json.items ?? json : json)
         .map(normalizeEvent)
         .filter((event) => event.id);
