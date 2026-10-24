@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
 import { AppStateProvider, useAppState } from '@/lib/app-state';
+import { BlurTargetProvider } from '@/lib/blur-target';
 import { Telemetry } from '@/components/Telemetry';
 import { ToastProvider } from '@/components/layout/Toast';
 import { useReduceMotion } from '@/lib/hooks';
@@ -149,9 +150,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppStateProvider>
-        <ToastProvider>
-          <RootNavigator />
-        </ToastProvider>
+        <BlurTargetProvider>
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
+        </BlurTargetProvider>
       </AppStateProvider>
     </GestureHandlerRootView>
   );

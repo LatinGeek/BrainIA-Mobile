@@ -19,7 +19,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Tag } from '@/components/controls';
 import { StateView } from '@/components/data/StateView';
+import { BlurTargetView } from 'expo-blur';
 import { AmbientBackground } from '@/components/glass/AmbientBackground';
+import { useBlurTarget } from '@/lib/blur-target';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { DecisionCard } from '@/components/review/DecisionCard';
@@ -55,6 +57,12 @@ export default function ReviewSessionScreen() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [startingAt] = useState(() => Date.now());
   const pending = useRef(new Map<string, PendingEntry>());
+  const ambientRef = useRef<View | null>(null);
+  const blurTargets = useBlurTarget();
+
+  useEffect(() => {
+    if (ambientRef.current) blurTargets?.setCardTarget(ambientRef.current);
+  }, [blurTargets]);
   const x = useSharedValue(0);
   const y = useSharedValue(0);
 
@@ -309,7 +317,9 @@ export default function ReviewSessionScreen() {
   if (finished) {
     return (
       <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-        <AmbientBackground />
+        <BlurTargetView ref={ambientRef} style={StyleSheet.absoluteFill}>
+          <AmbientBackground />
+        </BlurTargetView>
         <View style={[styles.summaryWrap, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 }]}>
           <StateView
             kind="success"
@@ -335,7 +345,9 @@ export default function ReviewSessionScreen() {
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <AmbientBackground />
+      <BlurTargetView ref={ambientRef} style={StyleSheet.absoluteFill}>
+        <AmbientBackground />
+      </BlurTargetView>
       <View style={{ flex: 1, paddingTop: insets.top ? 6 : 0 }}>
         <View style={styles.header}>
           <GlassPressable accessibilityRole="button" accessibilityLabel={`Cerrar revisión, ${Math.max(0, decisions.length - index)} restantes`} onPress={() => { void close(); }} hitSlop={10} scaleTo={0.9} style={styles.iconButton}>

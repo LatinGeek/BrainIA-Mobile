@@ -37,7 +37,7 @@ export function AmbientBackground({ animated = false }: { animated?: boolean }) 
   }));
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.ambient.base }]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden', backgroundColor: theme.ambient.base }]}>
       {field ? <Image source={{ uri: field }} resizeMode="stretch" fadeDuration={0} style={StyleSheet.absoluteFill} /> : null}
       <Animated.View
         pointerEvents="none"

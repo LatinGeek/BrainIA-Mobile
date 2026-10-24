@@ -68,3 +68,17 @@ review surface.
 - Some migrated labels remain English where the glass prototype used English.
   The pre-existing Spanish copy is preserved in the flows covered by smoke tests.
 - No PR was opened; the branch is local and unpushed.
+
+## Native follow-up (device)
+
+- expo-blur 55+ requires a `BlurTargetView` on Android; the earlier
+  `experimentalBlurMethod` without `blurTarget` fell back to a plain translucent
+  view. Screens now expose separate ambient (cards) and content (chrome) targets,
+  so cards blur the backdrop without blurring themselves. Verified on the
+  connected Android device: the compact header and settings card show real
+  frosted blur.
+- `formatCurrency` now rejects empty or malformed currency codes instead of
+  letting Hermes throw `Malformed currency code` during render.
+- Enabling blur on cards increases the number of live BlurViews on long lists.
+  Nested surfaces are still skipped; watch performance on lower-end Android
+  devices if lists grow.
