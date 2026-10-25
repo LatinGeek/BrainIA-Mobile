@@ -872,16 +872,18 @@ function normalizeEntityLinks(input: unknown): EntityLink[] {
 
 function normalizeEvent(input: unknown, index: number): EventSummary {
   const event = (isRecord(input) ? input : {}) as Record<string, any>;
+  const protectedContent = event.privacyStatus === 'private' || event.privacyStatus === 'hidden';
   const rawTitle = asString(event.title, 'Evento sin título');
   return {
     id: asString(event.id, `event_${index + 1}`),
     source: asString(event.source, 'unknown'),
+    privacyStatus: asString(event.privacyStatus) || undefined,
     kind: asString(event.kind, asString(event.inferredKind, 'event')),
-    title: asString(event.displayTitle, rawTitle),
-    rawTitle,
-    description: asString(event.displayDescription) || undefined,
+    title: protectedContent ? 'Actividad protegida' : asString(event.displayTitle, rawTitle),
+    rawTitle: protectedContent ? undefined : rawTitle,
+    description: protectedContent ? undefined : asString(event.displayDescription) || undefined,
     // List entries from the paginated history carry `bodyPreview`/`ingestedAt`; detail and legacy records carry `body`/`rawEventCreatedAt`.
-    body: asString(event.body, asString(event.bodyPreview)) || undefined,
+    body: protectedContent ? undefined : asString(event.body, asString(event.bodyPreview)) || undefined,
     receivedAt: asString(event.rawEventCreatedAt, asString(event.ingestedAt, asString(event.timestamp))) || undefined,
     inferredKind: asString(event.inferredKind) || undefined,
     confidence: asNumber(event.confidence, 0) || undefined,
@@ -889,9 +891,9 @@ function normalizeEvent(input: unknown, index: number): EventSummary {
     interpretationSource: asString(event.interpretationSource) || undefined,
     interpretationFailureReason: asString(event.interpretationFailureReason) || undefined,
     taxonomyVersion: asString(event.taxonomyVersion) || undefined,
-    primaryCategoryKey: asString(event.primaryCategoryKey) || undefined,
+    primaryCategoryKey: protectedContent ? undefined : asString(event.primaryCategoryKey) || undefined,
     secondaryCategoryKeys: asArray<string>(event.secondaryCategoryKeys),
-    facets: asArray<unknown>(event.facets).map((item) => {
+    facets: asArray<unknown>(protectedContent ? [] : event.facets).map((item) => {
       const facet = (isRecord(item) ? item : {}) as Record<string, any>;
       return { type: asString(facet.type), value: asString(facet.value), confidence: asNumber(facet.confidence, 0) };
     }).filter((facet) => facet.type && facet.value),

@@ -167,6 +167,7 @@ export type EventProgress = {
 };
 
 export type EventSummary = {
+  privacyStatus?: string;
   id: string;
   source: string;
   kind: string;

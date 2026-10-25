@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Text } from 'react-native';
 import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
-import { Button, Tag } from '@/components/controls';
+import { Button } from '@/components/controls';
 import { ProcessingProgress } from '@/components/data/ProcessingProgress';
 import { ReprocessJobCard } from '@/components/data/ReprocessJobCard';
 import { Row } from '@/components/data/Row';
@@ -15,7 +15,7 @@ import { Screen, Section } from '@/components/layout/Screen';
 import { EventDetailSkeleton } from '@/components/skeletons/EventDetailSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
-import { formatDate } from '@/lib/format';
+import { EventExplanation } from '@/components/intelligence/EventExplanation';
 import { CorrectionPanel } from '@/components/intelligence/CorrectionPanel';
 import { ReprocessSheet } from '@/components/intelligence/ReprocessSheet';
 import {
@@ -34,12 +34,15 @@ export default function EventDetailScreen() {
   const [reprocessSession, setReprocessSession] = useState(0);
   const [activeJob, setActiveJob] = useState<ReprocessJob | null>(null);
   const loader = useMemo(() => () => client.getEvent(id), [client, id]);
-  const { data: event, loading, error, refresh } = useAsyncResource(loader, [loader]);
+  const { data: event, loading, error, refresh: refreshEvent } = useAsyncResource(loader, [loader]);
+  const [explanationRevision, setExplanationRevision] = useState(0);
+  const refresh = useCallback(() => {
+    refreshEvent();
+    setExplanationRevision(value => value + 1);
+  }, [refreshEvent]);
+  const protectedContent = event?.privacyStatus === 'private' || event?.privacyStatus === 'hidden';
   const activeJobId = activeJob?.id;
   const eventId = event?.id;
-  const transactionsLoader = useMemo(() => () => client.listTransactions(100), [client]);
-  const { data: transactions, loading: transactionsLoading, error: transactionsError, refresh: refreshTransactions } = useAsyncResource(transactionsLoader, [transactionsLoader]);
-  const linkedTransaction = transactions?.find((transaction) => transaction.eventIds?.includes(id));
   const categoryLabel = event?.primaryCategoryKey ? categoryDisplayLabel(event.primaryCategoryKey) : undefined;
 
   useEffect(() => {
@@ -152,7 +155,9 @@ export default function EventDetailScreen() {
       {event ? (
         <>
           <Section title="Interpretación">
-            {event.description ? (
+            {protectedContent ? (
+              <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>El contenido está protegido por la configuración de privacidad.</Text>
+            ) : event.description ? (
               <SignalCard variant="block" origin={event.interpretationSource === 'user' ? 'user' : 'model'} title={event.interpretationSource === 'user' ? 'Corregido por ti' : 'Interpretado por Brain IA'} summary={event.description} confidence={event.confidence} />
             ) : (
               <GlassSurface level="thin" tone="review" padding="md" contentStyle={{ gap: theme.spacing.xs }}>
@@ -163,9 +168,9 @@ export default function EventDetailScreen() {
             )}
             <GlassSurface level="thin" padding="none">
               <Row title={formatSourceLabel(event.source)} subtitle="Fuente original" accessory="none" />
-              {event.receivedAt ? <Row title={formatDate(event.receivedAt)} subtitle="Recibido" accessory="none" /> : null}
+
               <Row title={kindLabel(event.kind)} subtitle="Tipo original" accessory="none" />
-              <Row title={kindLabel(event.inferredKind ?? event.kind)} subtitle="Interpretado como" accessory="none" style={!categoryLabel ? { borderBottomWidth: 0 } : undefined} />
+              <Row title={event.inferredKind ? kindLabel(event.inferredKind) : 'No disponible'} subtitle="Clasificación vigente" accessory="none" style={!categoryLabel ? { borderBottomWidth: 0 } : undefined} />
               {categoryLabel ? <Row title={categoryLabel} subtitle="Categoría" description={event.taxonomyVersion ? `Taxonomía ${event.taxonomyVersion}` : undefined} accessory="none" style={{ borderBottomWidth: 0 }} /> : null}
             </GlassSurface>
             {event.facets?.length ? (
@@ -174,9 +179,9 @@ export default function EventDetailScreen() {
                 <Text selectable style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{event.facets.map((facet) => `${facetLabel(facet.type)}: ${facet.value}`).join(' · ')}</Text>
               </GlassSurface>
             ) : null}
-            <Animated.View entering={FadeIn.duration(theme.motion.duration.quick)} layout={LinearTransition.duration(theme.motion.duration.quick).reduceMotion(ReduceMotion.System)}>
+            {!protectedContent ? <Animated.View entering={FadeIn.duration(theme.motion.duration.quick)} layout={LinearTransition.duration(theme.motion.duration.quick).reduceMotion(ReduceMotion.System)}>
               <CorrectionPanel eventId={id} onSaved={refresh} />
-            </Animated.View>
+            </Animated.View> : null}
           </Section>
 
           {event.progress || activeJob ? (
@@ -186,22 +191,10 @@ export default function EventDetailScreen() {
             </Section>
           ) : null}
 
-          <Section title="Contenido original">
-            <GlassSurface level="thin" padding="md" contentStyle={{ gap: theme.spacing.sm }}>
-              <Tag label="Capturado" tone="neutral" kind="provenance" icon="inbox" />
-              {event.rawTitle ? <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{event.rawTitle}</Text> : null}
-              <Text selectable style={[theme.typography.body, { color: theme.colors.textSecondary }]}>{event.body ?? 'Esta actividad no tiene contenido original disponible.'}</Text>
-            </GlassSurface>
-          </Section>
+          <EventExplanation key={`${event.id}:${explanationRevision}`} eventId={event.id} fallbackEvent={event} />
 
           <Section title="Acciones" subtitle="Elige el próximo paso según el tipo de actividad.">
-            {event.inferredKind === 'expense' || event.inferredKind === 'income' ? (
-              transactionsLoading ? <Button label="Buscando movimiento…" loading variant="secondary" onPress={refreshTransactions} disabled />
-                : transactionsError ? <StateView kind="error" title="No se pudo buscar el movimiento" description={friendlyError(transactionsError)} actionLabel="Reintentar" onAction={refreshTransactions} />
-                : linkedTransaction ? <Button label="Abrir movimiento vinculado" onPress={() => router.push({ pathname: '/transaction/[id]', params: { id: linkedTransaction.id } })} />
-                : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Todavía no hay un movimiento vinculado.</Text>
-            ) : null}
-            {event.kind === 'email' ? <Button label="Ver correo" variant="secondary" onPress={() => router.push({ pathname: '/email/[id]' as never, params: { id: event.id } })} /> : null}
+            {!protectedContent && event.kind === 'email' ? <Button label="Ver correo" variant="secondary" onPress={() => router.push({ pathname: '/email/[id]' as never, params: { id: event.id } })} /> : null}
             <Button label={activeJob ? 'Reprocesamiento en curso' : 'Volver a interpretar'} onPress={openReprocess} disabled={Boolean(activeJob)} variant="secondary" />
           </Section>
 
