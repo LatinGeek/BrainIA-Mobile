@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Text } from 'react-native';
 import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
 import { Button, Tag } from '@/components/controls';
 import { ProcessingProgress } from '@/components/data/ProcessingProgress';
+import { ReprocessJobCard } from '@/components/data/ReprocessJobCard';
 import { Row } from '@/components/data/Row';
 import { SignalCard } from '@/components/data/SignalCard';
 import { StateView } from '@/components/data/StateView';
@@ -16,38 +17,130 @@ import { useBrainIAClient, useTheme } from '@/lib/app-state';
 import { useAsyncResource } from '@/lib/hooks';
 import { formatDate } from '@/lib/format';
 import { CorrectionPanel } from '@/components/intelligence/CorrectionPanel';
+import { ReprocessSheet } from '@/components/intelligence/ReprocessSheet';
+import {
+  isActiveReprocessJob,
+  type ReprocessJob,
+  type ReprocessStage,
+} from '@/lib/reprocess';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const client = useBrainIAClient();
   const theme = useTheme();
   const toast = useToast();
-  const [reprocessing, setReprocessing] = useState(false);
+  const showToast = toast.show;
+  const [reprocessOpen, setReprocessOpen] = useState(false);
+  const [reprocessSession, setReprocessSession] = useState(0);
+  const [activeJob, setActiveJob] = useState<ReprocessJob | null>(null);
   const loader = useMemo(() => () => client.getEvent(id), [client, id]);
   const { data: event, loading, error, refresh } = useAsyncResource(loader, [loader]);
+  const activeJobId = activeJob?.id;
+  const eventId = event?.id;
   const transactionsLoader = useMemo(() => () => client.listTransactions(100), [client]);
   const { data: transactions, loading: transactionsLoading, error: transactionsError, refresh: refreshTransactions } = useAsyncResource(transactionsLoader, [transactionsLoader]);
   const linkedTransaction = transactions?.find((transaction) => transaction.eventIds?.includes(id));
   const categoryLabel = event?.primaryCategoryKey ? categoryDisplayLabel(event.primaryCategoryKey) : undefined;
 
-  function reprocessMessage(cause: unknown) {
-    const message = cause instanceof Error ? cause.message : '';
-    if (/unexpected token|json/i.test(message)) return 'No pudimos leer algunos datos técnicos de esta notificación. Conservamos el original y puedes intentarlo nuevamente.';
-    return 'No se pudo volver a interpretar esta actividad. Revisa tu conexión e intenta nuevamente.';
+  useEffect(() => {
+    if (!activeJobId || !eventId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+
+    const poll = async () => {
+      try {
+        const jobs = await client.listEventJobs(eventId);
+        if (cancelled) return;
+        const current = jobs.find((job) => job.id === activeJobId);
+        if (!current) {
+          setActiveJob(null);
+          return;
+        }
+        failures = 0;
+        setActiveJob(current);
+        if (isActiveReprocessJob(current.status)) {
+          timer = setTimeout(poll, 2500);
+          return;
+        }
+        if (current.status === 'succeeded') {
+          showToast('Reprocesamiento completado.', { tone: 'positive' });
+        } else {
+          showToast('No se pudo completar el reprocesamiento. Puedes intentarlo nuevamente.', { tone: 'danger' });
+        }
+        setActiveJob(null);
+        void refresh();
+      } catch {
+        if (cancelled) return;
+        failures += 1;
+        if (failures >= 6) {
+          setActiveJob(null);
+          showToast('No pudimos seguir el estado del reprocesamiento. Abre la actividad nuevamente para actualizarla.', { tone: 'danger' });
+          return;
+        }
+        timer = setTimeout(poll, 4000);
+      }
+    };
+
+    timer = setTimeout(poll, 1000);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeJobId, client, eventId, refresh, showToast]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    void client.listEventJobs(eventId)
+      .then((jobs) => {
+        if (cancelled) return;
+        const running = jobs.find((job) => isActiveReprocessJob(job.status));
+        if (running) setActiveJob(running);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [client, eventId]);
+
+  function openReprocess() {
+    if (!event) return;
+    setReprocessSession((session) => session + 1);
+    setReprocessOpen(true);
+    // Picks up an execution started from another screen or device.
+    void client.listEventJobs(event.id)
+      .then((jobs) => {
+        const running = jobs.find((job) => isActiveReprocessJob(job.status));
+        if (running) setActiveJob(running);
+      })
+      .catch(() => undefined);
   }
 
-  async function reprocess() {
-    if (!event || reprocessing) return;
-    setReprocessing(true);
-    try {
-      await client.reprocessEvent(event.id);
-      toast.show('Reinterpretado con las reglas actuales.', { tone: 'positive' });
+  async function submitReprocess(stages: ReprocessStage[]) {
+    if (!event) throw new Error('event_not_loaded');
+    const result = await client.reprocessEvent(event.id, { stages, execution: 'new' });
+    if (result.mode === 'legacy') {
+      setReprocessOpen(false);
+      setTimeout(() => showToast('Reinterpretado con las reglas actuales.', { tone: 'positive' }), 450);
       await refresh();
-    } catch (cause) {
-      toast.show(reprocessMessage(cause), { tone: 'danger' });
-    } finally {
-      setReprocessing(false);
+      return;
     }
+
+    setReprocessOpen(false);
+    if (result.job && isActiveReprocessJob(result.job.status)) {
+      setActiveJob(result.job);
+      const message = result.disposition === 'coalesced'
+        ? 'Ya había un reprocesamiento en curso. Lo estamos siguiendo.'
+        : result.disposition === 'revived'
+          ? 'Reintentando el reprocesamiento.'
+          : 'Reprocesamiento en curso. Puedes salir de esta actividad.';
+      setTimeout(() => showToast(message, { tone: 'positive' }), 450);
+      return;
+    }
+
+    setTimeout(() => showToast('Ese reprocesamiento ya había terminado.', { tone: 'positive' }), 450);
+    await refresh();
   }
 
   return (
@@ -64,8 +157,8 @@ export default function EventDetailScreen() {
             ) : (
               <GlassSurface level="thin" tone="review" padding="md" contentStyle={{ gap: theme.spacing.xs }}>
                 <Text style={[theme.typography.bodyStrong, { color: theme.colors.warning }]}>La interpretación aún no está disponible</Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>El original se conserva abajo. Puedes volver a interpretarlo cuando la IA esté disponible.</Text>
-                <Button size="sm" variant="secondary" label="Volver a interpretar" onPress={reprocess} loading={reprocessing} disabled={reprocessing} />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>El original se conserva abajo. Puedes elegir qué volver a procesar cuando la IA esté disponible.</Text>
+                <Button size="sm" variant="secondary" label={activeJob ? 'Reprocesamiento en curso' : 'Volver a interpretar'} onPress={openReprocess} disabled={Boolean(activeJob)} />
               </GlassSurface>
             )}
             <GlassSurface level="thin" padding="none">
@@ -86,9 +179,10 @@ export default function EventDetailScreen() {
             </Animated.View>
           </Section>
 
-          {event.progress ? (
+          {event.progress || activeJob ? (
             <Section title="Procesamiento">
-              <ProcessingProgress progress={event.progress} inferredKind={event.inferredKind} />
+              {activeJob ? <ReprocessJobCard job={activeJob} /> : null}
+              {event.progress ? <ProcessingProgress progress={event.progress} inferredKind={event.inferredKind} /> : null}
             </Section>
           ) : null}
 
@@ -108,8 +202,17 @@ export default function EventDetailScreen() {
                 : <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Todavía no hay un movimiento vinculado.</Text>
             ) : null}
             {event.kind === 'email' ? <Button label="Ver correo" variant="secondary" onPress={() => router.push({ pathname: '/email/[id]' as never, params: { id: event.id } })} /> : null}
-            <Button label="Volver a interpretar" onPress={reprocess} loading={reprocessing} variant="secondary" />
+            <Button label={activeJob ? 'Reprocesamiento en curso' : 'Volver a interpretar'} onPress={openReprocess} disabled={Boolean(activeJob)} variant="secondary" />
           </Section>
+
+          <ReprocessSheet
+            key={reprocessSession}
+            visible={reprocessOpen}
+            event={event}
+            activeJob={activeJob}
+            onClose={() => setReprocessOpen(false)}
+            onSubmit={submitReprocess}
+          />
         </>
       ) : null}
     </Screen>

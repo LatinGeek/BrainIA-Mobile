@@ -1,5 +1,15 @@
 import { cleanDisplayText } from './format';
 import { parseEventProgress } from './event-progress';
+import {
+  isReprocessStage,
+  REPROCESS_STAGES,
+  type ReprocessDisposition,
+  type ReprocessExecution,
+  type ReprocessJob,
+  type ReprocessJobStatus,
+  type ReprocessResult,
+  type ReprocessStage,
+} from './reprocess';
 import { createV2Transport, type V2Transport } from '../contracts/brain-ai/2.0.0/mobile/transport.cjs';
 import {
   BriefCard,
@@ -158,6 +168,21 @@ function waitForPreviewLoading(): Promise<never> {
   return new Promise(() => {});
 }
 
+/** HTTP failure with the backend's stable error code and structured details. */
+export class ApiRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly details?: Record<string, unknown>;
+
+  constructor(message: string, status: number, code?: string, details?: Record<string, unknown>) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
 async function safeFetchJson(baseUrl: string, path: string, options: RequestOptions = {}) {
   if (
     typeof window !== 'undefined' &&
@@ -190,12 +215,13 @@ async function safeFetchJson(baseUrl: string, path: string, options: RequestOpti
 
   if (!response.ok) {
     const message = isRecord(json) && asString(json.message) ? asString(json.message) : `HTTP ${response.status}`;
+    const code = isRecord(json) && asString(json.error) ? asString(json.error) : undefined;
     void recordDiagnostic({
       type: 'error',
       label: `fetch ${path}`,
       detail: `${response.status} in ${Date.now() - startedAt}ms`,
     });
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, code, isRecord(json) ? json : undefined);
   }
 
   void recordDiagnostic({
@@ -879,6 +905,53 @@ async function requestWithFallback<T>(baseUrl: string, path: string, fallback: T
   return json as T;
 }
 
+const REPROCESS_JOB_STATUSES: readonly ReprocessJobStatus[] = [
+  'queued', 'running', 'retry_scheduled', 'succeeded', 'dead_letter', 'cancelled',
+];
+
+function normalizeStageList(input: unknown): ReprocessStage[] {
+  const raw = asArray<string>(input).filter(isReprocessStage);
+  return REPROCESS_STAGES.filter((stage) => raw.includes(stage));
+}
+
+function normalizeReprocessJob(input: unknown, index: number): ReprocessJob | null {
+  if (!isRecord(input)) return null;
+  const status = asString(input.status) as ReprocessJobStatus;
+  if (!REPROCESS_JOB_STATUSES.includes(status)) return null;
+  return {
+    id: asString(input.id, `reprocess_${index + 1}`),
+    jobType: asString(input.jobType, 'event_reprocess'),
+    status,
+    stages: normalizeStageList(input.stages),
+    attemptCount: Math.max(0, asNumber(input.attemptCount, 0)),
+    maxAttempts: Math.max(0, asNumber(input.maxAttempts, 0)),
+    runAfter: asString(input.runAfter) || undefined,
+    createdAt: asString(input.createdAt) || undefined,
+    completedAt: asString(input.completedAt) || null,
+  };
+}
+
+function normalizeReprocessResult(json: unknown, requestedStages: ReprocessStage[]): ReprocessResult {
+  if (isRecord(json) && json.accepted === true && isRecord(json.job)) {
+    const job = normalizeReprocessJob(json.job, 0);
+    if (job) {
+      const disposition = ['queued', 'coalesced', 'already_completed', 'revived'].includes(asString(json.disposition))
+        ? asString(json.disposition) as ReprocessDisposition
+        : 'queued';
+      const requested = normalizeStageList(json.requestedStages);
+      if (!job.stages.length) job.stages = requested.length ? requested : requestedStages;
+      return {
+        mode: 'queued',
+        disposition,
+        requestedStages: requested.length ? requested : requestedStages,
+        job,
+      };
+    }
+  }
+  // Older backend: the response is the synchronously reprocessed event.
+  return { mode: 'legacy', requestedStages };
+}
+
 export type BrainIAClient = {
   baseUrl: string;
   v2: V2Transport;
@@ -927,7 +1000,8 @@ export type BrainIAClient = {
   findEntityMatches: (query: string) => Promise<EntitySuggestion[]>;
   resolveAlias: (aliasId: string, payload: { alias: string; categoryPath: string[]; notes?: string; targetEntityId?: string }) => Promise<{ ok: boolean }>;
   ignoreAlias: (aliasId: string) => Promise<{ ok: boolean }>;
-  reprocessEvent: (eventId: string) => Promise<{ ok: boolean }>;
+  reprocessEvent: (eventId: string, options: { stages: ReprocessStage[]; execution?: ReprocessExecution }) => Promise<ReprocessResult>;
+  listEventJobs: (eventId: string) => Promise<ReprocessJob[]>;
   listSemanticCandidates: () => Promise<SemanticCandidate[]>;
   resolveSemanticCandidate: (id: string, input: { action: 'approve' | 'reject'; targetEntityId?: string; createRule?: boolean }) => Promise<{ ok: boolean }>;
 };
@@ -1542,14 +1616,24 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
 
       return { ok: true };
     },
-    async reprocessEvent(eventId) {
-      await safeFetchJson(baseUrl, `/api/v1/events/${encodeURIComponent(eventId)}/reprocess`, {
+    async reprocessEvent(eventId, options) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/events/${encodeURIComponent(eventId)}/reprocess`, {
         method: 'POST',
-        body: {},
+        body: {
+          stages: options.stages,
+          execution: options.execution ?? 'new',
+        },
         headers,
       });
 
-      return { ok: true };
+      return normalizeReprocessResult(json, options.stages);
+    },
+    async listEventJobs(eventId) {
+      const json = await safeFetchJson(baseUrl, `/api/v1/events/${encodeURIComponent(eventId)}/jobs`, { headers });
+      const jobs = isRecord(json) ? asArray<unknown>(json.jobs) : [];
+      return jobs
+        .map((job, index) => normalizeReprocessJob(job, index))
+        .filter((job): job is ReprocessJob => Boolean(job && job.jobType === 'event_reprocess'));
     },
   };
 

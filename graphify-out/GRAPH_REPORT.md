@@ -1,16 +1,16 @@
 # Graph Report - BrainIA-Mobile  (2026-10-24)
 
 ## Corpus Check
-- 190 files · ~469,656 words
+- 193 files · ~472,047 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2284 nodes · 4119 edges · 171 communities (155 shown, 16 thin omitted)
+- 2322 nodes · 4238 edges · 172 communities (155 shown, 17 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.73)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c9614322`
+- Built from commit: `2b7e45c2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -178,20 +178,21 @@
 - [[_COMMUNITY_TransactionLifecycle|TransactionLifecycle]]
 - [[_COMMUNITY_isPlaceholderInsightText|isPlaceholderInsightText]]
 - [[_COMMUNITY_Glass design polish W0 baseline|Glass design polish: W0 baseline]]
+- [[_COMMUNITY_Stage|Stage]]
 - [[_COMMUNITY_Glass backdrop images|Glass backdrop images]]
 - [[_COMMUNITY_export-backdrops.mjs|export-backdrops.mjs]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useTheme()` - 145 edges
+1. `useTheme()` - 150 edges
 2. `$defs` - 59 edges
-3. `GlassSurface()` - 54 edges
+3. `GlassSurface()` - 56 edges
 4. `cleanDisplayText()` - 43 edges
 5. `useReduceMotion()` - 43 edges
 6. `useBrainIAClient()` - 29 edges
-7. `Screen()` - 25 edges
-8. `useAsyncResource()` - 25 edges
-9. `NotificationBridgeSecurityTest` - 24 edges
-10. `Button()` - 24 edges
+7. `Button()` - 25 edges
+8. `GlassPressable()` - 25 edges
+9. `Screen()` - 25 edges
+10. `useAsyncResource()` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `CaptureScreen()` --calls--> `useTheme()`  [EXTRACTED]
@@ -202,17 +203,17 @@
   app/transaction/[id].tsx → lib/app-state.tsx
 - `VoiceRecordButton()` --calls--> `useTheme()`  [EXTRACTED]
   components/capture/CaptureForm.tsx → lib/app-state.tsx
-- `Segment()` --calls--> `useReduceMotion()`  [EXTRACTED]
-  components/data/ProcessingProgress.tsx → lib/hooks.ts
+- `CenterAmountNative()` --calls--> `useTheme()`  [EXTRACTED]
+  components/data/MixCard.tsx → lib/app-state.tsx
 
 ## Import Cycles
 - 1-file cycle: `app/+html.tsx -> app/+html.tsx`
 
-## Communities (171 total, 16 thin omitted)
+## Communities (172 total, 17 thin omitted)
 
 ### Community 0 - "api.ts"
 Cohesion: 0.08
-Nodes (30): groupRelationsByType(), GraphExplorer(), BriefCard, DEFAULT_FINANCIAL_CATEGORIES, DigestSummary, EntityDetail, EntityLink, EntityRole (+22 more)
+Nodes (29): groupRelationsByType(), GraphExplorer(), BriefCard, DEFAULT_FINANCIAL_CATEGORIES, DigestSummary, EntityDetail, EntityLink, EntityRole (+21 more)
 
 ### Community 1 - "Data cards"
 Cohesion: 0.09
@@ -244,15 +245,15 @@ Nodes (30): backgroundColor, backgroundImage, foregroundImage, monochromeImage, 
 
 ### Community 8 - "index.tsx"
 Cohesion: 0.07
-Nodes (39): AccountRow(), displayAmount(), displayCurrencies, FinancePeriod, FinanceView, financialPeriodLabel(), FinancialsScreen(), formatEstimatedExecutionDate() (+31 more)
+Nodes (43): AccountRow(), displayAmount(), displayCurrencies, FinancePeriod, FinanceView, financialPeriodLabel(), FinancialsScreen(), FinancialTotal() (+35 more)
 
 ### Community 9 - "Detail and action components"
 Cohesion: 0.13
 Nodes (11): cache, capsulePath(), DIAL, DialArc, DialImageSet, Gradient(), mixHex(), OverlayScene() (+3 more)
 
 ### Community 10 - "Primitive components"
-Cohesion: 0.14
-Nodes (25): loadSettings(), normalizeFinancialPeriodStartDay(), CacheEnvelope, clearAllJsonCache(), deleteJsonCache(), readIndex(), readJsonCache(), registerKey() (+17 more)
+Cohesion: 0.13
+Nodes (26): loadSettings(), normalizeFinancialPeriodStartDay(), CacheEnvelope, clearAllJsonCache(), deleteJsonCache(), readIndex(), readJsonCache(), registerKey() (+18 more)
 
 ### Community 11 - "Iteration loop"
 Cohesion: 0.19
@@ -291,8 +292,8 @@ Cohesion: 0.13
 Nodes (14): Bibiz Reference Brief, BrainIA Translation, Capture, Glass token update (v2.1), Home, Implementation Checklist, Money, Purpose (+6 more)
 
 ### Community 21 - "index.tsx"
-Cohesion: 0.17
-Nodes (17): KnowledgeDetail(), IntelligenceScreen(), SegmentedControl(), SignalCard(), eventCategorySuggestions, eventKinds, financialKinds, LearningMode (+9 more)
+Cohesion: 0.10
+Nodes (40): KnowledgeDetail(), IntelligenceScreen(), Correction, LearningScreen(), Preview, GlassPressableTopic(), ProgressRing(), Button() (+32 more)
 
 ### Community 22 - "index.tsx"
 Cohesion: 0.06
@@ -343,16 +344,16 @@ Cohesion: 0.29
 Nodes (7): Milestone 1: UX Foundation, Milestone 2: Today + Search, Milestone 3: Finance Sub-App, Milestone 4: Knowledge Detail + Insights, Milestone 5: Capture + Review, Milestone 6: Release Hardening, Rebuild Roadmap
 
 ### Community 34 - "[id].tsx"
-Cohesion: 0.15
-Nodes (18): EditableTransactionKind, evidenceKindLabel(), Fact(), formatSourceLabel(), TransactionDetailScreen(), AppSettings, formatDate(), formatEventKind() (+10 more)
+Cohesion: 0.11
+Nodes (30): EmailDetailScreen(), formatSource(), friendlyError(), kindLabel(), EditableTransactionKind, evidenceKindLabel(), Fact(), formatSourceLabel() (+22 more)
 
 ### Community 35 - "tsconfig.json"
 Cohesion: 0.29
 Nodes (6): compilerOptions, paths, strict, extends, include, @/*
 
 ### Community 36 - "index.tsx"
-Cohesion: 0.12
-Nodes (20): DigestDetailScreen(), friendlyError(), EmailDetailScreen(), formatSource(), friendlyError(), kindLabel(), resultTypeLabel(), SearchScreen() (+12 more)
+Cohesion: 0.11
+Nodes (19): actionIcon, ActionKind, blankEditor, currencyItems, Editor, examples, kindItems, ChipGroup() (+11 more)
 
 ### Community 37 - "n"
 Cohesion: 0.33
@@ -387,16 +388,16 @@ Cohesion: 0.40
 Nodes (4): main, name, private, version
 
 ### Community 46 - "app-state.tsx"
-Cohesion: 0.07
-Nodes (46): RootNavigator(), Correction, LearningScreen(), Preview, PendingEntry, ReviewSessionScreen(), styles, AmbientBackground() (+38 more)
+Cohesion: 0.08
+Nodes (43): RootNavigator(), PendingEntry, ReviewSessionScreen(), styles, HomeScreen(), quickActions, ReviewHomeScreen(), IconTile() (+35 more)
 
 ### Community 47 - "review.tsx"
-Cohesion: 0.15
-Nodes (11): CaptureScreen(), CaptureForm, CaptureFormHandle, CaptureFormStatus, CaptureKind, Currency, TransactionType, VoiceNoteNativeModule (+3 more)
+Cohesion: 0.14
+Nodes (12): CaptureScreen(), CaptureForm, CaptureFormHandle, CaptureFormStatus, CaptureKind, Currency, TransactionType, VoiceNoteNativeModule (+4 more)
 
 ### Community 48 - "Component tiers"
-Cohesion: 0.11
-Nodes (31): directionLabel, EntityDetailScreen(), entityTypeLabel(), entityTypeLabels, friendlyError(), friendlyError(), Button(), ButtonVariant (+23 more)
+Cohesion: 0.28
+Nodes (7): directionLabel, EntityDetailScreen(), entityTypeLabel(), entityTypeLabels, friendlyError(), Graph(), EntityDetailSkeleton()
 
 ### Community 49 - "Visual Direction"
 Cohesion: 0.50
@@ -435,12 +436,12 @@ Cohesion: 0.67
 Nodes (3): Current Problem, Knowledge Entity Detail, Target Structure
 
 ### Community 60 - "Theme System"
-Cohesion: 0.10
-Nodes (32): FinancialTotal(), GlassPressableTopic(), ProgressRing(), ReviewHomeScreen(), AnimatedTextInput, Arc, ArcsLayer(), CenterAmountNative() (+24 more)
+Cohesion: 0.17
+Nodes (11): AnimatedTextInput, Arc, ArcsLayer(), CenterAmountNative(), CenterAmountProps, MixCard(), MixRow, MixSegment (+3 more)
 
 ### Community 61 - "P2. Extensiones y refinamiento futuro"
-Cohesion: 0.11
-Nodes (17): BrainIAClient, ReviewItem, SemanticCandidate, listeners, refreshReviewQueueSize(), ReviewClient, setReviewQueueSize(), subscribe() (+9 more)
+Cohesion: 0.12
+Nodes (16): BrainIAClient, ReviewItem, SemanticCandidate, listeners, refreshReviewQueueSize(), ReviewClient, setReviewQueueSize(), subscribe() (+8 more)
 
 ### Community 62 - "AccountIcon.tsx"
 Cohesion: 0.05
@@ -467,8 +468,8 @@ Cohesion: 0.08
 Nodes (24): a, b, bad(), base, clone(), correctionBase, dir, envelope (+16 more)
 
 ### Community 68 - "isRecord"
-Cohesion: 0.18
-Nodes (24): asArray(), asNumber(), asRecordMetrics(), asString(), compactNarrative(), friendlyWindow(), isRecord(), normalizeContentCards() (+16 more)
+Cohesion: 0.17
+Nodes (27): asArray(), asNumber(), asRecordMetrics(), asString(), compactNarrative(), friendlyWindow(), isPlaceholderInsightText(), isRecord() (+19 more)
 
 ### Community 71 - "ActionPreview"
 Cohesion: 0.14
@@ -492,7 +493,7 @@ Nodes (13): CaptureConsent, CaptureConsentSelection, Boolean, Context, Int, Stri
 
 ### Community 76 - "h"
 Cohesion: 0.10
-Nodes (29): categoryDisplayLabel(), EventDetailScreen(), formatSourceLabel(), friendlyError(), kindLabel(), kindLabels, InsightDetailScreen(), actionIcon (+21 more)
+Nodes (31): DigestDetailScreen(), friendlyError(), categoryDisplayLabel(), EventDetailScreen(), formatSourceLabel(), friendlyError(), kindLabel(), kindLabels (+23 more)
 
 ### Community 77 - "us"
 Cohesion: 0.15
@@ -504,11 +505,11 @@ Nodes (11): `app/digest/[id].tsx`, `app/insight/[id].tsx`, `app/intelligence/[id
 
 ### Community 79 - "ce"
 Cohesion: 0.15
-Nodes (18): ProcessingProgress(), Segment(), styles, EventProgress, ProgressStageKey, ProgressStatus, phraseByStatus, PROGRESS_STAGE_ORDER (+10 more)
+Nodes (19): ProcessingProgress(), Segment(), styles, EventProgress, ProgressStatus, isStatus(), parseEventProgress(), phraseByStatus (+11 more)
 
 ### Community 80 - "_"
-Cohesion: 0.12
-Nodes (16): originCopy, styles, GlassScroll, GlassScrollContext, backdropBlur, backdropVeil, GlassSurface(), GlassTone (+8 more)
+Cohesion: 0.09
+Nodes (24): ConfidenceMeter(), originCopy, styles, GlassScroll, GlassScrollContext, backdropBlur, backdropVeil, GlassTone (+16 more)
 
 ### Community 81 - "cleanDisplayText"
 Cohesion: 0.18
@@ -516,7 +517,7 @@ Nodes (10): 1. `app/entity/[id].tsx`: Entity detail, 2. `app/email/[id].tsx`: Em
 
 ### Community 82 - "cc"
 Cohesion: 0.08
-Nodes (28): buildMonthlyCashFlow(), financialPeriodRangeAtOffset(), ClientConfig, createBrainIAClient(), createV2TransportWithOfflineClassification(), currentFinancialPeriodRange(), demoDigests, demoEntityTags (+20 more)
+Nodes (28): buildMonthlyCashFlow(), financialPeriodRangeAtOffset(), ApiRequestError, ClientConfig, createBrainIAClient(), createV2TransportWithOfflineClassification(), currentFinancialPeriodRange(), demoDigests (+20 more)
 
 ### Community 83 - "bo"
 Cohesion: 0.18
@@ -543,8 +544,8 @@ Cohesion: 0.67
 Nodes (3): pattern, type, Decimal
 
 ### Community 91 - "raw"
-Cohesion: 0.12
-Nodes (18): type, type, properties, minLength, type, amount, merchant, packageName (+10 more)
+Cohesion: 0.13
+Nodes (15): type, pattern, type, Currency, type, amount, currency, merchant (+7 more)
 
 ### Community 92 - "Technical Backlog"
 Cohesion: 0.15
@@ -555,20 +556,20 @@ Cohesion: 0.14
 Nodes (7): Community, ForceGraphComponent, ForceLink, ForceNode, GraphNode, GraphRelation, palette
 
 ### Community 94 - "properties"
-Cohesion: 0.12
-Nodes (17): $ref, Location, $ref, $ref, $ref, additionalProperties, properties, required (+9 more)
+Cohesion: 0.13
+Nodes (15): $ref, Location, $ref, $ref, $ref, additionalProperties, properties, required (+7 more)
 
 ### Community 95 - "NotificationReconciliationWorker"
 Cohesion: 0.31
 Nodes (7): cancelReconnect(), ensurePeriodicHealthCheck(), Context, NotificationReconciliationWorker, scheduleReconnect(), Result, Worker
 
 ### Community 96 - "properties"
-Cohesion: 0.12
-Nodes (17): additionalProperties, properties, required, type, AttachmentRef, $ref, type, expiresAt (+9 more)
+Cohesion: 0.11
+Nodes (19): additionalProperties, properties, required, type, AttachmentRef, $ref, type, expiresAt (+11 more)
 
 ### Community 97 - "interaction-telemetry.ts"
 Cohesion: 0.08
-Nodes (28): BootstrapScreen(), unstable_settings, AMBIENT_BLURS, AmbientColors, AmbientShapes(), cache, fromDisk(), GLASS_SATURATION (+20 more)
+Nodes (27): BootstrapScreen(), unstable_settings, AMBIENT_BLURS, AmbientColors, AmbientShapes(), cache, fromDisk(), GLASS_SATURATION (+19 more)
 
 ### Community 98 - "signalTypes"
 Cohesion: 0.17
@@ -664,7 +665,7 @@ Nodes (9): additionalProperties, properties, required, type, ActivityInterval, $
 
 ### Community 125 - "title"
 Cohesion: 0.25
-Nodes (8): anyOf, type, Note, additionalProperties, properties, required, type, body
+Nodes (8): Note, additionalProperties, properties, required, type, title, anyOf, type
 
 ### Community 127 - "M01 r2 — provisional-operation guard, extension trust root, and offline classification"
 Cohesion: 0.25
@@ -715,8 +716,8 @@ Cohesion: 0.50
 Nodes (4): maximum, minimum, type, Count
 
 ### Community 139 - "Currency"
-Cohesion: 0.50
-Nodes (4): pattern, type, Currency, currency
+Cohesion: 0.11
+Nodes (31): ButtonGroup(), ReprocessJobCard(), styles, ReprocessSheet(), StageOption(), StageStatus, styles, ProgressStageKey (+23 more)
 
 ### Community 140 - "Cursor"
 Cohesion: 0.50
@@ -727,8 +728,8 @@ Cohesion: 0.50
 Nodes (4): Id, maxLength, minLength, type
 
 ### Community 142 - "Notification"
-Cohesion: 0.50
-Nodes (4): Notification, additionalProperties, required, type
+Cohesion: 0.18
+Nodes (11): anyOf, type, Notification, additionalProperties, properties, required, type, minLength (+3 more)
 
 ### Community 143 - "PolicyResponse"
 Cohesion: 0.67
@@ -807,23 +808,23 @@ Cohesion: 0.50
 Nodes (3): BLURS, SCREEN, THEME
 
 ## Knowledge Gaps
-- **1131 isolated node(s):** `name`, `slug`, `version`, `orientation`, `backgroundColor` (+1126 more)
+- **1136 isolated node(s):** `name`, `slug`, `version`, `orientation`, `backgroundColor` (+1131 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `$defs` connect `AccountIcon.tsx` to `Error`, `Envelope`, `schema.json`, `Count`, `Currency`, `Cursor`, `Id`, `Notification`, `PolicyResponse`, `Receipt`, `Timestamp`, `UTC`, `Version`, `sourceObservationKey`, `ConversionRate`, `index.tsx`, `DeletionRequest`, `Magnitude`, `UUID`, `DeletionCategory`, `ErrorDetails`, `EventType`, `RetrievalStrategy`, `Architecture`, `properties`, `us`, `NotificationBridgeModule`, `properties`, `properties`, `properties`, `properties`, `EmailAddress`, `BatchRequest`, `properties`, `properties`, `properties`, `BatchResponse`, `ActivityInterval`, `title`?**
+- **Why does `$defs` connect `AccountIcon.tsx` to `Error`, `Envelope`, `schema.json`, `Count`, `Cursor`, `Id`, `Notification`, `PolicyResponse`, `Receipt`, `Timestamp`, `UTC`, `Version`, `sourceObservationKey`, `ConversionRate`, `index.tsx`, `DeletionRequest`, `Magnitude`, `UUID`, `DeletionCategory`, `ErrorDetails`, `EventType`, `Stage`, `Architecture`, `properties`, `us`, `NotificationBridgeModule`, `raw`, `properties`, `properties`, `properties`, `properties`, `EmailAddress`, `BatchRequest`, `properties`, `properties`, `properties`, `BatchResponse`, `ActivityInterval`, `title`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `useTheme()` connect `Theme System` to `api.ts`, `[id].tsx`, `index.tsx`, `index.tsx`, `h`, `AppShell`, `app-state.tsx`, `review.tsx`, `Component tiers`, `ce`, `_`, `index.tsx`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Why does `nativeModule` connect `financials.tsx` to `.createNativeModules`, `notification-bridge.ts`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
+- **Why does `useTheme()` connect `index.tsx` to `api.ts`, `[id].tsx`, `index.tsx`, `index.tsx`, `Currency`, `h`, `AppShell`, `app-state.tsx`, `review.tsx`, `Component tiers`, `_`, `ce`, `Theme System`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _1131 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1136 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `api.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0766488413547237 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07954545454545454 - nodes in this community are weakly interconnected._
 - **Should `Data cards` be split into smaller, more focused modules?**
   _Cohesion score 0.09195402298850575 - nodes in this community are weakly interconnected._
 - **Should `useTheme` be split into smaller, more focused modules?**
