@@ -18,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
 
 class NotificationBridgeService : NotificationListenerService() {
   private val executor = Executors.newSingleThreadExecutor()
@@ -236,8 +237,21 @@ class NotificationBridgeService : NotificationListenerService() {
       put("summaryText", extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString() ?: JSONObject.NULL)
     }
 
+    val installationId = synchronized(NotificationCaptureIdentity) {
+      prefs.getString("captureInstallationId", null) ?: UUID.randomUUID().toString().also { id ->
+        check(prefs.edit().putString("captureInstallationId", id).commit()) { "Unable to persist notification installation identity" }
+      }
+    }
+    val notificationTag = notificationTagFor(packageName, appName)
+    // Include every field sent by this producer: a changed raw snapshot also
+    // needs a new identity under the backend's immutable evidence contract.
+    val observationId = NotificationCaptureIdentity.forObservation(installationId,
+      listOf(notificationKey, appName, packageName, title, body, timestamp, notificationTag, raw.toString()))
+    val terminalConflicts = prefs.getStringSet("terminalCaptureConflicts", emptySet()).orEmpty()
+    if (observationId in terminalConflicts) return true
+
     val payload = JSONObject().apply {
-      put("id", notificationKey)
+      put("id", observationId)
       put("contractVersion", 1)
       put("kind", "notification")
       put("appName", appName)
@@ -245,9 +259,9 @@ class NotificationBridgeService : NotificationListenerService() {
       put("title", title)
       put("body", body)
       put("timestamp", timestamp)
-      put("externalId", notificationKey)
-      put("idempotencyKey", "notif:$notificationKey")
-      put("tags", JSONArray(listOf("notification", notificationTagFor(packageName, appName))))
+      put("externalId", observationId)
+      put("idempotencyKey", observationId)
+      put("tags", JSONArray(listOf("notification", notificationTag)))
       put("raw", raw)
     }
 
@@ -275,6 +289,14 @@ class NotificationBridgeService : NotificationListenerService() {
       }
 
       val status = connection.responseCode
+      if (status == 409) {
+        connection.errorStream?.close()
+        // A content conflict is terminal for this immutable observation. A new
+        // notification revision gets a different ID and remains eligible.
+        prefs.edit().putStringSet("terminalCaptureConflicts", (terminalConflicts.toList() + observationId).takeLast(128).toSet()).apply()
+        NotificationBridgeDiagnostics.record(applicationContext, "warning", "capture_identity_conflict", "Notification capture identity conflicted; this observation will not be retried", JSONObject().put("statusCode", status).put("packageName", packageName))
+        return true
+      }
       if (status !in 200..299) {
         connection.errorStream?.close()
         Log.w(TAG, "Capture rejected with status=$status")
