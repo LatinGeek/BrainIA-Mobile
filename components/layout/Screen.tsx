@@ -331,15 +331,6 @@ export function Screen({
   );
 }
 
-/** @deprecated Kept for the migration; use Screen. */
-export const AppScreen = Screen;
-/** @deprecated Kept for the migration; use Screen. */
-export const AppShell = Screen;
-/** @deprecated Use Screen. */
-export const TopBar = Screen;
-/** @deprecated Use Screen. */
-export const ScreenHeader = Screen;
-
 export function Section({
   title,
   subtitle,
@@ -398,15 +389,6 @@ export function Section({
     </View>
   );
 }
-
-/** @deprecated Use Section. */
-export const SectionHeader = Section;
-/** @deprecated Use Section. */
-export const SectionTitle = Section;
-/** @deprecated Use Section. */
-export const DetailBlock = Section;
-/** @deprecated Use Section's collapsible prop. */
-export const DisclosureSection = Section;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },

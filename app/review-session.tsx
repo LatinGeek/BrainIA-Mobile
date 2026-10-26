@@ -26,7 +26,7 @@ import { DecisionCard } from '@/components/review/DecisionCard';
 import { useToast } from '@/components/layout/Toast';
 import { ReviewSessionSkeleton } from '@/components/skeletons/ReviewSessionSkeleton';
 import { useBrainIAClient, useTheme } from '@/lib/app-state';
-import { buildReviewQueue, commitDecision, PendingCommitDescriptor, persistReviewSessionState, readReviewSessionState, ReviewAnswer, ReviewDecision } from '@/lib/review-session';
+import { buildReviewQueue, commitDecision, decisionNeedsReview, PendingCommitDescriptor, persistReviewSessionState, readReviewSessionState, ReviewAnswer, ReviewDecision } from '@/lib/review-session';
 import { formatCurrency } from '@/lib/format';
 import { loadReviewBundle } from '@/lib/api';
 import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
@@ -71,6 +71,8 @@ export default function ReviewSessionScreen() {
 
   const decisions = useMemo(() => (data ?? []).filter((decision) => !topic || decision.topic === topic), [data, topic]);
   const current = decisions[index];
+  // A rejected/unavailable candidate has no approve path: the accepting gesture becomes a skip.
+  const forwardingChoice: ReviewAnswer['choice'] = current && decisionNeedsReview(current) ? 'skip' : 'accept';
 
   useEffect(() => {
     if (!decisions.length) return;
@@ -249,7 +251,7 @@ export default function ReviewSessionScreen() {
       if (!current) return;
       if (event.key === 'ArrowRight' || event.key === 'Enter') {
         event.preventDefault();
-        void answer(current, 'accept');
+        void answer(current, forwardingChoice);
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         void answer(current, 'skip');
@@ -267,7 +269,7 @@ export default function ReviewSessionScreen() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [answer, close, current, undoLast]);
+  }, [answer, close, current, forwardingChoice, undoLast]);
 
   const settleSpring = theme.motion.spring.thumb;
   const pan = Gesture.Pan()
@@ -279,7 +281,7 @@ export default function ReviewSessionScreen() {
     .onEnd((event) => {
       const threshold = width * 0.3;
       if (x.value > threshold || event.velocityX > 800) {
-        runOnJS(answer)(current, 'accept');
+        runOnJS(answer)(current, forwardingChoice);
       } else if (x.value < -threshold || event.velocityX < -800) {
         runOnJS(answer)(current, 'skip');
       } else {
@@ -302,6 +304,7 @@ export default function ReviewSessionScreen() {
   const progress = decisions.length ? answers.length / decisions.length : 0;
   const tidyCount = answers.filter((entry) => entry.choice === 'accept').reduce((sum, entry) => {
     const decision = decisions.find((item) => item.id === entry.id);
+    if (decision?.impact.movements === false) return sum;
     return sum + (decision?.impact.transactions ?? 0);
   }, 0);
   const rules = answers.filter((entry) => entry.rule).length;
@@ -362,9 +365,11 @@ export default function ReviewSessionScreen() {
             {/* The next card is not drawn behind the translucent front card: its text showed through. */}
             <GestureDetector gesture={pan}>
               <Animated.View style={[styles.cardLayer, cardStyle]}>
-                <Animated.View pointerEvents="none" style={[styles.stamp, styles.acceptStamp, { borderColor: `${theme.colors.accent}B3` }, acceptStamp]}>
-                  <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACEPTAR</Text>
-                </Animated.View>
+                {forwardingChoice === 'accept' ? (
+                  <Animated.View pointerEvents="none" style={[styles.stamp, styles.acceptStamp, { borderColor: `${theme.colors.accent}B3` }, acceptStamp]}>
+                    <Text style={[theme.typography.headline, { color: theme.colors.accent }]}>ACEPTAR</Text>
+                  </Animated.View>
+                ) : null}
                 <Animated.View pointerEvents="none" style={[styles.stamp, styles.skipStamp, { borderColor: `${theme.colors.danger}B3` }, skipStamp]}>
                   <Text style={[theme.typography.headline, { color: theme.colors.danger }]}>OMITIR</Text>
                 </Animated.View>

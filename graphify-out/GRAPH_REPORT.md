@@ -1,16 +1,16 @@
-# Graph Report - BrainIA-Mobile  (2026-10-24)
+# Graph Report - BrainIA-Mobile  (2026-10-26)
 
 ## Corpus Check
-- 193 files · ~472,047 words
+- 197 files · ~475,316 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2322 nodes · 4238 edges · 172 communities (155 shown, 17 thin omitted)
+- 2374 nodes · 4365 edges · 170 communities (159 shown, 11 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.73)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2b7e45c2`
+- Built from commit: `a9fc0cd5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -158,47 +158,45 @@
 - [[_COMMUNITY_Timestamp|Timestamp]]
 - [[_COMMUNITY_UTC|UTC]]
 - [[_COMMUNITY_Version|Version]]
-- [[_COMMUNITY_sourceObservationKey|sourceObservationKey]]
+- [[_COMMUNITY_items|items]]
 - [[_COMMUNITY_ConversionRate|ConversionRate]]
 - [[_COMMUNITY_Decimal|Decimal]]
-- [[_COMMUNITY_DeletionRequest|DeletionRequest]]
+- [[_COMMUNITY_Capabilities|Capabilities]]
 - [[_COMMUNITY_Hash|Hash]]
-- [[_COMMUNITY_Magnitude|Magnitude]]
+- [[_COMMUNITY_Cursor|Cursor]]
 - [[_COMMUNITY_UUID|UUID]]
 - [[_COMMUNITY_README|README.md]]
 - [[_COMMUNITY_CurrencyStatus|CurrencyStatus]]
-- [[_COMMUNITY_DeletionCategory|DeletionCategory]]
 - [[_COMMUNITY_EmailReturnRoute|EmailReturnRoute]]
 - [[_COMMUNITY_EpisodeStatus|EpisodeStatus]]
-- [[_COMMUNITY_ErrorDetails|ErrorDetails]]
-- [[_COMMUNITY_EventType|EventType]]
-- [[_COMMUNITY_RetrievalStrategy|RetrievalStrategy]]
+- [[_COMMUNITY_Receipt|Receipt]]
+- [[_COMMUNITY_Timestamp|Timestamp]]
+- [[_COMMUNITY_sourceObservationKey|sourceObservationKey]]
 - [[_COMMUNITY_QueryStatus|QueryStatus]]
 - [[_COMMUNITY_RetrievalStrategy|RetrievalStrategy]]
 - [[_COMMUNITY_TransactionLifecycle|TransactionLifecycle]]
 - [[_COMMUNITY_isPlaceholderInsightText|isPlaceholderInsightText]]
 - [[_COMMUNITY_Glass design polish W0 baseline|Glass design polish: W0 baseline]]
-- [[_COMMUNITY_Stage|Stage]]
 - [[_COMMUNITY_Glass backdrop images|Glass backdrop images]]
 - [[_COMMUNITY_export-backdrops.mjs|export-backdrops.mjs]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useTheme()` - 150 edges
+1. `useTheme()` - 153 edges
 2. `$defs` - 59 edges
-3. `GlassSurface()` - 56 edges
-4. `cleanDisplayText()` - 43 edges
+3. `GlassSurface()` - 57 edges
+4. `cleanDisplayText()` - 48 edges
 5. `useReduceMotion()` - 43 edges
 6. `useBrainIAClient()` - 29 edges
-7. `Button()` - 25 edges
-8. `GlassPressable()` - 25 edges
-9. `Screen()` - 25 edges
-10. `useAsyncResource()` - 25 edges
+7. `useAsyncResource()` - 27 edges
+8. `Button()` - 26 edges
+9. `GlassPressable()` - 25 edges
+10. `Screen()` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `CaptureScreen()` --calls--> `useTheme()`  [EXTRACTED]
   app/(tabs)/capture.tsx → lib/app-state.tsx
-- `BootstrapScreen()` --calls--> `useAppState()`  [EXTRACTED]
-  app/_layout.tsx → lib/app-state.tsx
+- `FinancialTotal()` --calls--> `useCountedAmount()`  [EXTRACTED]
+  app/(tabs)/financials.tsx → components/data/Row.tsx
 - `Fact()` --calls--> `useTheme()`  [EXTRACTED]
   app/transaction/[id].tsx → lib/app-state.tsx
 - `VoiceRecordButton()` --calls--> `useTheme()`  [EXTRACTED]
@@ -209,11 +207,11 @@
 ## Import Cycles
 - 1-file cycle: `app/+html.tsx -> app/+html.tsx`
 
-## Communities (172 total, 17 thin omitted)
+## Communities (170 total, 11 thin omitted)
 
 ### Community 0 - "api.ts"
-Cohesion: 0.08
-Nodes (29): groupRelationsByType(), GraphExplorer(), BriefCard, DEFAULT_FINANCIAL_CATEGORIES, DigestSummary, EntityDetail, EntityLink, EntityRole (+21 more)
+Cohesion: 0.05
+Nodes (48): groupRelationsByType(), ApiRequestError, ClientConfig, createBrainIAClient(), createV2TransportWithOfflineClassification(), demoDigests, demoEntityTags, demoInsights (+40 more)
 
 ### Community 1 - "Data cards"
 Cohesion: 0.09
@@ -245,11 +243,11 @@ Nodes (30): backgroundColor, backgroundImage, foregroundImage, monochromeImage, 
 
 ### Community 8 - "index.tsx"
 Cohesion: 0.07
-Nodes (43): AccountRow(), displayAmount(), displayCurrencies, FinancePeriod, FinanceView, financialPeriodLabel(), FinancialsScreen(), FinancialTotal() (+35 more)
+Nodes (36): AccountRow(), buildMonthlyCashFlow(), displayAmount(), displayCurrencies, FinancePeriod, FinanceView, financialPeriodLabel(), financialPeriodRangeAtOffset() (+28 more)
 
 ### Community 9 - "Detail and action components"
-Cohesion: 0.13
-Nodes (11): cache, capsulePath(), DIAL, DialArc, DialImageSet, Gradient(), mixHex(), OverlayScene() (+3 more)
+Cohesion: 0.08
+Nodes (22): cache, capsulePath(), DIAL, DialArc, DialImageSet, Gradient(), mixHex(), OverlayScene() (+14 more)
 
 ### Community 10 - "Primitive components"
 Cohesion: 0.13
@@ -265,7 +263,7 @@ Nodes (36): addOp(), ajv, bool, callbackQuery, common, correctionBranch(), corre
 
 ### Community 13 - "AppShell"
 Cohesion: 0.08
-Nodes (48): heroAmountLineHeight(), ROW_METRICS, tileAmountSize(), signalCardWidth(), SignalCarousel(), SkeletonBlock(), SkeletonGroup(), SkeletonLine() (+40 more)
+Nodes (47): heroAmountLineHeight(), ROW_METRICS, tileAmountSize(), signalCardWidth(), SignalCarousel(), SkeletonBlock(), SkeletonGroup(), SkeletonLine() (+39 more)
 
 ### Community 15 - "Practical Heuristics"
 Cohesion: 0.09
@@ -276,40 +274,40 @@ Cohesion: 0.10
 Nodes (11): androidDir, apkPath, apkStat, defaultApkPath, __dirname, __filename, lanAddresses, port (+3 more)
 
 ### Community 17 - "Design Direction"
-Cohesion: 0.11
-Nodes (17): Bibiz, Design Direction, Goal, Inspirations, Interaction principles, Linear, Monzo, Name (+9 more)
+Cohesion: 0.17
+Nodes (11): Design Direction, Goal, Interaction principles, Name, Practical recommendation, Proposed layout language, Recommended direction, Suggested tone (+3 more)
 
 ### Community 18 - "NotificationBridgeModule"
 Cohesion: 0.08
 Nodes (23): 1. `app/settings.tsx`, 2. `app/learning.tsx`, 3. `app/_layout.tsx` (navigation, toasts, global providers), 4. `app/+not-found.tsx`, 5. `app/modal.tsx`, 6. `app/+html.tsx` (web only; low priority while the app ships Android only), Design audit — sub-screens C, High (+15 more)
 
 ### Community 19 - "UX Iteration System"
-Cohesion: 0.12
-Nodes (17): Data-state checklist, Device matrix, Iteration log, Iteration loop, Paso 1. Cambiar una sola cosa relevante, Paso 2. Ejecutar validacion tecnica minima, Paso 3. Abrir la app localmente, Paso 4. Revisar la pantalla en contexto (+9 more)
+Cohesion: 0.20
+Nodes (10): Data-state checklist, Device matrix, Iteration log, Principio rector, Relationship to the backlog, Release gate, Required smoke test, UX Iteration System (+2 more)
 
 ### Community 20 - "Bibiz Reference Brief"
 Cohesion: 0.13
 Nodes (14): Bibiz Reference Brief, BrainIA Translation, Capture, Glass token update (v2.1), Home, Implementation Checklist, Money, Purpose (+6 more)
 
 ### Community 21 - "index.tsx"
-Cohesion: 0.10
-Nodes (40): KnowledgeDetail(), IntelligenceScreen(), Correction, LearningScreen(), Preview, GlassPressableTopic(), ProgressRing(), Button() (+32 more)
+Cohesion: 0.08
+Nodes (35): directionLabel, EntityDetailScreen(), entityTypeLabel(), entityTypeLabels, friendlyError(), CaptureScreen(), CaptureForm, CaptureFormHandle (+27 more)
 
 ### Community 22 - "index.tsx"
-Cohesion: 0.06
-Nodes (36): const, const, additionalProperties, properties, required, type, const, const (+28 more)
+Cohesion: 0.13
+Nodes (15): const, const, const, const, const, properties, const, const (+7 more)
 
 ### Community 23 - "BrainIA-Mobile UX Rebuild Proposal"
 Cohesion: 0.15
 Nodes (12): Acceptance Criteria, Backend Capabilities To Design Around, BrainIA-Mobile UX Rebuild Proposal, Digests, Insights, Open Product Decisions, Purpose, Screen Proposals (+4 more)
 
 ### Community 24 - "Backend Contract"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (12): Authentication expectation, Backend Contract, Backend source, Base contract, Client responsibilities, Core read flows, Data consumption rules, Implementation note (+4 more)
 
 ### Community 25 - "README.md"
-Cohesion: 0.14
-Nodes (9): Component Inventory, Conventions, Purpose, The 24 components, BrainIA-Mobile, Decisiones de producto, Documentacion, Objetivo (+1 more)
+Cohesion: 0.20
+Nodes (4): Component Inventory, Conventions, Purpose, The 24 components
 
 ### Community 26 - "Mobile Architecture"
 Cohesion: 0.14
@@ -344,16 +342,16 @@ Cohesion: 0.29
 Nodes (7): Milestone 1: UX Foundation, Milestone 2: Today + Search, Milestone 3: Finance Sub-App, Milestone 4: Knowledge Detail + Insights, Milestone 5: Capture + Review, Milestone 6: Release Hardening, Rebuild Roadmap
 
 ### Community 34 - "[id].tsx"
-Cohesion: 0.11
-Nodes (30): EmailDetailScreen(), formatSource(), friendlyError(), kindLabel(), EditableTransactionKind, evidenceKindLabel(), Fact(), formatSourceLabel() (+22 more)
+Cohesion: 0.10
+Nodes (38): HomeScreen(), quickActions, EditableTransactionKind, evidenceKindLabel(), Fact(), formatSourceLabel(), TransactionDetailScreen(), CenterAmountWeb() (+30 more)
 
 ### Community 35 - "tsconfig.json"
 Cohesion: 0.29
 Nodes (6): compilerOptions, paths, strict, extends, include, @/*
 
 ### Community 36 - "index.tsx"
-Cohesion: 0.11
-Nodes (19): actionIcon, ActionKind, blankEditor, currencyItems, Editor, examples, kindItems, ChipGroup() (+11 more)
+Cohesion: 0.13
+Nodes (22): resultTypeLabel(), SearchScreen(), sourceFilters, Graph(), backdropBlur, backdropVeil, GlassSurface(), GlassTone (+14 more)
 
 ### Community 37 - "n"
 Cohesion: 0.33
@@ -388,16 +386,16 @@ Cohesion: 0.40
 Nodes (4): main, name, private, version
 
 ### Community 46 - "app-state.tsx"
-Cohesion: 0.08
-Nodes (43): RootNavigator(), PendingEntry, ReviewSessionScreen(), styles, HomeScreen(), quickActions, ReviewHomeScreen(), IconTile() (+35 more)
+Cohesion: 0.10
+Nodes (26): GlassPressableTopic(), ProgressRing(), ReviewHomeScreen(), Sparkline(), StatGrid(), StatTile(), styles, AnimatedNativePressable (+18 more)
 
 ### Community 47 - "review.tsx"
-Cohesion: 0.14
-Nodes (12): CaptureScreen(), CaptureForm, CaptureFormHandle, CaptureFormStatus, CaptureKind, Currency, TransactionType, VoiceNoteNativeModule (+4 more)
+Cohesion: 0.22
+Nodes (9): $ref, $ref, properties, $ref, cancelledPendingWorkCount, effectiveAt, policyVersion, sourceInstanceId (+1 more)
 
 ### Community 48 - "Component tiers"
-Cohesion: 0.28
-Nodes (7): directionLabel, EntityDetailScreen(), entityTypeLabel(), entityTypeLabels, friendlyError(), Graph(), EntityDetailSkeleton()
+Cohesion: 0.15
+Nodes (13): const, properties, const, const, const, const, const, apiVersion (+5 more)
 
 ### Community 49 - "Visual Direction"
 Cohesion: 0.50
@@ -436,16 +434,16 @@ Cohesion: 0.67
 Nodes (3): Current Problem, Knowledge Entity Detail, Target Structure
 
 ### Community 60 - "Theme System"
-Cohesion: 0.17
-Nodes (11): AnimatedTextInput, Arc, ArcsLayer(), CenterAmountNative(), CenterAmountProps, MixCard(), MixRow, MixSegment (+3 more)
+Cohesion: 0.11
+Nodes (30): KnowledgeDetail(), IntelligenceScreen(), Correction, LearningScreen(), Preview, SegmentedControl(), SignalCard(), CorrectionPanel() (+22 more)
 
 ### Community 61 - "P2. Extensiones y refinamiento futuro"
-Cohesion: 0.12
-Nodes (16): BrainIAClient, ReviewItem, SemanticCandidate, listeners, refreshReviewQueueSize(), ReviewClient, setReviewQueueSize(), subscribe() (+8 more)
+Cohesion: 0.08
+Nodes (29): DecisionCard(), endpointTypeLabel(), kindLabel(), BrainIAClient, ReviewItem, SemanticActionKind, SemanticCandidate, SemanticEndpoint (+21 more)
 
 ### Community 62 - "AccountIcon.tsx"
-Cohesion: 0.05
-Nodes (42): enum, enum, oneOf, oneOf, enum, enum, $defs, ActivitySignalType (+34 more)
+Cohesion: 0.03
+Nodes (67): enum, enum, oneOf, oneOf, enum, enum, enum, enum (+59 more)
 
 ### Community 63 - "BrainIA-Mobile"
 Cohesion: 0.07
@@ -460,8 +458,8 @@ Cohesion: 0.13
 Nodes (14): 1. Device identity, 2. APK identity, hash, signing, 3. Install, 4. Launch and focused activity, 5. Logcat, 30 s window after launch, 6. Notification-listener permission and SecureStore/Keystore, 7. What this evidence proves — and what it does not, 8. Blocked / not attempted (+6 more)
 
 ### Community 66 - "Architecture"
-Cohesion: 0.13
-Nodes (15): anyOf, enum, ErrorFieldError, additionalProperties, properties, required, type, anyOf (+7 more)
+Cohesion: 0.07
+Nodes (28): anyOf, enum, ErrorFieldError, ErrorObject, $ref, additionalProperties, properties, required (+20 more)
 
 ### Community 67 - "Layout tokens"
 Cohesion: 0.08
@@ -469,7 +467,7 @@ Nodes (24): a, b, bad(), base, clone(), correctionBase, dir, envelope (+16 more)
 
 ### Community 68 - "isRecord"
 Cohesion: 0.17
-Nodes (27): asArray(), asNumber(), asRecordMetrics(), asString(), compactNarrative(), friendlyWindow(), isPlaceholderInsightText(), isRecord() (+19 more)
+Nodes (29): asArray(), asNumber(), asRecordMetrics(), asString(), compactNarrative(), friendlyWindow(), isRecord(), normalizeContentCards() (+21 more)
 
 ### Community 71 - "ActionPreview"
 Cohesion: 0.14
@@ -480,44 +478,44 @@ Cohesion: 0.14
 Nodes (13): 0.1 Missing tokens (escalated to the coordinator), 0. Token vocabulary used in this spec, 10. Implementation order (suggested), 1. Current state at a glance, 2. Gap 1 — Screen enter stagger, 3. Gap 2 — Push / back slide, 4. Gap 3 — Scroll-linked header opacity and dock scale, 5. Gap 4 — Count-up numerals (+5 more)
 
 ### Community 73 - "properties"
-Cohesion: 0.09
-Nodes (23): $ref, Receipt, enum, $ref, const, $ref, contentFingerprint, disposition (+15 more)
+Cohesion: 0.12
+Nodes (17): $ref, enum, $ref, const, deliveryId, disposition, observationId, processing (+9 more)
 
 ### Community 74 - "properties"
-Cohesion: 0.09
-Nodes (22): const, enum, $ref, $ref, $ref, properties, pattern, type (+14 more)
+Cohesion: 0.12
+Nodes (17): const, enum, $ref, $ref, $ref, properties, $ref, canonicalizationVersion (+9 more)
 
 ### Community 75 - "cc"
 Cohesion: 0.07
 Nodes (13): CaptureConsent, CaptureConsentSelection, Boolean, Context, Int, String, NotificationBridgeConfig, NotificationBridgeSecurityTest (+5 more)
 
 ### Community 76 - "h"
-Cohesion: 0.10
-Nodes (31): DigestDetailScreen(), friendlyError(), categoryDisplayLabel(), EventDetailScreen(), formatSourceLabel(), friendlyError(), kindLabel(), kindLabels (+23 more)
+Cohesion: 0.08
+Nodes (37): DigestDetailScreen(), friendlyError(), EmailDetailScreen(), formatSource(), friendlyError(), kindLabel(), categoryDisplayLabel(), EventDetailScreen() (+29 more)
 
 ### Community 77 - "us"
-Cohesion: 0.15
-Nodes (13): ErrorObject, $ref, additionalProperties, properties, required, type, type, details (+5 more)
+Cohesion: 0.12
+Nodes (20): BootstrapScreen(), RootNavigator(), unstable_settings, PendingEntry, ReviewSessionScreen(), styles, styles, TrendChart() (+12 more)
 
 ### Community 78 - "review.tsx"
 Cohesion: 0.17
 Nodes (11): `app/digest/[id].tsx`, `app/insight/[id].tsx`, `app/intelligence/[id].tsx`, `app/intelligence/index.tsx`, `components/intelligence/CorrectionPanel.tsx` (used in `app/event/[id].tsx:59`), `components/intelligence/index.tsx` (ArtifactCard), Cross-cutting findings (affect several of the assigned screens), Design audit: sub-screens B (digest, insight, intelligence) (+3 more)
 
 ### Community 79 - "ce"
-Cohesion: 0.15
-Nodes (19): ProcessingProgress(), Segment(), styles, EventProgress, ProgressStatus, isStatus(), parseEventProgress(), phraseByStatus (+11 more)
+Cohesion: 0.10
+Nodes (21): actionIcon, ActionKind, blankEditor, currencyItems, Editor, examples, kindItems, BottomSheet() (+13 more)
 
 ### Community 80 - "_"
-Cohesion: 0.09
-Nodes (24): ConfidenceMeter(), originCopy, styles, GlassScroll, GlassScrollContext, backdropBlur, backdropVeil, GlassTone (+16 more)
+Cohesion: 0.17
+Nodes (12): originCopy, styles, GlassScroll, GlassScrollContext, Pane(), flattenChildren(), Screen(), ScreenEnteringContext (+4 more)
 
 ### Community 81 - "cleanDisplayText"
 Cohesion: 0.18
 Nodes (10): 1. `app/entity/[id].tsx`: Entity detail, 2. `app/email/[id].tsx`: Email detail, 3. `app/event/[id].tsx`: Activity (event) detail, Cross-cutting findings (shared components; they affect all three screens), Findings, Findings, Findings, Limitations (+2 more)
 
 ### Community 82 - "cc"
-Cohesion: 0.08
-Nodes (28): buildMonthlyCashFlow(), financialPeriodRangeAtOffset(), ApiRequestError, ClientConfig, createBrainIAClient(), createV2TransportWithOfflineClassification(), currentFinancialPeriodRange(), demoDigests (+20 more)
+Cohesion: 0.29
+Nodes (7): Iteration loop, Paso 1. Cambiar una sola cosa relevante, Paso 2. Ejecutar validacion tecnica minima, Paso 3. Abrir la app localmente, Paso 4. Revisar la pantalla en contexto, Paso 5. Corregir y repetir, Paso 6. Generar APK solo al final
 
 ### Community 83 - "bo"
 Cohesion: 0.18
@@ -540,16 +538,16 @@ Cohesion: 0.25
 Nodes (4): fullSuite, port, portArgument, serverOutput
 
 ### Community 90 - "NotificationBridgeModule"
-Cohesion: 0.67
-Nodes (3): pattern, type, Decimal
+Cohesion: 0.40
+Nodes (5): items, maxItems, minItems, type, items
 
 ### Community 91 - "raw"
-Cohesion: 0.13
-Nodes (15): type, pattern, type, Currency, type, amount, currency, merchant (+7 more)
+Cohesion: 0.07
+Nodes (32): type, anyOf, type, Note, Notification, type, additionalProperties, properties (+24 more)
 
 ### Community 92 - "Technical Backlog"
-Cohesion: 0.15
-Nodes (12): Dependencia obligatoria, Milestone A, Milestone B, Milestone C, Milestones recomendados, P2.1 Tema intercambiable por tokens, P2.2 Observabilidad y analitica de uso, P2.3 Cache y experiencia offline parcial (+4 more)
+Cohesion: 0.07
+Nodes (26): Dependencia obligatoria, Milestone A, Milestone B, Milestone C, Milestones recomendados, P0.1 Rendering de datos y texto, P0.2 Estados de datos robustos, P0.3 Estabilidad del dashboard (+18 more)
 
 ### Community 93 - "GraphForceCanvas.tsx"
 Cohesion: 0.14
@@ -568,12 +566,12 @@ Cohesion: 0.11
 Nodes (19): additionalProperties, properties, required, type, AttachmentRef, $ref, type, expiresAt (+11 more)
 
 ### Community 97 - "interaction-telemetry.ts"
-Cohesion: 0.08
-Nodes (27): BootstrapScreen(), unstable_settings, AMBIENT_BLURS, AmbientColors, AmbientShapes(), cache, fromDisk(), GLASS_SATURATION (+19 more)
+Cohesion: 0.18
+Nodes (15): AMBIENT_BLURS, AmbientColors, AmbientShapes(), cache, fromDisk(), GLASS_SATURATION, hashKey(), keyOf() (+7 more)
 
 ### Community 98 - "signalTypes"
-Cohesion: 0.17
-Nodes (12): items, maxItems, type, $ref, attachmentRefs, signalTypes, items, items (+4 more)
+Cohesion: 0.40
+Nodes (3): List, String, NotificationCaptureIdentity
 
 ### Community 99 - "M02 r2 — Secure v2 credentials, explicit consent, and signing hygiene"
 Cohesion: 0.12
@@ -588,16 +586,16 @@ Cohesion: 0.14
 Nodes (13): Capture pipeline, Contract feasibility and Android/OEM gaps, Credential and key lifecycle, and consent, F11-F14 mapping, Limitations, M00 acceptance criteria, M00 mobile capture and signing feasibility baseline, Recommended follow-ups (M01-M09 implications) (+5 more)
 
 ### Community 102 - "getLocalPreviewState"
-Cohesion: 0.40
-Nodes (15): buildCacheKey(), demoEntity(), demoTransactionDetail(), getLocalPreviewState(), loadDashboardBundle(), loadDigestBundle(), loadEntityBundle(), loadFinancialBundle() (+7 more)
+Cohesion: 0.26
+Nodes (20): buildCacheKey(), demoEntity(), demoTransactionDetail(), getBrowserLocation(), getLocalPreviewState(), isLocalWebPreview(), loadDashboardBundle(), loadDigestBundle() (+12 more)
 
 ### Community 103 - "properties"
 Cohesion: 0.15
 Nodes (13): additionalProperties, properties, required, type, enum, maximum, minimum, type (+5 more)
 
 ### Community 104 - "properties"
-Cohesion: 0.13
-Nodes (15): PolicyRequest, type, $ref, type, type, additionalProperties, properties, required (+7 more)
+Cohesion: 0.18
+Nodes (11): type, $ref, type, type, properties, enabled, expectedVersion, externalEmbeddingsAllowed (+3 more)
 
 ### Community 106 - "EmailAddress"
 Cohesion: 0.17
@@ -612,20 +610,20 @@ Cohesion: 0.17
 Nodes (10): flushNotificationBridgeDiagnostics(), getInstalledCaptureApps(), getNotificationBridgeStatus(), NotificationBridgeNativeModule, NotificationBridgeStatus, NotificationCaptureApp, openNotificationBridgeSettings(), reconcileActiveNotifications() (+2 more)
 
 ### Community 109 - "BatchRequest"
-Cohesion: 0.17
-Nodes (12): additionalProperties, properties, required, type, const, BatchRequest, items, maxItems (+4 more)
+Cohesion: 0.29
+Nodes (7): additionalProperties, properties, required, type, const, BatchRequest, contractVersion
 
 ### Community 110 - "properties"
-Cohesion: 0.15
-Nodes (13): $ref, PolicyResponse, $ref, additionalProperties, properties, required, type, $ref (+5 more)
+Cohesion: 0.50
+Nodes (4): PolicyResponse, additionalProperties, required, type
 
 ### Community 112 - "properties"
 Cohesion: 0.13
 Nodes (15): Email, additionalProperties, properties, required, type, providerMessageId, providerThreadId, recipients (+7 more)
 
 ### Community 114 - "properties"
-Cohesion: 0.18
-Nodes (11): ReceiptContent, anyOf, merchantText, reference, type, additionalProperties, properties, required (+3 more)
+Cohesion: 0.17
+Nodes (12): maxItems, type, ReceiptContent, anyOf, attachmentRefs, merchantText, reference, additionalProperties (+4 more)
 
 ### Community 115 - "financials.tsx"
 Cohesion: 0.28
@@ -648,24 +646,20 @@ Cohesion: 0.31
 Nodes (8): sign(), canonical(), fingerprint(), fingerprintInput(), sha256(), dir, files, semantic()
 
 ### Community 121 - "BatchResponse"
-Cohesion: 0.22
-Nodes (9): additionalProperties, properties, required, type, BatchResponse, results, maxItems, minItems (+1 more)
+Cohesion: 0.11
+Nodes (18): items, additionalProperties, properties, required, type, BatchResponse, $ref, results (+10 more)
 
 ### Community 122 - "M01 independent verification (revision 2)"
 Cohesion: 0.12
 Nodes (15): 1. Hash verification (node:crypto, independent of the mobile verifier), 2. Mobile extension and conformance surface, 3. Transport state matrix (independent probe, not only the shipped test), 4. Command exits, 5. Runtime dependency and writes, 6. Scope, 7. Conditions, 8. Limitations (+7 more)
 
 ### Community 123 - "P1. Mejora fuerte de UX"
-Cohesion: 0.25
-Nodes (8): P1.1 Dashboard mas accionable, P1.2 Financials mas claros, P1.3 Search mas util, P1.4 Entity detail y graph, P1.5 Review y operaciones, P1.6 Estilo editorial minimal, P1.7 Accesibilidad y responsive, P1. Mejora fuerte de UX
+Cohesion: 0.33
+Nodes (6): Bibiz, Inspirations, Linear, Monzo, Notion, Stripe
 
 ### Community 124 - "ActivityInterval"
 Cohesion: 0.22
 Nodes (9): additionalProperties, properties, required, type, ActivityInterval, $ref, end, start (+1 more)
-
-### Community 125 - "title"
-Cohesion: 0.25
-Nodes (8): Note, additionalProperties, properties, required, type, title, anyOf, type
 
 ### Community 127 - "M01 r2 — provisional-operation guard, extension trust root, and offline classification"
 Cohesion: 0.25
@@ -676,8 +670,8 @@ Cohesion: 0.38
 Nodes (4): List, ReactApplicationContext, ViewManager, VoiceNotePackage
 
 ### Community 129 - "P0. Bloqueadores de producto"
-Cohesion: 0.33
-Nodes (6): P0.1 Rendering de datos y texto, P0.2 Estados de datos robustos, P0.3 Estabilidad del dashboard, P0.4 Navegacion base sin friccion, P0.5 Pipeline minimo de calidad antes de generar APK, P0. Bloqueadores de producto
+Cohesion: 0.40
+Nodes (5): BrainIA-Mobile, Decisiones de producto, Documentacion, Objetivo, Stack definido
 
 ### Community 130 - "Error"
 Cohesion: 0.29
@@ -701,7 +695,7 @@ Nodes (5): Authorized scope and files changed, Credential and consent behavior, 
 
 ### Community 135 - "Envelope"
 Cohesion: 0.50
-Nodes (4): Envelope, additionalProperties, required, type
+Nodes (4): additionalProperties, required, type, Capabilities
 
 ### Community 136 - "safeFetchJson"
 Cohesion: 0.25
@@ -716,20 +710,20 @@ Cohesion: 0.50
 Nodes (4): maximum, minimum, type, Count
 
 ### Community 139 - "Currency"
-Cohesion: 0.11
-Nodes (31): ButtonGroup(), ReprocessJobCard(), styles, ReprocessSheet(), StageOption(), StageStatus, styles, ProgressStageKey (+23 more)
+Cohesion: 0.06
+Nodes (51): ButtonGroup(), ProcessingProgress(), Segment(), styles, ReprocessJobCard(), styles, ReprocessSheet(), StageOption() (+43 more)
 
 ### Community 140 - "Cursor"
-Cohesion: 0.50
-Nodes (4): maxLength, minLength, type, Cursor
+Cohesion: 0.38
+Nodes (6): listeners, refreshReviewQueueSize(), ReviewClient, setReviewQueueSize(), subscribe(), buildReviewQueue()
 
 ### Community 141 - "Id"
 Cohesion: 0.50
 Nodes (4): Id, maxLength, minLength, type
 
 ### Community 142 - "Notification"
-Cohesion: 0.18
-Nodes (11): anyOf, type, Notification, additionalProperties, properties, required, type, minLength (+3 more)
+Cohesion: 0.50
+Nodes (4): Envelope, additionalProperties, required, type
 
 ### Community 143 - "PolicyResponse"
 Cohesion: 0.67
@@ -737,7 +731,7 @@ Nodes (3): Hash, pattern, type
 
 ### Community 145 - "Timestamp"
 Cohesion: 0.50
-Nodes (4): Timestamp, format, pattern, type
+Nodes (4): PolicyRequest, additionalProperties, required, type
 
 ### Community 146 - "UTC"
 Cohesion: 0.50
@@ -745,7 +739,11 @@ Nodes (4): UTC, format, pattern, type
 
 ### Community 147 - "Version"
 Cohesion: 0.50
-Nodes (4): Version, maximum, minimum, type
+Nodes (4): additionalProperties, required, type, features
+
+### Community 148 - "items"
+Cohesion: 0.50
+Nodes (4): pattern, type, Currency, currency
 
 ### Community 149 - "ConversionRate"
 Cohesion: 0.67
@@ -755,13 +753,17 @@ Nodes (3): pattern, type, ConversionRate
 Cohesion: 0.25
 Nodes (7): Backend fields still missing, Component count, Gates, Glass migration report, Known limitations, Native rendering notes, Status
 
-### Community 151 - "DeletionRequest"
+### Community 151 - "Capabilities"
 Cohesion: 0.67
-Nodes (3): DeletionRequest, properties, type
+Nodes (3): Magnitude, pattern, type
 
 ### Community 152 - "Hash"
 Cohesion: 0.25
 Nodes (7): BrainIA Mobile web design test setup, Exact startup commands, Files and limitations, Result, Screenshot files, Verification commands and outcomes, Why live data fails
+
+### Community 153 - "Cursor"
+Cohesion: 0.67
+Nodes (3): pattern, type, producerSequence
 
 ### Community 154 - "UUID"
 Cohesion: 0.67
@@ -778,6 +780,18 @@ Nodes (6): Findings, Follow-up pass (task_d8a8824c1d9e), Gates, Glass design aud
 ### Community 159 - "EpisodeStatus"
 Cohesion: 0.29
 Nodes (6): Changed files, Coordinator clarifications, Final verification, Gap coverage, Glass motion implementation, Verification limitations
+
+### Community 160 - "Receipt"
+Cohesion: 0.50
+Nodes (4): Receipt, additionalProperties, required, type
+
+### Community 161 - "Timestamp"
+Cohesion: 0.50
+Nodes (4): Timestamp, format, pattern, type
+
+### Community 162 - "sourceObservationKey"
+Cohesion: 0.50
+Nodes (4): sourceObservationKey, maxLength, minLength, type
 
 ### Community 163 - "QueryStatus"
 Cohesion: 0.29
@@ -808,23 +822,23 @@ Cohesion: 0.50
 Nodes (3): BLURS, SCREEN, THEME
 
 ## Knowledge Gaps
-- **1136 isolated node(s):** `name`, `slug`, `version`, `orientation`, `backgroundColor` (+1131 more)
+- **1145 isolated node(s):** `name`, `slug`, `version`, `orientation`, `backgroundColor` (+1140 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `$defs` connect `AccountIcon.tsx` to `Error`, `Envelope`, `schema.json`, `Count`, `Cursor`, `Id`, `Notification`, `PolicyResponse`, `Receipt`, `Timestamp`, `UTC`, `Version`, `sourceObservationKey`, `ConversionRate`, `index.tsx`, `DeletionRequest`, `Magnitude`, `UUID`, `DeletionCategory`, `ErrorDetails`, `EventType`, `Stage`, `Architecture`, `properties`, `us`, `NotificationBridgeModule`, `raw`, `properties`, `properties`, `properties`, `properties`, `EmailAddress`, `BatchRequest`, `properties`, `properties`, `properties`, `BatchResponse`, `ActivityInterval`, `title`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `nativeModule` connect `financials.tsx` to `.createNativeModules`, `notification-bridge.ts`?**
+- **Why does `$defs` connect `AccountIcon.tsx` to `Error`, `Envelope`, `schema.json`, `Count`, `Id`, `Notification`, `PolicyResponse`, `Timestamp`, `UTC`, `items`, `ConversionRate`, `Capabilities`, `UUID`, `Receipt`, `Timestamp`, `Architecture`, `raw`, `properties`, `properties`, `properties`, `EmailAddress`, `BatchRequest`, `properties`, `properties`, `properties`, `BatchResponse`, `ActivityInterval`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `useTheme()` connect `app-state.tsx` to `[id].tsx`, `index.tsx`, `index.tsx`, `Detail and action components`, `Currency`, `h`, `us`, `AppShell`, `ce`, `_`, `index.tsx`, `Theme System`, `P2. Extensiones y refinamiento futuro`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
-- **Why does `useTheme()` connect `index.tsx` to `api.ts`, `[id].tsx`, `index.tsx`, `index.tsx`, `Currency`, `h`, `AppShell`, `app-state.tsx`, `review.tsx`, `Component tiers`, `_`, `ce`, `Theme System`?**
-  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Why does `nativeModule` connect `financials.tsx` to `.createNativeModules`, `notification-bridge.ts`?**
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _1136 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1145 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `api.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07954545454545454 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05101327742837177 - nodes in this community are weakly interconnected._
 - **Should `Data cards` be split into smaller, more focused modules?**
   _Cohesion score 0.09195402298850575 - nodes in this community are weakly interconnected._
 - **Should `useTheme` be split into smaller, more focused modules?**

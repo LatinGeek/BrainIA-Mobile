@@ -27,7 +27,12 @@ import {
   GraphRelation,
   InsightSummary,
   ReviewItem,
+  SemanticActionKind,
   SemanticCandidate,
+  SemanticEndpoint,
+  SemanticEndpointKind,
+  SemanticEvidence,
+  SemanticVerificationStatus,
   SearchResultItem,
   SummaryMetric,
   TransactionDetail,
@@ -758,6 +763,86 @@ function normalizeReviews(input: unknown): ReviewItem[] {
   return items;
 }
 
+const SEMANTIC_ACTION_KINDS: SemanticActionKind[] = ['assign_existing_category', 'create_category', 'merge_identities', 'associate_entities', 'place_entity'];
+const SEMANTIC_ENDPOINT_KINDS: SemanticEndpointKind[] = ['event', 'concept', 'identity', 'category'];
+const SEMANTIC_VERIFICATION_STATUSES: SemanticVerificationStatus[] = ['verified', 'rejected', 'unavailable', 'not_required'];
+
+/** Backend sends camelCase; snake_case is accepted too so older proxies keep working. */
+function pickRecordValue(record: Record<string, unknown>, camel: string, snake: string) {
+  return record[camel] ?? record[snake];
+}
+
+function normalizeSemanticEndpoint(value: unknown): SemanticEndpoint | undefined {
+  if (!isRecord(value)) return undefined;
+  const kind = asString(value.kind) as SemanticEndpointKind;
+  const endpoint: SemanticEndpoint = {
+    id: asString(value.id) || undefined,
+    type: asString(value.type) || undefined,
+    label: asString(value.label) || undefined,
+    canonicalId: asString(value.canonicalId ?? value.canonical_id) || undefined,
+    kind: SEMANTIC_ENDPOINT_KINDS.includes(kind) ? kind : undefined,
+  };
+  return Object.values(endpoint).some(Boolean) ? endpoint : undefined;
+}
+
+function normalizeSemanticEvidence(value: unknown): SemanticEvidence[] {
+  return asArray<unknown>(value)
+    .map((item) => {
+      if (!isRecord(item)) return null;
+      const evidence: SemanticEvidence = {
+        eventId: asString(item.eventId ?? item.event_id) || undefined,
+        source: asString(item.source) || undefined,
+        title: asString(item.title) || undefined,
+        excerpt: asString(item.excerpt) || undefined,
+        occurredAt: asString(item.occurredAt ?? item.occurred_at) || undefined,
+        field: asString(item.field) || undefined,
+        kind: asString(item.kind) || undefined,
+      };
+      return Object.values(evidence).some(Boolean) ? evidence : null;
+    })
+    .filter((item): item is SemanticEvidence => item !== null);
+}
+
+function normalizeSemanticCandidate(record: Record<string, unknown>): SemanticCandidate {
+  const actionKindValue = asString(pickRecordValue(record, 'actionKind', 'action_kind')) as SemanticActionKind;
+  const verificationStatusValue = asString(pickRecordValue(record, 'verificationStatus', 'verification_status')) as SemanticVerificationStatus;
+  const rawCount = pickRecordValue(record, 'verifiedEventCount', 'verified_event_count');
+  const rawRuleEligible = pickRecordValue(record, 'ruleEligible', 'rule_eligible');
+  const endpointsValue = record.endpoints;
+  const subject = isRecord(endpointsValue) ? normalizeSemanticEndpoint(endpointsValue.subject) : undefined;
+  const target = isRecord(endpointsValue) ? normalizeSemanticEndpoint(endpointsValue.target) : undefined;
+  const evidence = normalizeSemanticEvidence(record.evidence);
+
+  return {
+    id: asString(record.id), eventId: asString(record.eventId) || undefined,
+    subjectEntityId: asString(record.subjectEntityId) || undefined,
+    subjectValue: asString(record.subjectValue) || undefined,
+    subjectType: asString(record.subjectType) || undefined,
+    relationType: asString(record.relationType, 'related_to'), targetType: asString(record.targetType, 'concept'),
+    targetValue: asString(record.targetValue, 'Concept'), parentTargetValue: asString(record.parentTargetValue) || undefined,
+    confidence: asNumber(record.confidence, 0), rationale: asString(record.rationale) || undefined,
+    extractor: asString(record.extractor) || undefined, decisionKind: asString(record.decisionKind) || undefined,
+    domainValue: asString(record.domainValue) || undefined,
+    anchorRole: (asString(record.anchorRole) || undefined) as SemanticCandidate['anchorRole'],
+    proposedPath: asArray<string>(record.proposedPath),
+    alternatives: asArray<unknown>(record.alternatives).map((alternative) => {
+      const value = isRecord(alternative) ? alternative : {};
+      return { parent: asString(value.parent) || undefined, value: asString(value.value), confidence: asNumber(value.confidence, 0) };
+    }).filter((alternative) => alternative.value),
+    recurrenceCount: asNumber(record.recurrenceCount, 0) || undefined,
+    governanceVersion: asString(record.governanceVersion) || undefined, model: asString(record.model) || undefined,
+    status: asString(record.status, 'pending') as SemanticCandidate['status'],
+    actionKind: SEMANTIC_ACTION_KINDS.includes(actionKindValue) ? actionKindValue : undefined,
+    endpoints: subject || target ? { subject, target } : undefined,
+    evidence: evidence.length ? evidence : undefined,
+    verifiedEventCount: typeof rawCount === 'number' && Number.isFinite(rawCount) ? Math.max(0, Math.round(rawCount)) : undefined,
+    verificationStatus: SEMANTIC_VERIFICATION_STATUSES.includes(verificationStatusValue) ? verificationStatusValue : undefined,
+    changeExplanation: asString(pickRecordValue(record, 'changeExplanation', 'change_explanation')) || undefined,
+    ruleEligible: typeof rawRuleEligible === 'boolean' ? rawRuleEligible : undefined,
+    policyVersion: asString(record.policyVersion ?? record.policy_version) || undefined,
+  };
+}
+
 function normalizeEntity(input: unknown): EntityDetail {
   const record = (isRecord(input) ? input : {}) as Record<string, any>;
 
@@ -1442,29 +1527,8 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
     async listSemanticCandidates() {
       const json = await requestWithFallback(baseUrl, '/api/v1/semantic/candidates?status=pending', { items: [] }, { headers });
       const items = isRecord(json) && Array.isArray(json.items) ? json.items : [];
-      return items.map((item) => {
-        const record = (isRecord(item) ? item : {}) as Record<string, unknown>;
-        return {
-          id: asString(record.id), eventId: asString(record.eventId) || undefined,
-          subjectEntityId: asString(record.subjectEntityId) || undefined,
-          subjectValue: asString(record.subjectValue) || undefined,
-          subjectType: asString(record.subjectType) || undefined,
-          relationType: asString(record.relationType, 'related_to'), targetType: asString(record.targetType, 'concept'),
-          targetValue: asString(record.targetValue, 'Concept'), parentTargetValue: asString(record.parentTargetValue) || undefined,
-          confidence: asNumber(record.confidence, 0), rationale: asString(record.rationale) || undefined,
-          extractor: asString(record.extractor) || undefined, decisionKind: asString(record.decisionKind) || undefined,
-          domainValue: asString(record.domainValue) || undefined,
-          anchorRole: (asString(record.anchorRole) || undefined) as SemanticCandidate['anchorRole'],
-          proposedPath: asArray<string>(record.proposedPath),
-          alternatives: asArray<unknown>(record.alternatives).map((alternative) => {
-            const value = isRecord(alternative) ? alternative : {};
-            return { parent: asString(value.parent) || undefined, value: asString(value.value), confidence: asNumber(value.confidence, 0) };
-          }).filter((alternative) => alternative.value),
-          recurrenceCount: asNumber(record.recurrenceCount, 0) || undefined,
-          governanceVersion: asString(record.governanceVersion) || undefined, model: asString(record.model) || undefined,
-          status: asString(record.status, 'pending') as SemanticCandidate['status'],
-        };
-      }).filter((item) => item.id);
+      return items.map((item) => normalizeSemanticCandidate((isRecord(item) ? item : {}) as Record<string, unknown>))
+        .filter((item) => item.id);
     },
     async resolveSemanticCandidate(id, input) {
       await safeFetchJson(baseUrl, `/api/v1/semantic/candidates/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: input, headers });

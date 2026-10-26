@@ -19,7 +19,7 @@ import { formatCurrency } from '@/lib/format';
 import { useAsyncResource, useReduceMotion } from '@/lib/hooks';
 import { listLayout } from '@/lib/motion';
 import { setReviewQueueSize } from '@/lib/review-queue';
-import { buildReviewQueue, decisionSeconds } from '@/lib/review-session';
+import { buildReviewQueue, decisionSeconds, semanticImpactLabel, type ReviewDecision } from '@/lib/review-session';
 
 export default function ReviewHomeScreen() {
   const theme = useTheme();
@@ -52,8 +52,8 @@ export default function ReviewHomeScreen() {
   const resolvedCount = data?.resolved.length ?? 0;
   const total = pendingCount + resolvedCount;
   const progress = total ? resolvedCount / total : 1;
-  const tidyCount = queue.reduce((sum, decision) => sum + decision.impact.transactions, 0);
-  const tidyAmount = queue.reduce((sum, decision) => sum + decision.impact.amount, 0);
+  const tidyCount = queue.reduce((sum, decision) => sum + (decision.impact.movements === false ? 0 : decision.impact.transactions), 0);
+  const tidyAmount = queue.reduce((sum, decision) => sum + (decision.impact.movements === false ? 0 : decision.impact.amount), 0);
   const topics = useMemo(() => {
     const byTopic = new Map<string, number>();
     queue.forEach((decision) => byTopic.set(decision.topic, (byTopic.get(decision.topic) ?? 0) + 1));
@@ -128,8 +128,8 @@ export default function ReviewHomeScreen() {
                 <Animated.View key={decision.id} layout={reduceMotion ? undefined : listLayout} exiting={reduceMotion ? undefined : FadeOut.duration(theme.motion.duration.quick).easing(Easing.bezier(...theme.motion.easing.in))}>
                 <Row
                   title={decision.title}
-                  subtitle={decision.kind === 'relation' ? 'Conexión' : decision.kind === 'batch' ? `${decision.reviewIds.length} variantes` : decision.kind === 'category' ? 'Categoría' : 'Nombre'}
-                  description={decision.impact.transactions ? `${decision.impact.transactions} ${decision.impact.transactions === 1 ? 'movimiento' : 'movimientos'} · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
+                  subtitle={decision.kind === 'relation' ? relationSubtitle(decision.actionKind) : decision.kind === 'batch' ? `${decision.reviewIds.length} variantes` : decision.kind === 'category' ? 'Categoría' : 'Nombre'}
+                  description={decision.kind === 'relation' ? semanticImpactLabel(decision) ?? decision.rationale : decision.impact.transactions ? `${decision.impact.transactions} ${decision.impact.transactions === 1 ? 'movimiento' : 'movimientos'} · ${formatCurrency(decision.impact.amount, decision.impact.currency)}` : decision.rationale}
                   leading={<IconTile icon={decision.kind === 'relation' ? 'link-2' : decision.kind === 'same' ? 'users' : 'tag'} color={theme.status.review} />}
                   accessory="none"
                 />
@@ -141,6 +141,15 @@ export default function ReviewHomeScreen() {
       ) : null}
     </Screen>
   );
+}
+
+function relationSubtitle(actionKind?: ReviewDecision['actionKind']) {
+  if (actionKind === 'assign_existing_category') return 'Clasificar';
+  if (actionKind === 'create_category') return 'Crear categoría';
+  if (actionKind === 'merge_identities') return 'Unificar identidades';
+  if (actionKind === 'place_entity') return 'Ubicar';
+  if (actionKind === 'associate_entities') return 'Asociar';
+  return 'Relación';
 }
 
 function ProgressRing({ value, size, label }: { value: number; size: number; label: string }) {

@@ -203,6 +203,31 @@ export type ReviewItem = {
   status: 'pending' | 'resolved' | 'ignored';
 };
 
+/** Additive backend contract: what the candidate would actually do if approved. */
+export type SemanticActionKind = 'assign_existing_category' | 'create_category' | 'merge_identities' | 'associate_entities' | 'place_entity';
+
+export type SemanticEndpointKind = 'event' | 'concept' | 'identity' | 'category';
+
+export type SemanticEndpoint = {
+  id?: string;
+  type?: string;
+  label?: string;
+  canonicalId?: string;
+  kind?: SemanticEndpointKind;
+};
+
+export type SemanticEvidence = {
+  eventId?: string;
+  source?: string;
+  title?: string;
+  excerpt?: string;
+  occurredAt?: string;
+  field?: string;
+  kind?: string;
+};
+
+export type SemanticVerificationStatus = 'verified' | 'rejected' | 'unavailable' | 'not_required';
+
 export type SemanticCandidate = {
   id: string;
   eventId?: string;
@@ -225,6 +250,15 @@ export type SemanticCandidate = {
   governanceVersion?: string;
   model?: string;
   status: 'pending' | 'approved' | 'rejected';
+  /** Additive fields. All optional so older backends keep working. */
+  actionKind?: SemanticActionKind;
+  endpoints?: { subject?: SemanticEndpoint; target?: SemanticEndpoint };
+  evidence?: SemanticEvidence[];
+  verifiedEventCount?: number;
+  verificationStatus?: SemanticVerificationStatus;
+  changeExplanation?: string;
+  ruleEligible?: boolean;
+  policyVersion?: string;
 };
 
 export type EntitySuggestion = {
