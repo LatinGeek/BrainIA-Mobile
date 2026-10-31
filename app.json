@@ -40,7 +40,17 @@
           "backgroundColor": "#F7F5F0"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "BrainIA usa el micrófono para que puedas preguntar con la voz.",
+          "speechRecognitionPermission": "BrainIA convierte tu voz en texto para responder tus preguntas.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

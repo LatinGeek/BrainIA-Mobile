@@ -1,10 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect, useIsFocused } from 'expo-router';
-import { Children, Fragment, ReactNode, createContext, cloneElement, isValidElement, useCallback, useContext, useEffect, useId, useMemo, useState } from 'react';
+import { Children, Fragment, ReactNode, RefObject, createContext, cloneElement, isValidElement, useCallback, useContext, useEffect, useId, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  ScrollView,
   ScrollViewProps,
   StyleSheet,
   Text,
@@ -131,6 +132,7 @@ export function Screen({
   ambientAnimated = false,
   contentStyle,
   contentContainerStyle,
+  scrollRef,
 }: {
   title: string;
   subtitle?: string;
@@ -147,6 +149,8 @@ export function Screen({
   ambientAnimated?: boolean;
   contentStyle?: ScrollViewProps['style'];
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
+  /** Lets a screen drive its own scroll position (for example a chat following new messages). */
+  scrollRef?: RefObject<ScrollView | null>;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -256,6 +260,7 @@ export function Screen({
           <View style={styles.flex}>
             {scrollable ? (
               <Animated.ScrollView
+                ref={scrollRef as never}
                 style={[styles.flex, contentStyle]}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}

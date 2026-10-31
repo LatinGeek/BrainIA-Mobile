@@ -1,4 +1,5 @@
 import { cleanDisplayText } from './format';
+import { streamAsk, type AskEvent, type AskRequest } from './ask';
 import { createV2Transport, type V2Transport } from '../contracts/brain-ai/2.0.0/mobile/transport.cjs';
 import {
   BriefCard,
@@ -927,6 +928,8 @@ export type BrainIAClient = {
   reprocessEvent: (eventId: string) => Promise<{ ok: boolean }>;
   listSemanticCandidates: () => Promise<SemanticCandidate[]>;
   resolveSemanticCandidate: (id: string, input: { action: 'approve' | 'reject'; targetEntityId?: string; createRule?: boolean }) => Promise<{ ok: boolean }>;
+  /** Streams one Explorar chat turn (POST /api/v1/ask). */
+  ask: (request: AskRequest, onEvent: (event: AskEvent) => void, signal?: AbortSignal) => Promise<void>;
 };
 
 /**
@@ -1003,6 +1006,7 @@ export function createBrainIAClient(config: ClientConfig): BrainIAClient {
 
   const client: BrainIAClient = {
     baseUrl,
+    ask: (request, onEvent, signal) => streamAsk({ baseUrl, headers }, request, onEvent, signal),
     v2: createV2TransportWithOfflineClassification(baseUrl, config.accessToken ?? (() => readV2AccessToken())),
     async health() {
       return requestWithFallback(baseUrl, '/health', { ok: false }, { headers });

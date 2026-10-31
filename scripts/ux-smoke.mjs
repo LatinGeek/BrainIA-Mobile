@@ -5,7 +5,7 @@ const viewport = { width: 390, height: 844 };
 
 const checks = [
   { path: '/', marker: 'Tu día, en perspectiva', label: 'home' },
-  { path: '/search', marker: 'Descubrir', label: 'search' },
+  { path: '/search', marker: '¿Qué quieres saber?', label: 'explore-ask' },
   { path: '/settings', marker: 'Tipo de cambio de referencia', label: 'settings' },
   { path: '/financials', marker: 'Dinero', label: 'financials' },
   { path: '/entity/entity_spotify', marker: 'Spotify', label: 'entity' },
@@ -34,6 +34,9 @@ async function checkReviewDraft(page, navigate = true) {
 
 async function checkProposalInteractions(page) {
   await page.goto(`${baseUrl}/search`, { waitUntil: 'commit', timeout: 120000 });
+  // Explorar opens on the chat; the knowledge map and keyword search sit behind "Mapa".
+  await page.getByLabel('Escribe tu pregunta para BrainIA').waitFor({ timeout: 120000 });
+  await page.getByRole('tab', { name: /Mapa/ }).click();
   const searchInput = page.getByLabel('Busca en tu mapa de conocimiento');
   await searchInput.fill('Spotify');
   if (await searchInput.inputValue() !== 'Spotify') throw new Error('Search did not preserve the entered query.');
